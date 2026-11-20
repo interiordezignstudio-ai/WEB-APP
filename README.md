@@ -30,7 +30,7 @@ The app needs a free Google "Client ID" so it can save to your Drive.
    - **Application type:** Web application
    - **Authorised JavaScript origins:** `https://interiordezignstudio-ai.github.io`
    - Press **Create** and copy the **Client ID** (it ends in `.apps.googleusercontent.com`).
-6. Open the app at your web address, then go to **Sync & Backup → Google Drive**. Paste the Client ID and press **Connect / Sign in with Google**.
+6. The studio's Client ID is already built into `index.html`. On each phone or computer, open the app at your web address, go to **Sync & Backup → Google Drive** and press **Connect Google Drive**. (If you ever make a new Client ID, put it in `DEFAULT_GOOGLE_CLIENT_ID` in `index.html`.)
 
 The app creates a folder **"Interior Dezign Studio OS"** in that Drive, with one data file.
 
