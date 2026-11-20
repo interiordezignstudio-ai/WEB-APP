@@ -5858,6 +5858,7 @@
               <button type="button" class="btn btn-outline btn-sm" data-hub-goto="tasks">+ Task</button>
               <button type="button" class="btn btn-outline btn-sm" data-hub-goto="notes">+ Site Note</button>
               ${c.driveUrl && safeHttpUrl(c.driveUrl) ? `<a class="btn btn-outline btn-sm" href="${escapeHtml(safeHttpUrl(c.driveUrl))}" target="_blank" rel="noopener">Drive Folder ↗</a>` : ''}
+              ${perms.canEditClients ? `<button type="button" class="btn btn-danger-soft btn-sm" data-client-del="${c.id}" style="margin-left:auto;">Delete client</button>` : ''}
             </div>
 
             <div class="hub-stepper" aria-label="Project stage">
@@ -7975,6 +7976,43 @@
         state.staff.push(st); state.teamSel = st.id;
         commitState(); renderAll(); showToast(`${name} added — adjust their access on the right`);
       }, true);
+
+
+      // ===== Delete an onboarded client (and everything that belongs to them) =====
+      function clientLinkedRecords(c) {
+        const own = x => x && x.clientId === c.id;
+        const boqIds = [c.id, c.finalBoqId].filter(id => id && state.boqs && state.boqs[id]);
+        return {
+          boqIds,
+          invoices: (state.invoices || []).filter(own),
+          money: (state.money || []).filter(own),
+          selections: (state.selections || []).filter(own),
+          pos: (state.pos || []).filter(own),
+          siteBills: (state.siteBills || []).filter(own),
+          tasks: (state.tasks || []).filter(own)
+        };
+      }
+      document.addEventListener('click', async e => {
+        const btn = e.target.closest('[data-client-del]'); if (!btn) return;
+        if (!getCurrentPermissions().canEditClients) { showToast('Your access does not allow deleting clients'); return; }
+        const c = (state.clients || []).find(x => x.id === btn.dataset.clientDel); if (!c) return;
+        const L = clientLinkedRecords(c);
+        const parts = [
+          [L.boqIds.length, 'estimate'], [L.invoices.length, 'GST bill'], [L.money.length, 'payment'], [L.selections.length, 'selection'],
+          [L.pos.length, 'purchase order'], [L.siteBills.length, 'site bill'], [L.tasks.length, 'task']
+        ].filter(([n]) => n).map(([n, w]) => `${n} ${w}${n === 1 ? '' : 's'}`);
+        const msg = `Delete client “${c.name}”?\n\n${parts.length ? `This also deletes their ${parts.join(', ')}, plus notes and links.` : 'This deletes the client with their notes and links.'} You can press Undo right after.`;
+        if (!await appConfirm(msg, { ok: 'Delete client' })) return;
+        const gone = new Set([...L.invoices, ...L.money, ...L.selections, ...L.pos, ...L.siteBills, ...L.tasks]);
+        ['invoices', 'money', 'selections', 'pos', 'siteBills', 'tasks'].forEach(k => { if (Array.isArray(state[k])) state[k] = state[k].filter(x => !gone.has(x)); });
+        L.boqIds.forEach(id => { delete state.boqs[id]; });
+        (state.leads || []).forEach(l => { if (l.clientId === c.id) delete l.clientId; });
+        state.clients = state.clients.filter(x => x !== c);
+        if (state.activeClientId === c.id) state.activeClientId = (state.clients[0] || {}).id || null;
+        if (L.boqIds.includes(state.activeBoqClientId)) state.activeBoqClientId = (state.clients[0] || {}).id || state.activeBoqClientId;
+        commitState(); renderAll();
+        showToast(`${c.name} deleted`);
+      });
 
       // ===== Team access editor (per person or per role) + PIN lock =====
       let accessCtx = null; // { kind: 'staff'|'role', id, name, perm, roleName }
@@ -15114,7 +15152,7 @@
       }, true);
 
       // ===== Undo for deletes =====
-      const UNDOABLE = '[data-leads-bulk-del], [data-hub-ls-del], [data-sel-del], [data-po-del], [data-ph-del], [data-ck-del], [data-invoice-del], [data-sb-del], [data-pay-del], [data-vendor-del], [data-ms-due], [data-ms-quick], #btn-import-confirm, [data-delete-room], [data-delete-item], [data-cat-delete], [data-delete-revision], [data-hub-task-del], [data-hub-note-del], [data-hub-link-del], [data-remove-staff], #btn-confirm-delete-estimate, #btn-clear-all-rooms';
+      const UNDOABLE = '[data-client-del], [data-leads-bulk-del], [data-hub-ls-del], [data-sel-del], [data-po-del], [data-ph-del], [data-ck-del], [data-invoice-del], [data-sb-del], [data-pay-del], [data-vendor-del], [data-ms-due], [data-ms-quick], #btn-import-confirm, [data-delete-room], [data-delete-item], [data-cat-delete], [data-delete-revision], [data-hub-task-del], [data-hub-note-del], [data-hub-link-del], [data-remove-staff], #btn-confirm-delete-estimate, #btn-clear-all-rooms';
       let undoSnapshot = null;
       let undoTimer = null;
       let undoArm = null;
