@@ -10311,7 +10311,7 @@
       const META_SHEET_TITLE = 'Interior Dezign – Meta Leads';
       const META_SHEET_TAB = 'Leads';
       const META_HEADERS = ['lead_id', 'created_time', 'full_name', 'phone_number', 'email', 'city', 'property_type', 'budget', 'possession_status', 'form_name', 'campaign_name', 'ad_name', 'notes'];
-      const CLOUD_POLL_MS = 60000;
+      const CLOUD_POLL_MS = 15000;
       const META_POLL_MS = 120000;
 
       const cloud = {
@@ -10658,8 +10658,13 @@
 
       function startCloudPolling() {
         clearInterval(cloud.pollTimer);
+        // Open on screen: check Drive every 15 s for changes from other devices (a tiny version check).
+        // In the background (with lead alerts on): once a minute.
         cloud.pollTimer = setInterval(() => {
-          if (cloudEnabled() && (document.visibilityState === 'visible' || leadAlertPrefs().system)) cloudSync();
+          if (!cloudEnabled()) return;
+          const visible = document.visibilityState === 'visible';
+          const due = Date.now() - (cloud.lastSync || 0) >= (visible ? CLOUD_POLL_MS - 1000 : 60000);
+          if ((visible || leadAlertPrefs().system) && due) cloudSync();
         }, CLOUD_POLL_MS);
       }
 
