@@ -25,14 +25,16 @@ The app needs a free Google "Client ID" so it can save to your Drive.
    - **User type:** External
    - **App name:** Interior Dezign Studio OS
    - **Support email:** your email
-   - **Test users:** add the Google account of every staff member who will use the app.
+   - **Test users:** add the studio Google account (the one that will hold the data).
 5. **APIs & Services → Credentials → Create credentials → OAuth client ID**:
    - **Application type:** Web application
    - **Authorised JavaScript origins:** `https://interiordezignstudio-ai.github.io`
    - Press **Create** and copy the **Client ID** (it ends in `.apps.googleusercontent.com`).
 6. Open the app at your web address, then go to **Sync & Backup → Google Drive**. Paste the Client ID and press **Connect / Sign in with Google**.
 
-The app creates a folder **"Interior Dezign Studio OS"** in that Drive, with one data file. Every device that signs in with an allowed Google account works on the same data.
+The app creates a folder **"Interior Dezign Studio OS"** in that Drive, with one data file.
+
+**Important:** on every phone and computer, sign in to Google Drive with the **same studio Google account**. If someone signs in with a different Google account, they get a separate, empty copy of the data. Inside the app, each staff member picks their own name (Team & Roles), and a PIN keeps others out of their account.
 
 ## Updating the app
 
