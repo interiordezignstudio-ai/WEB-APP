@@ -2635,6 +2635,10 @@
               <select id="lead-filter-source" class="select" aria-label="Filter by lead source">
                 <option value="ALL">All sources</option>
               </select>
+              <select id="lead-sort" class="select" aria-label="Sort leads">
+                <option value="new">Newest first</option>
+                <option value="due">Next call due first</option>
+              </select>
             </div>
           </div>
 
@@ -5469,10 +5473,20 @@
             : l.stage === stageFilter;
           const matchOwner = ownerFilter === 'ALL' || (l.ownerEmail || '').toLowerCase() === staff.email.toLowerCase();
           return matchText && matchStage && matchOwner && leadMatchesSource(l, sourceFilter);
-        }).sort((a, b) => {
+        });
+        // Newest leads on top (default), or by next call due. Closed leads always go last.
+        const sortMode = state.leadSort === 'due' ? 'due' : 'new';
+        const sortSel = document.getElementById('lead-sort'); if (sortSel) sortSel.value = sortMode;
+        const pos = new Map(state.leads.map((l, i) => [l.id, i]));
+        filtered.sort((a, b) => {
           const won = x => CLOSED_LEAD_STAGES.includes(x.stage) ? 1 : 0;
-          const at = x => { const n = leadNext(x); return n && n.at ? n.at : '9999'; };
-          return (won(a) - won(b)) || at(a).localeCompare(at(b));
+          if (won(a) !== won(b)) return won(a) - won(b);
+          if (sortMode === 'due') {
+            const at = x => { const n = leadNext(x); return n && n.at ? n.at : '9999'; };
+            return at(a).localeCompare(at(b));
+          }
+          const t = x => Date.parse(x.createdAt || '') || 0;
+          return (t(b) - t(a)) || (pos.get(a.id) - pos.get(b.id));
         });
 
         const target = document.getElementById('leads-render-target');
@@ -10246,7 +10260,7 @@
       // Each window holds a full copy of the studio data. Without this, an older window
       // could save its outdated copy over newer work (e.g. a catalog item added elsewhere).
       const LOCAL_UI_KEYS = ['activeTab', 'activeBoqClientId', 'activeClientId', 'hubTab', 'hubOpen', 'hubFilter', 'hubSearch',
-        'billFilter', 'leadSourceFilter', 'leadViewMode', 'catalogDrawerOpen', 'catalogCategoryFilter', 'catalogTierView', 'catalogSegment', 'quickBoq', 'teamSel', 'activeStaffEmail', 'boqSeparateRates'];
+        'billFilter', 'leadSourceFilter', 'leadViewMode', 'catalogDrawerOpen', 'catalogCategoryFilter', 'catalogTierView', 'catalogSegment', 'quickBoq', 'teamSel', 'leadSort', 'activeStaffEmail', 'boqSeparateRates'];
       let rerenderWhenIdle = false;
 
       function adoptSavedState(raw, fromOtherWindow) {
@@ -16985,6 +16999,7 @@
           syncCatalogModalUnitFields(e.target.value);
           return;
         }
+        if (e.target.id === 'lead-sort') { state.leadSort = e.target.value; commitState(); renderLeads(); return; }
         if (['lead-filter-stage', 'lead-filter-owner', 'lead-filter-source'].includes(e.target.id)) {
           if (e.target.id === 'lead-filter-source') { state.leadSourceFilter = e.target.value; commitState(); }
           renderLeads();
