@@ -10916,10 +10916,11 @@
           if (!name && !phone10) return;
           const key = get('id') || `row:${phone10}:${get('created')}`;
           const rowBudget = budgetFromRow(r, bCols);
+          const mid = 'meta_' + hashStr(key).replace(/[^a-z0-9]/gi, '');
+          if (opts.all && imported.has(key) && !state.leads.some(l => l.id === mid || (get('id') && l.metaLeadId === get('id')))) imported.delete(key);
           if (imported.has(key)) {
             // already imported: fill in a budget that was missed before
             if (rowBudget) {
-              const mid = 'meta_' + hashStr(key).replace(/[^a-z0-9]/gi, '');
               const ex = state.leads.find(l => l.id === mid || (get('id') && l.metaLeadId === get('id')) || (phone10 && l.source === 'Meta Ads' && String(l.phone || '').replace(/\D/g, '').slice(-10) === phone10));
               if (ex && !Number(ex.budget)) { ex.budget = rowBudget; budgetFilled++; }
             }
@@ -11079,11 +11080,12 @@
         cloud.pendingSheet = null;
         commitState();
         if (!importAll) await importMetaLeads({ markOnly: true });
-        const n = importAll ? await importMetaLeads({ manual: true, silent: true }) : 0;
+        if (importAll) state.leadSourceFilter = 'ALL';
+        const n = importAll ? await importMetaLeads({ manual: true, silent: true, all: true }) : 0;
         if (importAll) markLeadsNotified((state.leads || []).filter(l => l.source === 'Meta Ads').map(l => l.id));
         startMetaPolling();
         renderMetaStatus();
-        showToast(importAll ? `Sheet connected — ${n} lead${n === 1 ? '' : 's'} imported` : 'Sheet connected — new Meta leads will appear in Leads automatically');
+        showToast(importAll ? (n ? `Sheet connected — ${n} lead${n === 1 ? '' : 's'} imported (see Leads)` : 'Sheet connected — no new leads: every phone number in the sheet is already in Leads') : 'Sheet connected — new Meta leads will appear in Leads automatically');
       }
 
       function renderSheetSetup(box) {
@@ -11158,6 +11160,7 @@
               <div class="cloud-actions">
                 <button type="button" class="btn btn-${needsPermission ? 'primary' : 'outline'} btn-sm" data-cloud="meta-check">${needsPermission ? 'Allow & check' : 'Check now'}</button>
                 ${state.metaSheetExternal ? '<button type="button" class="btn btn-outline btn-sm" data-cloud="sheet-edit">Columns</button>' : ''}
+                <button type="button" class="btn btn-outline btn-sm" data-cloud="meta-load-all" title="Bring in every lead in the sheet that is not in Leads yet">Load old leads</button>
                 <button type="button" class="btn btn-outline btn-sm" data-cloud="sheet-change">Change sheet</button>
               </div>
             </div>
@@ -11271,6 +11274,15 @@
           try { await createMetaSheet(); showToast('Leads sheet created in your Drive'); startMetaPolling(); }
           catch (err) { showToast(err.message || 'Could not create the sheet'); }
           renderMetaStatus();
+          return;
+        }
+        if (act === 'meta-load-all') {
+          try {
+            await getCloudToken(true);
+            state.leadSourceFilter = 'ALL';
+            const n = await importMetaLeads({ manual: true, silent: true, all: true });
+            if (!n) showToast('No leads to add — every phone number in the sheet is already in Leads');
+          } catch (err) { showToast(err.message || 'Could not read the leads sheet'); }
           return;
         }
         if (act === 'meta-check') {
