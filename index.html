@@ -273,6 +273,8 @@
       color: var(--text-light);
     }
 
+    .status-dot.is-off { background:#F87171; box-shadow:0 0 0 3px rgba(248,113,113,0.2); }
+    .status-dot.is-warn { background:#FBBF24; box-shadow:0 0 0 3px rgba(251,191,36,0.2); }
     .status-dot {
       width: 7px; height: 7px; border-radius: 50%;
       background: #34D399;
@@ -2321,6 +2323,35 @@
     .lead-next.due-today .lead-next-when { color: var(--accent-terracotta-dark); }
     .lead-next-when { font-weight: 700; white-space: nowrap; }
     .lead-last { font-size: 12px; color: var(--text-muted); margin-top: 6px; }
+    .att-grid { display:grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.3fr); gap:16px; align-items:start; }
+    .att-clock { display:grid; grid-template-columns:repeat(3, 1fr); gap:8px; margin-top:6px; }
+    .att-clock > div, .att-sum > div { background:var(--bg-sunken); border:1px solid var(--border-subtle); border-radius:10px; padding:8px 10px; }
+    .att-clock small, .att-sum small { display:block; font-size:10.5px; font-weight:700; text-transform:uppercase; letter-spacing:0.05em; color:var(--text-light); }
+    .att-clock strong { font-size:18px; }
+    .att-sum { display:grid; grid-template-columns:repeat(6, minmax(0, 1fr)); gap:8px; margin-bottom:12px; }
+    .att-sum strong { font-size:16px; }
+    .att-badge { display:inline-block; font-size:12px; font-weight:700; color:var(--c); background:color-mix(in srgb, var(--c) 12%, #fff); border:1px solid color-mix(in srgb, var(--c) 30%, #fff); border-radius:999px; padding:2px 9px; white-space:nowrap; }
+    .att-work-form { display:grid; grid-template-columns: 2fr 1.2fr 80px auto; gap:8px; }
+    .att-work { display:flex; justify-content:space-between; gap:8px; padding:6px 0; border-bottom:1px solid var(--border-subtle); font-size:14px; }
+    .att-work em, .att-row em { font-style:normal; color:var(--text-muted); font-size:12px; }
+    .att-table { border:1px solid var(--border-subtle); border-radius:12px; overflow:hidden; }
+    .att-row { display:grid; grid-template-columns: 110px 130px 80px 80px 80px minmax(0, 1fr); gap:8px; padding:9px 12px; border-bottom:1px solid var(--border-subtle); font-size:13.5px; align-items:start; }
+    .att-team-row { grid-template-columns: 180px 130px 80px 80px 80px minmax(0, 1fr); }
+    .att-row:last-child { border-bottom:0; }
+    .att-head { background:var(--bg-sunken); font-size:10.5px; font-weight:700; text-transform:uppercase; letter-spacing:0.05em; color:var(--text-light); }
+    .att-click { cursor:pointer; } .att-click:hover { background:#FFFBF8; }
+    .att-workcell { line-height:1.45; }
+    .ad-work-row { display:grid; grid-template-columns: 2fr 1.2fr 70px 34px; gap:6px; margin-bottom:6px; }
+    .ad-work-row .input, .ad-work-row .select { padding:8px; font-size:14px; min-width:0; }
+    @media (max-width: 900px) {
+      .att-grid { grid-template-columns:1fr; }
+      .att-sum { grid-template-columns:repeat(3, 1fr); }
+      .att-work-form { grid-template-columns:1fr 1fr; } .att-work-form .input[name="text"] { grid-column:1 / -1; }
+      .att-head { display:none; }
+      .att-row, .att-team-row { grid-template-columns: 1fr 1fr 1fr; }
+      .att-row > span:first-child, .att-row .att-workcell { grid-column:1 / -1; }
+      .ad-work-row { grid-template-columns:1fr 1fr; } .ad-work-row .input[data-k="text"] { grid-column:1 / -1; }
+    }
     .caller-tag { display:inline-block; font-weight:700; color:#1D6A96; background:#E3F0F8; border-radius:999px; padding:1px 8px; font-size:12px; }
     .caller-tag.outside { color:#8A4A12; background:#FDF0E3; }
     .caller-sum { display:flex; gap:6px; flex-wrap:wrap; margin-top:10px; }
@@ -2471,6 +2502,10 @@
           <span class="nav-label">Payments</span>
         </button>
         <div class="nav-section">Studio</div>
+        <button class="nav-item" data-tab="attendance" data-short="Attend" title="Attendance & daily work">
+          <span class="nav-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3.5" y="4.5" width="17" height="16" rx="2.5"/><path d="M8 2.8v3.4"/><path d="M16 2.8v3.4"/><path d="M3.5 9.5h17"/><path d="m9 15 2 2 4-4"/></svg></span>
+          <span class="nav-label">Attendance &amp; Work</span>
+        </button>
         <button class="nav-item" data-tab="team" data-short="Team" title="Team & Roles">
           <span class="nav-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><path d="M16 4.8a3.5 3.5 0 0 1 0 6.4"/><path d="M18.5 14.2A6.5 6.5 0 0 1 21.5 20"/></svg></span>
           <span class="nav-label">Team &amp; Roles</span>
@@ -2483,8 +2518,8 @@
 
       <div class="sidebar-footer">
         <div style="display:flex; align-items:center; gap:8px; color:#D1FAE5; font-weight:600; font-size:12px;">
-          <span class="status-dot"></span>
-          <span>Works offline · Saved on this device</span>
+          <span class="status-dot" id="conn-dot"></span>
+          <span id="conn-text">Saved on this device</span>
         </div>
         <div style="margin-top:4px; font-size:11px; color:#8F867D;">Windows · Mac · iPad · iPhone · Android</div>
       </div>
@@ -3090,6 +3125,16 @@
         </section>
 
         <!-- ==================== 7. TEAM & EMAIL ROLES VIEW ==================== -->
+        <section id="view-attendance" class="app-view" style="display:none;">
+          <div class="page-header">
+            <div>
+              <h1 class="page-title">Attendance &amp; Daily Work</h1>
+              <p class="page-sub" id="att-sub">Check in, check out and write what you worked on each day</p>
+            </div>
+          </div>
+          <div id="attendance-root"></div>
+        </section>
+
         <section id="view-team" class="app-view" style="display:none;">
           <div class="page-header">
             <div>
@@ -3305,6 +3350,12 @@
     <div class="modal-box modal-lg">
       <div class="modal-header"><h3 class="font-serif" style="font-size:22px; font-weight:700;" id="sel-title">Selection</h3><button class="btn btn-outline btn-sm" data-close-modal="modal-sel">✕</button></div>
       <div id="sel-body"></div>
+    </div>
+  </div>
+  <div class="modal-backdrop" id="modal-attday">
+    <div class="modal-box">
+      <div class="modal-header"><h3 class="font-serif" style="font-size:20px; font-weight:700;" id="attday-title">Day</h3><button class="btn btn-outline btn-sm" data-close-modal="modal-attday">✕</button></div>
+      <div id="attday-body"></div>
     </div>
   </div>
   <div class="modal-backdrop" id="modal-disc">
@@ -4174,7 +4225,7 @@
 
       // 2. ROLE-BASED ACCESS CONTROL (RBAC) MATRIX
       // Screens & abilities that can be switched on/off per role or per person (Team & Roles)
-      const ACCESS_SCREENS = [['dashboard', 'Home'], ['leads', 'Leads'], ['clients', 'Onboarded Clients'], ['quickboq', 'Quick BOQ'], ['catalog', 'Item Catalog'], ['boq', 'BOQ Builder'], ['billing', 'GST Bills'], ['payments', 'Payments'], ['team', 'Team & Roles'], ['backup', 'Sync, Backup & Branding']];
+      const ACCESS_SCREENS = [['dashboard', 'Home'], ['attendance', 'Attendance & work'], ['leads', 'Leads'], ['clients', 'Onboarded Clients'], ['quickboq', 'Quick BOQ'], ['catalog', 'Item Catalog'], ['boq', 'BOQ Builder'], ['billing', 'GST Bills'], ['payments', 'Payments'], ['team', 'Team & Roles'], ['backup', 'Sync, Backup & Branding']];
       const ACCESS_ABILITIES = [
         ['canEditLeads', 'Add & edit leads', 'Create, import, call-log, delete leads'],
         ['canEditClients', 'Edit clients', 'Client details, notes, selections, site'],
@@ -4187,7 +4238,7 @@
       ];
       function normPerm(o) {
         o = o || {};
-        const out = { tabs: ACCESS_SCREENS.map(x => x[0]).filter(t => t === 'dashboard' || (o.tabs || []).includes(t)) };
+        const out = { tabs: ACCESS_SCREENS.map(x => x[0]).filter(t => t === 'dashboard' || t === 'attendance' || (o.tabs || []).includes(t)) };
         ACCESS_ABILITIES.forEach(([k]) => { out[k] = Boolean(o[k]); });
         return out;
       }
@@ -4206,7 +4257,7 @@
       const isTeamManager = st => { const pm = staffPerms(st); return pm.canManageTeam && pm.tabs.includes('team'); };
       const ROLE_RULES = {
         'Principal / Admin': {
-          tabs: ['dashboard', 'leads', 'clients', 'quickboq', 'catalog', 'boq', 'billing', 'payments', 'team', 'backup'],
+          tabs: ['dashboard', 'attendance', 'leads', 'clients', 'quickboq', 'catalog', 'boq', 'billing', 'payments', 'team', 'backup'],
           canEditLeads: true,
           canEditClients: true,
           canManageCatalog: true,
@@ -4217,7 +4268,7 @@
           canManageTeam: true
         },
         'Sales / BD Manager': {
-          tabs: ['dashboard', 'leads', 'clients', 'quickboq', 'boq', 'backup'],
+          tabs: ['dashboard', 'attendance', 'leads', 'clients', 'quickboq', 'boq', 'backup'],
           canEditLeads: true,
           canEditClients: true,
           canManageCatalog: false,
@@ -4228,7 +4279,7 @@
           canManageTeam: false
         },
         'Interior Designer': {
-          tabs: ['dashboard', 'clients', 'quickboq', 'catalog', 'boq', 'backup'],
+          tabs: ['dashboard', 'attendance', 'clients', 'quickboq', 'catalog', 'boq', 'backup'],
           canEditLeads: false,
           canEditClients: false,
           canManageCatalog: true,
@@ -4239,7 +4290,7 @@
           canManageTeam: false
         },
         'Site Supervisor': {
-          tabs: ['dashboard', 'clients', 'boq', 'backup'],
+          tabs: ['dashboard', 'attendance', 'clients', 'boq', 'backup'],
           canEditLeads: false,
           canEditClients: false,
           canManageCatalog: false,
@@ -4250,7 +4301,7 @@
           canManageTeam: false
         },
         'Accounts / Billing': {
-          tabs: ['dashboard', 'clients', 'boq', 'billing', 'payments', 'backup'],
+          tabs: ['dashboard', 'attendance', 'clients', 'boq', 'billing', 'payments', 'backup'],
           canEditLeads: false,
           canEditClients: false,
           canManageCatalog: false,
@@ -8198,6 +8249,228 @@
         if (t.dataset && t.dataset.cl && callLogF) { callLogF[t.dataset.cl] = t.value; if (callLogF.from > callLogF.to) callLogF.to = callLogF.from; renderCallLog(); }
       });
 
+
+      // ===================== ATTENDANCE & DAILY WORK =====================
+      // Each staff member sees and edits only their own records (the email they are logged in with).
+      // People with "Manage team & access" can also see everyone's records (read only).
+      const ATT_STATUSES = [['present', 'Present', '#0F7457'], ['site', 'On site', '#1D6A96'], ['wfh', 'Work from home', '#6D28D9'], ['half', 'Half day', '#B45309'], ['leave', 'Leave', '#B4233F'], ['absent', 'Absent', '#78716C'], ['holiday', 'Holiday / week off', '#57534E']];
+      const attStatus = k => ATT_STATUSES.find(x => x[0] === k) || ATT_STATUSES[0];
+      const attToday = () => dayKey(new Date().toISOString());
+      const attMe = () => String((getCurrentStaff() || {}).email || '').toLowerCase();
+      const attCanSeeAll = () => getCurrentPermissions().canManageTeam;
+      function attList() { if (!Array.isArray(state.attendance)) state.attendance = []; return state.attendance; }
+      function attGet(email, date) { return attList().find(r => r.email === String(email).toLowerCase() && r.date === date); }
+      function attEnsure(date) {
+        let r = attGet(attMe(), date);
+        if (!r) { r = { id: uid('att'), email: attMe(), date, status: 'present', inAt: '', outAt: '', note: '', work: [] }; attList().push(r); }
+        if (!Array.isArray(r.work)) r.work = [];
+        return r;
+      }
+      const hhmm = iso => { const d = new Date(iso); return isNaN(d) ? '' : d.toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit' }); };
+      function attHours(r) {
+        if (!r || !r.inAt || !r.outAt) return 0;
+        const h = (new Date(r.outAt) - new Date(r.inAt)) / 3600000;
+        return h > 0 && h < 24 ? Math.round(h * 10) / 10 : 0;
+      }
+      const fmtH = h => h ? `${Math.floor(h)}h ${String(Math.round((h % 1) * 60)).padStart(2, '0')}m` : '—';
+      function attMonthDays(month) {
+        const [y, m] = month.split('-').map(Number); const n = new Date(y, m, 0).getDate();
+        return Array.from({ length: n }, (_, i) => `${month}-${String(i + 1).padStart(2, '0')}`);
+      }
+      function attSummary(email, month) {
+        const rs = attList().filter(r => r.email === email && r.date.startsWith(month));
+        const c = k => rs.filter(r => r.status === k).length;
+        return { present: c('present') + c('site') + c('wfh'), half: c('half'), leave: c('leave'), absent: c('absent'), hours: Math.round(rs.reduce((a, r) => a + attHours(r), 0) * 10) / 10, entries: rs.reduce((a, r) => a + (r.work || []).length, 0) };
+      }
+      function attClientName(id) { const c = (state.clients || []).find(x => x.id === id); return c ? c.name : ''; }
+
+      function renderAttendance() {
+        const root = document.getElementById('attendance-root'); if (!root) return;
+        const me = getCurrentStaff() || {};
+        const all = attCanSeeAll();
+        const view = all && state.attView === 'team' ? 'team' : 'me';
+        if (!window.__attMonth) window.__attMonth = attToday().slice(0, 7);
+        if (!window.__attDate) window.__attDate = attToday();
+        const month = window.__attMonth;
+        const sub = document.getElementById('att-sub');
+        if (sub) sub.textContent = view === 'team' ? 'Everyone’s attendance and work — view only' : `${me.name || ''} · ${me.email || ''} — only you can see and change your records${all ? ' (and admins can view them)' : ''}`;
+        const tabs = all ? `<div class="seg-toggle" style="margin-bottom:14px;"><button type="button" class="${view === 'me' ? 'on' : ''}" data-att-view="me">My attendance</button><button type="button" class="${view === 'team' ? 'on' : ''}" data-att-view="team">Team (all staff)</button></div>` : '';
+        root.innerHTML = tabs + (view === 'team' ? attTeamHtml(month) : attMineHtml(month));
+      }
+      function attMineHtml(month) {
+        const today = attToday(); const r = attGet(attMe(), today);
+        const st = r ? attStatus(r.status) : null;
+        const clients = (getScopedClients() || []);
+        const sm = attSummary(attMe(), month);
+        return `
+          <div class="att-grid">
+            <div class="card">
+              <div class="hub-card-title" style="display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap;"><span>Today · ${escapeHtml(new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'short' }))}</span>${st ? `<span class="att-badge" style="--c:${st[2]};">${escapeHtml(st[1])}</span>` : ''}</div>
+              <div class="att-clock">
+                <div><small>Checked in</small><strong>${r && r.inAt ? escapeHtml(hhmm(r.inAt)) : '—'}</strong></div>
+                <div><small>Checked out</small><strong>${r && r.outAt ? escapeHtml(hhmm(r.outAt)) : '—'}</strong></div>
+                <div><small>Hours</small><strong>${escapeHtml(fmtH(attHours(r)))}</strong></div>
+              </div>
+              <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:12px;">
+                ${!r || !r.inAt ? `<button type="button" class="btn btn-emerald" data-att-in>✓ Check in now</button>` : !r.outAt ? `<button type="button" class="btn btn-primary" data-att-out>Check out now</button>` : `<span class="hub-muted" style="align-self:center;">Day complete.</span>`}
+                <select class="select" data-att-status style="max-width:200px;" aria-label="Today’s status">${ATT_STATUSES.map(([k, l]) => `<option value="${k}" ${r && r.status === k ? 'selected' : ''}>${l}</option>`).join('')}</select>
+                <button type="button" class="btn btn-outline" data-att-day="${today}">Edit today</button>
+              </div>
+            </div>
+            <div class="card">
+              <div class="hub-card-title">What I worked on today</div>
+              <form id="att-work-form" class="att-work-form" autocomplete="off">
+                <input class="input" name="text" required placeholder="e.g. Site visit Baner — checked carpentry, measured kitchen" />
+                <select class="select" name="clientId" aria-label="Client / project"><option value="">— General / no client —</option>${clients.map(c => `<option value="${c.id}">${escapeHtml(c.name)}</option>`).join('')}</select>
+                <input class="input" name="hours" type="number" inputmode="decimal" min="0" step="0.25" placeholder="Hours" aria-label="Hours" />
+                <button type="submit" class="btn btn-primary">Add</button>
+              </form>
+              <div style="margin-top:8px;">${(r && r.work && r.work.length) ? r.work.map(w => `<div class="att-work"><span>• ${escapeHtml(w.text)}${w.clientId ? ` <em>· ${escapeHtml(attClientName(w.clientId))}</em>` : ''}${w.hours ? ` <em>· ${escapeHtml(String(w.hours))} h</em>` : ''}</span><button type="button" class="hub-link-del" data-att-wdel="${today}|${w.id}" aria-label="Remove">✕</button></div>`).join('') : '<div class="hub-muted">Nothing added yet today.</div>'}</div>
+            </div>
+          </div>
+          <div class="card" style="margin-top:16px;">
+            <div class="hub-card-title" style="display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap;"><span>My month</span><input class="input" type="month" data-att-month value="${month}" style="max-width:180px;" /></div>
+            ${attSumHtml(sm)}
+            ${attMonthTableHtml(attMe(), month, true)}
+          </div>`;
+      }
+      function attSumHtml(sm) {
+        return `<div class="att-sum"><div><small>Present</small><strong>${sm.present}</strong></div><div><small>Half days</small><strong>${sm.half}</strong></div><div><small>Leave</small><strong>${sm.leave}</strong></div><div><small>Absent</small><strong>${sm.absent}</strong></div><div><small>Hours</small><strong>${escapeHtml(fmtH(sm.hours))}</strong></div><div><small>Work entries</small><strong>${sm.entries}</strong></div></div>`;
+      }
+      function attMonthTableHtml(email, month, editable) {
+        const today = attToday();
+        const days = attMonthDays(month).filter(d => d <= today).reverse();
+        return `<div class="att-table">
+          <div class="att-row att-head"><span>Date</span><span>Status</span><span>In</span><span>Out</span><span>Hours</span><span>Work done</span></div>
+          ${days.map(d => { const r = attGet(email, d); const st = r ? attStatus(r.status) : null; const dt = new Date(d + 'T00:00'); return `
+            <div class="att-row${editable ? ' att-click' : ''}" ${editable ? `data-att-day="${d}"` : ''}>
+              <span><strong>${escapeHtml(dt.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }))}</strong> <em>${escapeHtml(dt.toLocaleDateString('en-IN', { weekday: 'short' }))}</em></span>
+              <span>${st ? `<span class="att-badge" style="--c:${st[2]};">${escapeHtml(st[1])}</span>` : '<span class="hub-muted">Not marked</span>'}</span>
+              <span>${r && r.inAt ? escapeHtml(hhmm(r.inAt)) : '—'}</span>
+              <span>${r && r.outAt ? escapeHtml(hhmm(r.outAt)) : '—'}</span>
+              <span>${escapeHtml(fmtH(attHours(r)))}</span>
+              <span class="att-workcell">${r ? [...(r.work || []).map(w => escapeHtml(w.text) + (w.clientId ? ` <em>(${escapeHtml(attClientName(w.clientId))})</em>` : '')), r.note ? `<em>Note: ${escapeHtml(r.note)}</em>` : ''].filter(Boolean).join('<br/>') || '<span class="hub-muted">—</span>' : '<span class="hub-muted">—</span>'}</span>
+            </div>`; }).join('')}
+        </div>`;
+      }
+      function attTeamHtml(month) {
+        const date = window.__attDate;
+        const staff = state.staff || [];
+        const pick = window.__attStaff && staff.some(x => x.email.toLowerCase() === window.__attStaff) ? window.__attStaff : (staff[0] || {}).email.toLowerCase();
+        const pickSt = staff.find(x => x.email.toLowerCase() === pick) || {};
+        return `
+          <div class="card">
+            <div class="hub-card-title" style="display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap;"><span>Day board</span><input class="input" type="date" data-att-date value="${date}" max="${attToday()}" style="max-width:180px;" /></div>
+            <div class="att-table">
+              <div class="att-row att-team-row att-head"><span>Staff</span><span>Status</span><span>In</span><span>Out</span><span>Hours</span><span>Work done</span></div>
+              ${staff.map(stf => { const r = attGet(stf.email, date); const st = r ? attStatus(r.status) : null; return `
+                <div class="att-row att-team-row att-click" data-att-staff="${escapeHtml(stf.email.toLowerCase())}">
+                  <span><strong>${escapeHtml(stf.name)}</strong><br/><em>${escapeHtml(stf.email)}</em></span>
+                  <span>${st ? `<span class="att-badge" style="--c:${st[2]};">${escapeHtml(st[1])}</span>` : '<span class="att-badge" style="--c:#A8A29E;">Not marked</span>'}</span>
+                  <span>${r && r.inAt ? escapeHtml(hhmm(r.inAt)) : '—'}</span>
+                  <span>${r && r.outAt ? escapeHtml(hhmm(r.outAt)) : '—'}</span>
+                  <span>${escapeHtml(fmtH(attHours(r)))}</span>
+                  <span class="att-workcell">${r && (r.work || []).length ? r.work.map(w => escapeHtml(w.text) + (w.clientId ? ` <em>(${escapeHtml(attClientName(w.clientId))})</em>` : '')).join('<br/>') : '<span class="hub-muted">—</span>'}</span>
+                </div>`; }).join('')}
+            </div>
+          </div>
+          <div class="card" style="margin-top:16px;">
+            <div class="hub-card-title" style="display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap;">
+              <span>Month for</span>
+              <span style="display:flex; gap:8px; flex-wrap:wrap;">
+                <select class="select" data-att-staffsel style="max-width:220px;">${staff.map(stf => `<option value="${escapeHtml(stf.email.toLowerCase())}" ${stf.email.toLowerCase() === pick ? 'selected' : ''}>${escapeHtml(stf.name)}</option>`).join('')}</select>
+                <input class="input" type="month" data-att-month value="${month}" style="max-width:170px;" />
+                <button type="button" class="btn btn-outline btn-sm" data-att-csv>Download month (Excel CSV)</button>
+              </span>
+            </div>
+            ${attSumHtml(attSummary(pick, month))}
+            ${attMonthTableHtml(pick, month, pick === attMe())}
+            ${pickSt.name ? '' : ''}
+          </div>`;
+      }
+      // day editor (only for your own records)
+      let attDayCtx = null;
+      function openAttDay(date) {
+        const r = attGet(attMe(), date) || { status: 'present', inAt: '', outAt: '', note: '', work: [] };
+        attDayCtx = { date, work: JSON.parse(JSON.stringify(r.work || [])) };
+        const t = iso => { const d = new Date(iso); return isNaN(d) ? '' : `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`; };
+        document.getElementById('attday-title').textContent = new Date(date + 'T00:00').toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+        document.getElementById('attday-body').innerHTML = `
+          <div class="form-grid">
+            <div class="form-full"><label class="form-label">Status</label><select class="select" id="ad-status">${ATT_STATUSES.map(([k, l]) => `<option value="${k}" ${r.status === k ? 'selected' : ''}>${l}</option>`).join('')}</select></div>
+            <div><label class="form-label">Check-in time</label><input class="input" type="time" id="ad-in" value="${t(r.inAt)}" /></div>
+            <div><label class="form-label">Check-out time</label><input class="input" type="time" id="ad-out" value="${t(r.outAt)}" /></div>
+            <div class="form-full"><label class="form-label">Note (optional)</label><input class="input" id="ad-note" value="${escapeHtml(r.note || '')}" placeholder="e.g. Doctor visit in the morning" /></div>
+          </div>
+          <div class="form-label" style="margin-top:12px;">Work done</div>
+          <div id="ad-work"></div>
+          <button type="button" class="btn btn-outline btn-sm" data-ad-addwork style="margin-top:6px;">+ Add work</button>
+          <div class="modal-actions-row">${attGet(attMe(), date) ? '<button type="button" class="btn btn-outline" style="color:var(--accent-rose);" data-ad-clear>Clear this day</button><span style="flex:1;"></span>' : ''}<button type="button" class="btn btn-outline" data-close-modal="modal-attday">Cancel</button><button type="button" class="btn btn-primary" data-ad-save>Save</button></div>`;
+        renderAttDayWork();
+        openModal('modal-attday');
+      }
+      function renderAttDayWork() {
+        const box = document.getElementById('ad-work'); if (!box || !attDayCtx) return;
+        const clients = getScopedClients() || [];
+        box.innerHTML = attDayCtx.work.map(w => `<div class="ad-work-row">
+          <input class="input" data-adw="${w.id}" data-k="text" value="${escapeHtml(w.text || '')}" placeholder="What did you do?" />
+          <select class="select" data-adw="${w.id}" data-k="clientId"><option value="">— General —</option>${clients.map(c => `<option value="${c.id}" ${c.id === w.clientId ? 'selected' : ''}>${escapeHtml(c.name)}</option>`).join('')}</select>
+          <input class="input" data-adw="${w.id}" data-k="hours" type="number" min="0" step="0.25" value="${escapeHtml(w.hours || '')}" placeholder="Hrs" />
+          <button type="button" class="btn btn-outline btn-sm pay-del" data-adw-del="${w.id}" aria-label="Remove">✕</button>
+        </div>`).join('') || '<div class="hub-muted">No work added for this day.</div>';
+      }
+      function attDayCapture() {
+        document.querySelectorAll('[data-adw]').forEach(el => { const w = attDayCtx.work.find(x => x.id === el.dataset.adw); if (w) w[el.dataset.k] = el.value; });
+      }
+      function saveAttDay() {
+        attDayCapture();
+        const g = id => (document.getElementById(id) || {}).value || '';
+        const at = tm => { if (!tm) return ''; const d = new Date(`${attDayCtx.date}T${tm}`); return isNaN(d) ? '' : d.toISOString(); };
+        const inAt = at(g('ad-in')), outAt = at(g('ad-out'));
+        if (inAt && outAt && outAt <= inAt) { showToast('Check-out must be after check-in'); return; }
+        const r = attEnsure(attDayCtx.date);
+        Object.assign(r, { status: g('ad-status') || 'present', inAt, outAt, note: g('ad-note').trim(), work: attDayCtx.work.filter(w => String(w.text || '').trim()).map(w => ({ id: w.id, text: String(w.text).trim(), clientId: w.clientId || '', hours: w.hours === '' ? '' : Number(w.hours) || '' })), editedAt: new Date().toISOString() });
+        commitState(); closeModal('modal-attday'); attDayCtx = null; renderAttendance(); showToast('Day saved');
+      }
+      function attCsv(email, month) {
+        const stf = (state.staff || []).find(x => x.email.toLowerCase() === email) || { name: email };
+        const q = v => `"${String(v == null ? '' : v).replace(/"/g, '""')}"`;
+        const lines = [['Date', 'Day', 'Status', 'Check in', 'Check out', 'Hours', 'Work done', 'Note'].map(q).join(',')];
+        attMonthDays(month).forEach(d => { const r = attGet(email, d); const dt = new Date(d + 'T00:00'); lines.push([d, dt.toLocaleDateString('en-IN', { weekday: 'short' }), r ? attStatus(r.status)[1] : '', r && r.inAt ? hhmm(r.inAt) : '', r && r.outAt ? hhmm(r.outAt) : '', attHours(r) || '', r ? (r.work || []).map(w => w.text + (w.clientId ? ` (${attClientName(w.clientId)})` : '') + (w.hours ? ` [${w.hours} h]` : '')).join('; ') : '', r ? r.note || '' : ''].map(q).join(',')); });
+        const blob = new Blob(['﻿' + lines.join('\r\n')], { type: 'text/csv;charset=utf-8' });
+        const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `Attendance_${String(stf.name).replace(/[^\w]+/g, '_')}_${month}.csv`; document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 500);
+      }
+      document.addEventListener('click', e => {
+        const t = e.target;
+        if (!t.closest('#attendance-root') && !t.closest('#modal-attday')) return;
+        const v = t.closest('[data-att-view]'); if (v) { state.attView = v.dataset.attView; renderAttendance(); return; }
+        if (t.closest('[data-att-in]')) { const r = attEnsure(attToday()); r.inAt = new Date().toISOString(); if (!r.status || r.status === 'absent' || r.status === 'leave') r.status = 'present'; commitState(); renderAttendance(); showToast(`Checked in at ${hhmm(r.inAt)}`); return; }
+        if (t.closest('[data-att-out]')) { const r = attEnsure(attToday()); r.outAt = new Date().toISOString(); commitState(); renderAttendance(); showToast(`Checked out at ${hhmm(r.outAt)} · ${fmtH(attHours(r))}`); return; }
+        const wd = t.closest('[data-att-wdel]'); if (wd) { const [d, id] = wd.dataset.attWdel.split('|'); const r = attGet(attMe(), d); if (r) { r.work = (r.work || []).filter(w => w.id !== id); commitState(); renderAttendance(); } return; }
+        const sf = t.closest('[data-att-staff]'); if (sf) { window.__attStaff = sf.dataset.attStaff; window.__attMonth = window.__attDate.slice(0, 7); renderAttendance(); document.querySelector('[data-att-staffsel]')?.scrollIntoView({ behavior: 'smooth', block: 'center' }); return; }
+        if (t.closest('[data-att-csv]')) { const sel = document.querySelector('[data-att-staffsel]'); attCsv(sel ? sel.value : attMe(), window.__attMonth); return; }
+        const dy = t.closest('[data-att-day]'); if (dy) { openAttDay(dy.dataset.attDay); return; }
+        if (t.closest('[data-ad-addwork]') && attDayCtx) { attDayCapture(); attDayCtx.work.push({ id: uid('w'), text: '', clientId: '', hours: '' }); renderAttDayWork(); const ins = document.querySelectorAll('[data-adw][data-k="text"]'); ins[ins.length - 1]?.focus(); return; }
+        const adl = t.closest('[data-adw-del]'); if (adl && attDayCtx) { attDayCapture(); attDayCtx.work = attDayCtx.work.filter(w => w.id !== adl.dataset.adwDel); renderAttDayWork(); return; }
+        if (t.closest('[data-ad-save]') && attDayCtx) { saveAttDay(); return; }
+        if (t.closest('[data-ad-clear]') && attDayCtx) { state.attendance = attList().filter(r => !(r.email === attMe() && r.date === attDayCtx.date)); commitState(); closeModal('modal-attday'); attDayCtx = null; renderAttendance(); showToast('Day cleared'); }
+      });
+      document.addEventListener('change', e => {
+        const t = e.target; if (!t.closest || !t.closest('#attendance-root')) return;
+        if (t.dataset.attStatus !== undefined) { const r = attEnsure(attToday()); r.status = t.value; commitState(); renderAttendance(); showToast(`Today: ${attStatus(t.value)[1]}`); return; }
+        if (t.dataset.attMonth !== undefined) { window.__attMonth = t.value || attToday().slice(0, 7); renderAttendance(); return; }
+        if (t.dataset.attDate !== undefined) { window.__attDate = t.value || attToday(); renderAttendance(); return; }
+        if (t.dataset.attStaffsel !== undefined) { window.__attStaff = t.value; renderAttendance(); }
+      });
+      document.addEventListener('submit', e => {
+        if (e.target.id !== 'att-work-form') return;
+        e.preventDefault(); e.stopImmediatePropagation();
+        const fd = new FormData(e.target); const text = String(fd.get('text') || '').trim(); if (!text) return;
+        const r = attEnsure(attToday());
+        r.work.push({ id: uid('w'), text, clientId: fd.get('clientId') || '', hours: Number(fd.get('hours')) || '' });
+        commitState(); renderAttendance(); showToast('Work added'); document.querySelector('#att-work-form [name="text"]')?.focus();
+      }, true);
+
       // ===== Delete an onboarded client (and everything that belongs to them) =====
       function clientLinkedRecords(c) {
         const own = x => x && x.clientId === c.id;
@@ -10319,6 +10592,7 @@
         if (state.activeTab === 'billing') renderBilling();
         if (state.activeTab === 'payments') renderPayments();
         if (state.activeTab === 'team') renderTeam();
+        if (state.activeTab === 'attendance') renderAttendance();
         if (state.activeTab === 'backup' && typeof renderCloudSettings === 'function') renderCloudSettings();
         if (state.activeTab === 'backup' && typeof renderLeadAlertSettings === 'function') renderLeadAlertSettings();
         if (state.activeTab === 'leads' && typeof leadPopQueue !== 'undefined' && !leadPopQueue.length) document.title = BASE_TITLE;
@@ -10467,7 +10741,7 @@
       // Each window holds a full copy of the studio data. Without this, an older window
       // could save its outdated copy over newer work (e.g. a catalog item added elsewhere).
       const LOCAL_UI_KEYS = ['activeTab', 'activeBoqClientId', 'activeClientId', 'hubTab', 'hubOpen', 'hubFilter', 'hubSearch',
-        'billFilter', 'leadSourceFilter', 'teamEditId', 'leadViewMode', 'catalogDrawerOpen', 'catalogCategoryFilter', 'catalogTierView', 'catalogSegment', 'quickBoq', 'teamSel', 'leadSort', 'activeStaffEmail', 'boqSeparateRates'];
+        'billFilter', 'leadSourceFilter', 'teamEditId', 'attView', 'leadViewMode', 'catalogDrawerOpen', 'catalogCategoryFilter', 'catalogTierView', 'catalogSegment', 'quickBoq', 'teamSel', 'leadSort', 'activeStaffEmail', 'boqSeparateRates'];
       let rerenderWhenIdle = false;
 
       function adoptSavedState(raw, fromOtherWindow) {
@@ -11295,8 +11569,27 @@
       }
 
       // ---------- status chip + settings card ----------
+      // sidebar line: real connection state (online/offline, Drive)
+      function renderConnStatus() {
+        const dot = document.getElementById('conn-dot'); const txt = document.getElementById('conn-text'); if (!dot || !txt) return;
+        const online = navigator.onLine !== false;
+        const drive = cloudEnabled && cloudEnabled();
+        let t, cls = '';
+        if (!online) { t = 'Offline · changes saved on this device'; cls = 'is-off'; }
+        else if (!drive) { t = 'Online · saved on this device only (Drive not connected)'; cls = 'is-warn'; }
+        else if (cloud.status === 'signin') { t = 'Online · Drive paused — tap to reconnect'; cls = 'is-warn'; }
+        else if (cloud.status === 'error') { t = 'Online · Drive sync problem'; cls = 'is-warn'; }
+        else if (cloud.status === 'pending' || cloud.status === 'syncing') t = 'Online · saving to Google Drive…';
+        else t = 'Online · synced with Google Drive';
+        txt.textContent = t;
+        dot.classList.toggle('is-off', cls === 'is-off'); dot.classList.toggle('is-warn', cls === 'is-warn');
+      }
+      window.addEventListener('online', () => setTimeout(renderConnStatus, 50));
+      window.addEventListener('offline', () => setTimeout(renderConnStatus, 50));
+      setTimeout(renderConnStatus, 500);
       function setCloudStatus(st) {
         cloud.status = st;
+        try { renderConnStatus(); } catch (e) { /* ignore */ }
         const chip = document.getElementById('cloud-chip');
         if (chip) {
           const show = Boolean(cloudClientId()) && cloudHttpOk();
