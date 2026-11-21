@@ -2320,6 +2320,10 @@
     .lead-next.due-today .lead-next-when { color: var(--accent-terracotta-dark); }
     .lead-next-when { font-weight: 700; white-space: nowrap; }
     .lead-last { font-size: 12px; color: var(--text-muted); margin-top: 6px; }
+    .caller-tag { display:inline-block; font-weight:700; color:#1D6A96; background:#E3F0F8; border-radius:999px; padding:1px 8px; font-size:12px; }
+    .caller-tag.outside { color:#8A4A12; background:#FDF0E3; }
+    .caller-sum { display:flex; gap:6px; flex-wrap:wrap; margin-top:10px; }
+    .caller-sum span { font-size:12.5px; background:#FAF9F6; border:1px solid var(--border-subtle); border-radius:999px; padding:3px 10px; }
     .disc-day { font-size:11.5px; font-weight:700; text-transform:uppercase; letter-spacing:0.05em; color:var(--accent-terracotta-dark); margin:14px 0 6px; padding-bottom:4px; border-bottom:1px solid var(--border-subtle); }
     .disc-day:first-child { margin-top:4px; }
     .disc-note { font-size:13.5px; margin-top:4px; white-space:pre-wrap; background:#FAF9F6; border:1px solid var(--border-subtle); border-radius:8px; padding:7px 10px; color:var(--text-main); }
@@ -5625,7 +5629,7 @@
                       ${closedL ? `<strong>${l.stage === 'Closed Won' ? 'Converted to client' : 'Not interested' + (l.lostReason ? ' · ' + escapeHtml(l.lostReason) : '')}</strong>`
                         : `<span class="lead-next-label">Next: <strong>${escapeHtml(nx ? nx.label : 'First call')}</strong></span><span class="lead-next-right"><span class="lead-next-when">${due ? escapeHtml(due.text) : 'call now'}</span>${getCurrentPermissions().canEditLeads ? `<button type="button" class="lead-next-edit" data-lead-flow="edit_next" data-lead-id="${l.id}">Edit</button>` : ''}</span>`}
                     </div>
-                    ${lc ? `<div class="lead-last">Last call: <strong>${escapeHtml(staffFirst(lc.by))}</strong> · ${escapeHtml(CALL_TEXT[lc.outcome] || 'Spoke')}${lc.outcome === 'no_answer' && missedInARow(l) > 1 ? ` (${missedInARow(l)} in a row)` : ''} · ${escapeHtml(agoLabel(lc.at))}</div>` : '<div class="lead-last">Not called yet</div>'}`;
+                    ${lc ? `<div class="lead-last">Last call by <strong>${escapeHtml(callerName(lc))}</strong>${isOutsideCaller(lc) ? ' (not in team)' : ''} · ${escapeHtml(CALL_TEXT[lc.outcome] || 'Spoke')}${lc.outcome === 'no_answer' && missedInARow(l) > 1 ? ` (${missedInARow(l)} in a row)` : ''} · ${escapeHtml(agoLabel(lc.at))}${(() => { const calls = (l.activities || []).filter(isCallLike); if (calls.length < 2) return ''; const per = {}; calls.forEach(c => { const n = callerFirst(c); per[n] = (per[n] || 0) + 1; }); return `<br/>${calls.length} calls: ${Object.entries(per).map(([n, c]) => `${escapeHtml(n)} ${c}`).join(' · ')}`; })()}</div>` : '<div class="lead-last">Not called yet</div>'}`;
                   })()}
                   ${l.notes ? `<p style="font-size:12px; color:var(--text-muted); background:#FAF9F6; padding:8px 10px; border-radius:8px; margin-top:10px; white-space:pre-line; max-height:4.5em; overflow:hidden;">${escapeHtml(l.notes)}</p>` : ''}
 
@@ -8115,6 +8119,7 @@
           <div class="form-grid">
             <div><label class="form-label">Date &amp; time</label><input class="input" type="datetime-local" id="disc-at" value="${local}" max="${local}" /></div>
             <div><label class="form-label">Type</label><select class="select" id="disc-channel">${DISC_CHANNELS.map(c => `<option>${c}</option>`).join('')}</select></div>
+            <div class="form-full"><label class="form-label">Called / handled by</label>${callerPickHtml('disc-by', null)}</div>
             <div class="form-full" id="disc-outcome-wrap"><label class="form-label">Call result</label><select class="select" id="disc-outcome">${Object.entries(CALL_TEXT).map(([k, v]) => `<option value="${k}" ${k === 'spoke' ? 'selected' : ''}>${escapeHtml(v)}</option>`).join('')}</select></div>
             <div class="form-full"><label class="form-label">What was discussed *</label><textarea class="textarea" id="disc-note" rows="5" placeholder="e.g. Client wants 3BHK in Baner done by March. Budget ₹15 L. Asked for 3D of kitchen. Call again on Monday."></textarea></div>
           </div>
@@ -8130,8 +8135,10 @@
         const at = g('disc-at').value ? new Date(g('disc-at').value) : new Date();
         if (isNaN(at)) { showToast('Pick the date & time'); return; }
         const channel = g('disc-channel').value;
+        const who = readCallerPick('disc-by');
+        if (!who) { showToast('Type the name of the person who called'); document.getElementById('disc-by-other')?.focus(); return; }
         normalizeLead(l);
-        l.activities.push({ id: uid('a'), type: 'discussion', channel, outcome: channel === 'Call' ? g('disc-outcome').value : '', note, at: at.toISOString(), by: state.activeStaffEmail, addedAt: new Date().toISOString() });
+        l.activities.push({ id: uid('a'), type: 'discussion', channel, outcome: channel === 'Call' ? g('disc-outcome').value : '', note, at: at.toISOString(), by: who.by, byName: who.byName, addedBy: state.activeStaffEmail, addedAt: new Date().toISOString() });
         l.activities.sort((a, b) => String(b.at).localeCompare(String(a.at)));
         l.lastActivityAt = l.activities[0].at;
         commitState(); closeModal('modal-disc'); discCtx = null;
@@ -8153,7 +8160,7 @@
           const k = dayKey(a.at); if (!k || k < f.from || k > f.to) return;
           if (f.kind === 'calls' && !isCallLike(a)) return;
           if (f.kind === 'all' && !(isCallLike(a) || a.type === 'discussion' || a.type === 'meeting' || a.type === 'whatsapp')) return;
-          if (f.who && String(a.by || '').toLowerCase() !== f.who.toLowerCase()) return;
+          if (f.who === '__other' ? !isOutsideCaller(a) : (f.who && String(a.by || '').toLowerCase() !== f.who.toLowerCase())) return;
           rows.push({ l, a, k });
         }));
         rows.sort((x, y) => String(y.a.at).localeCompare(String(x.a.at)));
@@ -8162,16 +8169,17 @@
           <div class="calllog-filters">
             <label><span>From</span><input class="input" type="date" data-cl="from" value="${f.from}" /></label>
             <label><span>To</span><input class="input" type="date" data-cl="to" value="${f.to}" /></label>
-            <label><span>By</span><select class="select" data-cl="who"><option value="">Everyone</option>${state.staff.map(st => `<option value="${escapeHtml(st.email)}" ${f.who === st.email ? 'selected' : ''}>${escapeHtml(st.name)}</option>`).join('')}</select></label>
+            <label><span>By</span><select class="select" data-cl="who"><option value="">Everyone</option>${state.staff.map(st => `<option value="${escapeHtml(st.email)}" ${f.who === st.email ? 'selected' : ''}>${escapeHtml(st.name)}</option>`).join('')}<option value="__other" ${f.who === '__other' ? 'selected' : ''}>Someone else (not in team)</option></select></label>
             <label><span>Show</span><select class="select" data-cl="kind"><option value="calls" ${f.kind === 'calls' ? 'selected' : ''}>Calls only</option><option value="all" ${f.kind === 'all' ? 'selected' : ''}>Calls, meetings &amp; messages</option></select></label>
           </div>
+          ${rows.length ? `<div class="caller-sum">${(() => { const per = {}; rows.forEach(({ a }) => { const k = callerName(a) + (isOutsideCaller(a) ? ' (not in team)' : ''); per[k] = (per[k] || 0) + 1; }); return Object.entries(per).sort((x, y) => y[1] - x[1]).map(([n, c]) => `<span>${escapeHtml(n)} <strong>${c}</strong></span>`).join(''); })()}</div>` : ''}
           <div class="hub-muted" style="margin:8px 0 4px;"><strong style="color:var(--text-main);">${rows.length}</strong> ${f.kind === 'calls' ? 'call' : 'entr'}${rows.length === 1 ? (f.kind === 'calls' ? '' : 'y') : (f.kind === 'calls' ? 's' : 'ies')} · ${new Set(rows.map(r => r.l.id)).size} lead${new Set(rows.map(r => r.l.id)).size === 1 ? '' : 's'}</div>
           ${days.map(dk => { const list = rows.filter(r => r.k === dk); return `
             <div class="disc-day">${escapeHtml(dayTitle(list[0].a.at))} <span class="hub-muted">· ${list.length}</span></div>
             ${list.map(({ l, a }) => `<div class="calllog-row">
               <span class="calllog-time">${escapeHtml(new Date(a.at).toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit' }))}</span>
               <div style="min-width:0; flex:1;">
-                <div><button type="button" class="lead-name-btn" data-open-lead="${l.id}" style="font-weight:700;">${escapeHtml(l.name)}</button> <span class="hub-muted">· ${escapeHtml(activityText(a))} · ${escapeHtml(staffFirst(a.by))}</span></div>
+                <div><button type="button" class="lead-name-btn" data-open-lead="${l.id}" style="font-weight:700;">${escapeHtml(l.name)}</button> <span class="hub-muted">· ${escapeHtml(activityText(a))}</span> <span class="caller-tag${isOutsideCaller(a) ? ' outside' : ''}">${escapeHtml(callerName(a))}${isOutsideCaller(a) ? ' (not in team)' : ''}</span></div>
                 ${a.note ? `<div class="disc-note">${escapeHtml(a.note)}</div>` : ''}
               </div>
             </div>`).join('')}`; }).join('') || '<div class="hub-muted" style="padding:16px 0;">Nothing recorded for these dates.</div>'}`;
@@ -12220,6 +12228,27 @@
       }
       function staffName(email) { const s2 = (state.staff || []).find(x => x.email === email); return s2 ? s2.name : (email || 'Someone'); }
       function staffFirst(email) { return staffName(email).split(/\s+/)[0]; }
+      // who made a call / discussion: a staff member, or someone outside the team (byName)
+      const isOutsideCaller = a => Boolean(a && a.byName && !a.by);
+      function callerName(a) { return a ? (isOutsideCaller(a) ? a.byName : staffName(a.by)) : ''; }
+      function callerFirst(a) { return callerName(a).split(/\s+/)[0]; }
+      function callerPickHtml(id, a) {
+        const cur = a ? (isOutsideCaller(a) ? '__other' : a.by) : state.activeStaffEmail;
+        return `<select class="select" id="${id}" data-caller-pick>${(state.staff || []).map(st => `<option value="${escapeHtml(st.email)}" ${st.email === cur ? 'selected' : ''}>${escapeHtml(st.name)}</option>`).join('')}<option value="__other" ${cur === '__other' ? 'selected' : ''}>Someone else (not in the team)…</option></select>
+          <input class="input" id="${id}-other" value="${escapeHtml(a && isOutsideCaller(a) ? a.byName : '')}" placeholder="Their name, e.g. Ramesh (telecaller)" style="margin-top:6px; ${cur === '__other' ? '' : 'display:none;'}" />`;
+      }
+      // returns { by, byName } or null when "someone else" has no name
+      function readCallerPick(id) {
+        const sel = document.getElementById(id); if (!sel) return { by: state.activeStaffEmail, byName: '' };
+        if (sel.value !== '__other') return { by: sel.value, byName: '' };
+        const name = ((document.getElementById(id + '-other') || {}).value || '').trim();
+        return name ? { by: '', byName: name } : null;
+      }
+      document.addEventListener('change', e => {
+        if (!e.target.matches || !e.target.matches('select[data-caller-pick]')) return;
+        const o = document.getElementById(e.target.id + '-other'); if (!o) return;
+        o.style.display = e.target.value === '__other' ? '' : 'none'; if (e.target.value === '__other') o.focus();
+      });
       const ordinal = n => `${n}${['th', 'st', 'nd', 'rd'][(n % 100 - 20) % 10] || ['th', 'st', 'nd', 'rd'][n % 100] || 'th'}`;
 
       // ---------- next action & activity ----------
@@ -12238,7 +12267,7 @@
         l.activities.unshift(Object.assign({ id: uid('a'), at: new Date().toISOString(), by: state.activeStaffEmail }, a));
         l.lastActivityAt = l.activities[0].at;
       }
-      function lastCall(l) { return (l.activities || []).find(a => a.type === 'call'); }
+      function lastCall(l) { return (l.activities || []).find(a => a.type === 'call' || (a.type === 'discussion' && a.channel === 'Call')); }
       function missedInARow(l) {
         let n = 0;
         for (const a of (l.activities || [])) { if (a.type !== 'call') continue; if (a.outcome === 'no_answer') n++; else break; }
@@ -12517,7 +12546,8 @@
             if (f.data.outcome === undefined) f.data.outcome = a.outcome || '';
             const callOutcomes = ['no_answer', 'callback', 'interested', 'not_interested', 'considering', 'negotiating', 'ready', 'spoke'];
             html = `${head}
-              <div class="flow-lead" style="background:var(--bg-sunken);"><strong>${escapeHtml(activityText(a))}</strong><span>${escapeHtml(staffName(a.by))} · ${escapeHtml(new Date(a.at).toLocaleString('en-IN', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' }))}</span></div>
+              <div class="flow-lead" style="background:var(--bg-sunken);"><strong>${escapeHtml(activityText(a))}</strong><span>${escapeHtml(callerName(a))} · ${escapeHtml(new Date(a.at).toLocaleString('en-IN', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' }))}</span></div>
+              <label class="form-label" style="margin-top:12px;">${a.type === 'call' || a.channel === 'Call' ? 'Called by' : 'Done by'}</label>${callerPickHtml('flow-act-by', a)}
               ${a.type === 'call' ? `<label class="form-label" style="margin-top:12px;">Call result</label><select class="select" id="flow-act-outcome">${callOutcomes.map(o => `<option value="${o}" ${o === f.data.outcome ? 'selected' : ''}>${CALL_TEXT[o]}</option>`).join('')}</select>` : ''}
               ${noteBox('Add or correct the note')}
               <div class="modal-actions-row"><button type="button" class="btn btn-outline" style="color:var(--accent-rose);" data-flow-del-activity>Delete entry</button><span style="flex:1;"></span><button type="button" class="btn btn-outline" data-flow-back>Cancel</button><button type="button" class="btn btn-primary" data-flow-save>Save</button></div>`;
@@ -12592,6 +12622,11 @@
             a.note = note;
             const oc = document.getElementById('flow-act-outcome');
             if (oc && a.type === 'call') a.outcome = oc.value;
+            if (document.getElementById('flow-act-by')) {
+              const who = readCallerPick('flow-act-by');
+              if (!who) { showToast('Type the name of the person who called'); return; }
+              a.by = who.by; if (who.byName) a.byName = who.byName; else delete a.byName;
+            }
             a.editedBy = state.activeStaffEmail; a.editedAt = new Date().toISOString();
           }
           msg = 'History entry updated';
@@ -12798,7 +12833,7 @@
                 <span class="hub-tl-dot" style="border-color:${a.type === 'call' ? (a.outcome === 'no_answer' ? '#B4233F' : a.outcome === 'not_interested' ? '#A39A90' : '#0F7457') : a.type === 'meeting' ? '#1D6A96' : a.type === 'whatsapp' ? '#1FA855' : '#C4653A'};"></span>
                 <div style="flex:1; min-width:0;">
                   <div style="font-weight:600; font-size:13.5px;">${escapeHtml(activityText(a))}</div>
-                  <div class="hub-row-meta">${escapeHtml(staffName(a.by))} · ${escapeHtml(new Date(a.at).toLocaleString('en-IN', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' }))}${a.editedBy ? ` · edited by ${escapeHtml(staffFirst(a.editedBy))}` : ''}${perms.canEditLeads && ['call', 'followup', 'whatsapp', 'estimate', 'meeting', 'requirements'].includes(a.type) ? ` · <button type="button" class="ld-tl-edit" data-lead-flow="edit_activity" data-lead-id="${l.id}" data-activity-id="${a.id}">Edit</button>` : ''}</div>
+                  <div class="hub-row-meta"><span class="caller-tag${isOutsideCaller(a) ? ' outside' : ''}">${isCallLike(a) ? '📞' : '👤'} ${escapeHtml(callerName(a))}${isOutsideCaller(a) ? ' (not in team)' : ''}</span> · ${escapeHtml(new Date(a.at).toLocaleString('en-IN', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' }))}${a.editedBy ? ` · edited by ${escapeHtml(staffFirst(a.editedBy))}` : ''}${perms.canEditLeads && ['call', 'discussion', 'followup', 'whatsapp', 'estimate', 'meeting', 'requirements'].includes(a.type) ? ` · <button type="button" class="ld-tl-edit" data-lead-flow="edit_activity" data-lead-id="${l.id}" data-activity-id="${a.id}">Edit</button>` : ''}</div>
                   ${a.note ? `<div class="disc-note">${escapeHtml(a.note)}</div>` : ''}
                 </div>
               </div>`).join('')}</div>` : '<div class="hub-muted">No calls yet. Use “+ Add call / discussion” to record one, also for earlier dates.</div>'}
