@@ -517,6 +517,8 @@
     .btn-danger { background: #B4233F; color: #FFF; border-color: #B4233F; }
     .btn-danger:hover { background: #961B33; color: #FFF; }
     .team-add { margin-bottom:16px; }
+    .team-edit { display:grid; grid-template-columns: 1fr 1.3fr auto; gap:8px; flex:1; min-width:0; }
+    @media (max-width: 640px) { .team-edit { grid-template-columns: 1fr; } }
     .team-add-row { display:grid; grid-template-columns: 1.1fr 1.4fr 1fr auto; gap:8px; }
     .team-grid { display:grid; grid-template-columns: minmax(250px, 0.85fr) minmax(0, 1.6fr); gap:16px; align-items:start; }
     .team-list { padding:12px; display:flex; flex-direction:column; gap:4px; }
@@ -2318,6 +2320,15 @@
     .lead-next.due-today .lead-next-when { color: var(--accent-terracotta-dark); }
     .lead-next-when { font-weight: 700; white-space: nowrap; }
     .lead-last { font-size: 12px; color: var(--text-muted); margin-top: 6px; }
+    .disc-day { font-size:11.5px; font-weight:700; text-transform:uppercase; letter-spacing:0.05em; color:var(--accent-terracotta-dark); margin:14px 0 6px; padding-bottom:4px; border-bottom:1px solid var(--border-subtle); }
+    .disc-day:first-child { margin-top:4px; }
+    .disc-note { font-size:13.5px; margin-top:4px; white-space:pre-wrap; background:#FAF9F6; border:1px solid var(--border-subtle); border-radius:8px; padding:7px 10px; color:var(--text-main); }
+    .calllog-filters { display:grid; grid-template-columns:repeat(4, minmax(0, 1fr)); gap:8px; }
+    .calllog-filters label { margin:0; display:flex; flex-direction:column; gap:3px; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:0.05em; color:var(--text-light); }
+    .calllog-filters .input, .calllog-filters .select { padding:8px; font-size:14px; text-transform:none; letter-spacing:0; font-weight:500; color:var(--text-main); }
+    .calllog-row { display:flex; gap:12px; padding:9px 0; border-bottom:1px solid var(--border-subtle); }
+    .calllog-time { flex:none; width:64px; font-size:12.5px; color:var(--text-muted); font-variant-numeric:tabular-nums; padding-top:2px; }
+    @media (max-width: 640px) { .calllog-filters { grid-template-columns:1fr 1fr; } .calllog-time { width:52px; } }
     .lead-facts { display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:5px 12px; margin-top:10px; padding:8px 10px; background:#FAF9F6; border:1px solid var(--border-subtle); border-radius:10px; }
     .lead-facts > div { min-width:0; }
     .lead-facts small { display:block; font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:0.05em; color:var(--text-light); }
@@ -2522,7 +2533,7 @@
             </button>
             <div class="pop-menu pop-account" id="menu-account" role="menu">
               <div class="pop-account-head">
-                <div style="font-weight:700;" id="account-head-name">Girish Kulkarni</div>
+                <div style="font-weight:700;" id="account-head-name">Girish Vispute</div>
                 <div class="pop-muted" id="account-head-email">girish@interiordezign.in</div>
                 <div class="pop-muted" id="account-head-role">Principal / Admin · sees all records</div>
               </div>
@@ -2614,6 +2625,7 @@
                 <button class="btn btn-sm" id="btn-view-kanban" style="background:transparent; color:#57534E;">Kanban Board</button>
               </div>
               <button class="btn btn-outline" data-wa-manage-open>WhatsApp messages</button>
+              <button class="btn btn-outline" data-calllog-open>Call log</button>
               <button class="btn btn-outline" data-import-leads>Import leads</button>
               <button class="btn btn-outline" id="btn-lead-select-mode" data-lead-select-toggle>Select &amp; delete</button>
               <button class="btn btn-primary" data-action="open-new-lead">+ New Lead</button>
@@ -3288,6 +3300,18 @@
     <div class="modal-box modal-lg">
       <div class="modal-header"><h3 class="font-serif" style="font-size:22px; font-weight:700;" id="sel-title">Selection</h3><button class="btn btn-outline btn-sm" data-close-modal="modal-sel">✕</button></div>
       <div id="sel-body"></div>
+    </div>
+  </div>
+  <div class="modal-backdrop" id="modal-disc">
+    <div class="modal-box">
+      <div class="modal-header"><h3 class="font-serif" style="font-size:20px; font-weight:700;" id="disc-title">Call / discussion</h3><button class="btn btn-outline btn-sm" data-close-modal="modal-disc">✕</button></div>
+      <div id="disc-body"></div>
+    </div>
+  </div>
+  <div class="modal-backdrop" id="modal-calllog">
+    <div class="modal-box modal-lg">
+      <div class="modal-header"><h3 class="font-serif" style="font-size:22px; font-weight:700;">Call log</h3><button class="btn btn-outline btn-sm" data-close-modal="modal-calllog">✕</button></div>
+      <div id="calllog-body"></div>
     </div>
   </div>
   <div class="modal-backdrop" id="modal-access">
@@ -4541,7 +4565,7 @@
             bannerDataUrl: ''
           },
           staff: [
-            { id: 's_1', name: 'Girish Kulkarni', email: 'girish@interiordezign.in', role: 'Principal / Admin', scope: 'All Records' },
+            { id: 's_1', name: 'Girish Vispute', email: 'girish@interiordezign.in', role: 'Principal / Admin', scope: 'All Records' },
             { id: 's_2', name: 'Rohan Deshpande', email: 'sales@interiordezign.in', role: 'Sales / BD Manager', scope: 'Assigned Only' },
             { id: 's_3', name: 'Ananya Joshi', email: 'design@interiordezign.in', role: 'Interior Designer', scope: 'Assigned Only' },
             { id: 's_4', name: 'Suresh Patil', email: 'site@interiordezign.in', role: 'Site Supervisor', scope: 'Assigned Only' },
@@ -7901,12 +7925,32 @@
         if (!a.tabs.every(t => pm.tabs.includes(t))) return a.tabs.some(t => pm.tabs.includes(t)) ? 'view' : 'off';
         return a.flag ? (pm[a.flag] ? 'edit' : 'view') : 'edit';
       }
+      // One-time change: the demo admin "Girish Kulkarni" becomes the studio admin "Girish Vispute"
+      // (same account, so every lead, task and estimate assigned to it stays with him)
+      function migrateStudioAdmin() {
+        if (!Array.isArray(state.staff) || (state.flags && state.flags.adminGirishVispute)) return false;
+        state.flags = state.flags || {};
+        state.flags.adminGirishVispute = true;
+        const g = state.staff.find(x => /^girish kulkarni$/i.test(String(x.name || '').trim()));
+        if (g) { g.name = 'Girish Vispute'; g.role = 'Principal / Admin'; delete g.perms; g.scope = 'All Records'; }
+        return true;
+      }
+      // change a staff email everywhere it is used (leads, tasks, clients, activities…)
+      function replaceEmailEverywhere(oldE, newE) {
+        const o = String(oldE).toLowerCase();
+        const walk = v => {
+          if (Array.isArray(v)) { v.forEach((x, i) => { if (typeof x === 'string' && x.toLowerCase() === o) v[i] = newE; else if (x && typeof x === 'object') walk(x); }); return; }
+          if (v && typeof v === 'object') Object.keys(v).forEach(k => { const x = v[k]; if (typeof x === 'string' && x.toLowerCase() === o) v[k] = newE; else if (x && typeof x === 'object') walk(x); });
+        };
+        walk(state);
+      }
       function teamLabel(st) {
         const short = (TEAM_PRESETS.find(x => x[0] === st.role) || [])[1] || st.role;
         return st.perms ? `${short} · edited` : short;
       }
       function renderTeam() {
         const target = document.getElementById('team-render-target'); if (!target) return;
+        if (migrateStudioAdmin()) commitState();
         const canManage = getCurrentPermissions().canManageTeam;
         const me = getCurrentStaff();
         if (!state.staff.some(x => x.id === state.teamSel)) state.teamSel = me ? me.id : (state.staff[0] || {}).id;
@@ -7937,7 +7981,11 @@
             </div>
             ${sel ? `<div class="card team-detail">
               <div class="team-detail-head">
-                <div style="min-width:0;"><div style="font-size:18px; font-weight:700;">${escapeHtml(sel.name)}</div><div class="hub-muted" style="font-family:monospace; font-size:12.5px;">${escapeHtml(sel.email)}</div></div>
+                ${state.teamEditId === sel.id ? `<form id="team-edit-form" class="team-edit" autocomplete="off">
+                  <input class="input" name="name" required value="${escapeHtml(sel.name)}" placeholder="Full name" />
+                  <input class="input" name="email" type="email" required value="${escapeHtml(sel.email)}" placeholder="Email" />
+                  <span style="display:flex; gap:6px;"><button type="submit" class="btn btn-primary btn-sm">Save</button><button type="button" class="btn btn-outline btn-sm" data-team-edit-cancel>Cancel</button></span>
+                </form>` : `<div style="min-width:0;"><div style="font-size:18px; font-weight:700;">${escapeHtml(sel.name)}${canManage ? ` <button type="button" class="wa-linkbtn" data-team-edit="${sel.id}" style="font-size:13px; font-weight:600;">Edit name &amp; email</button>` : ''}</div><div class="hub-muted" style="font-family:monospace; font-size:12.5px;">${escapeHtml(sel.email)}</div></div>`}
                 <div style="display:flex; gap:6px; flex-wrap:wrap;">
                   ${isMe ? '' : `<button type="button" class="btn btn-outline btn-sm" data-switch-email="${escapeHtml(sel.email)}">${sel.pinHash ? '🔒 ' : ''}Switch to ${escapeHtml(sel.name.split(' ')[0])}</button>`}
                   ${canManage || isMe ? `<button type="button" class="btn btn-outline btn-sm" data-pin-set="${sel.id}">${sel.pinHash ? '🔒 Change PIN' : 'Set PIN'}</button>` : ''}
@@ -8013,6 +8061,28 @@
         const k = t.dataset.teamFlag; const v = t.checked;
         if (teamChange(st, x => { const p2 = staffPerms(x); p2[k] = v; if (k === 'canSeeBaseCost' && v) p2.canSeeMoney = true; if (k === 'canSeeMoney' && !v) p2.canSeeBaseCost = false; x.perms = normPerm(p2); })) showToast('Saved');
       });
+      document.addEventListener('click', e => {
+        const ed = e.target.closest('[data-team-edit]'); if (ed) { state.teamEditId = ed.dataset.teamEdit; renderTeam(); document.querySelector('#team-edit-form [name="name"]')?.focus(); return; }
+        if (e.target.closest('[data-team-edit-cancel]')) { state.teamEditId = null; renderTeam(); }
+      });
+      document.addEventListener('submit', e => {
+        if (e.target.id !== 'team-edit-form') return;
+        e.preventDefault(); e.stopImmediatePropagation();
+        if (!getCurrentPermissions().canManageTeam) return;
+        const st = state.staff.find(x => x.id === state.teamEditId); if (!st) return;
+        const fd = new FormData(e.target);
+        const name = String(fd.get('name') || '').trim(); const email = String(fd.get('email') || '').trim().toLowerCase();
+        if (!name || !email) return;
+        if (email !== st.email.toLowerCase() && state.staff.some(x => x !== st && x.email.toLowerCase() === email)) { showToast('Another team member already uses this email'); return; }
+        const oldEmail = st.email;
+        if (email !== oldEmail.toLowerCase()) {
+          // keep PIN working with the new email
+          if (st.pinHash) { delete st.pinHash; showToast('Email changed — set the PIN again'); }
+          replaceEmailEverywhere(oldEmail, email);
+        }
+        st.name = name; st.email = email; state.teamEditId = null;
+        commitState(); renderAll(); showToast(`Saved ${name}`);
+      }, true);
       document.addEventListener('submit', e => {
         if (e.target.id !== 'team-add-form') return;
         e.preventDefault(); e.stopImmediatePropagation();
@@ -8027,6 +8097,97 @@
         commitState(); renderAll(); showToast(`${name} added — adjust their access on the right`);
       }, true);
 
+
+
+      // ===== Calls & discussions: add with any date, and a call log for all leads =====
+      const isCallLike = a => a && (a.type === 'call' || (a.type === 'discussion' && a.channel === 'Call'));
+      const dayKey = iso => { const d = new Date(iso); return isNaN(d) ? '' : `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
+      const dayTitle = iso => { const d = new Date(iso); if (isNaN(d)) return ''; const k = dayKey(iso); const t = dayKey(new Date().toISOString()); const y = dayKey(new Date(Date.now() - 86400000).toISOString()); return (k === t ? 'Today · ' : k === y ? 'Yesterday · ' : '') + d.toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' }); };
+      const DISC_CHANNELS = ['Call', 'WhatsApp', 'Meeting', 'Site visit', 'Office visit', 'Email', 'Other'];
+      let discCtx = null;
+      function openDiscussion(leadId) {
+        const l = findLead(leadId); if (!l) return;
+        discCtx = { leadId };
+        const now = new Date(); now.setSeconds(0, 0);
+        const local = new Date(now.getTime() - now.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+        document.getElementById('disc-title').textContent = `Call / discussion — ${l.name}`;
+        document.getElementById('disc-body').innerHTML = `
+          <div class="form-grid">
+            <div><label class="form-label">Date &amp; time</label><input class="input" type="datetime-local" id="disc-at" value="${local}" max="${local}" /></div>
+            <div><label class="form-label">Type</label><select class="select" id="disc-channel">${DISC_CHANNELS.map(c => `<option>${c}</option>`).join('')}</select></div>
+            <div class="form-full" id="disc-outcome-wrap"><label class="form-label">Call result</label><select class="select" id="disc-outcome">${Object.entries(CALL_TEXT).map(([k, v]) => `<option value="${k}" ${k === 'spoke' ? 'selected' : ''}>${escapeHtml(v)}</option>`).join('')}</select></div>
+            <div class="form-full"><label class="form-label">What was discussed *</label><textarea class="textarea" id="disc-note" rows="5" placeholder="e.g. Client wants 3BHK in Baner done by March. Budget ₹15 L. Asked for 3D of kitchen. Call again on Monday."></textarea></div>
+          </div>
+          <div class="modal-actions-row"><button type="button" class="btn btn-outline" data-close-modal="modal-disc">Cancel</button><button type="button" class="btn btn-primary" data-disc-save>Save</button></div>`;
+        openModal('modal-disc');
+        setTimeout(() => document.getElementById('disc-note')?.focus(), 60);
+      }
+      function saveDiscussion() {
+        const l = discCtx && findLead(discCtx.leadId); if (!l) return;
+        const g = id => document.getElementById(id);
+        const note = (g('disc-note').value || '').trim();
+        if (!note) { showToast('Write what was discussed'); g('disc-note').focus(); return; }
+        const at = g('disc-at').value ? new Date(g('disc-at').value) : new Date();
+        if (isNaN(at)) { showToast('Pick the date & time'); return; }
+        const channel = g('disc-channel').value;
+        normalizeLead(l);
+        l.activities.push({ id: uid('a'), type: 'discussion', channel, outcome: channel === 'Call' ? g('disc-outcome').value : '', note, at: at.toISOString(), by: state.activeStaffEmail, addedAt: new Date().toISOString() });
+        l.activities.sort((a, b) => String(b.at).localeCompare(String(a.at)));
+        l.lastActivityAt = l.activities[0].at;
+        commitState(); closeModal('modal-disc'); discCtx = null;
+        renderLeadDetail(l.id); if (state.activeTab === 'leads') renderLeads();
+        showToast(`${channel} on ${at.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })} saved`);
+      }
+      // Call log: every call & discussion across all leads, by date
+      let callLogF = null;
+      function openCallLog() {
+        const today = dayKey(new Date().toISOString());
+        callLogF = callLogF || { from: dayKey(new Date(Date.now() - 6 * 86400000).toISOString()), to: today, who: '', kind: 'calls' };
+        renderCallLog(); openModal('modal-calllog');
+      }
+      function renderCallLog() {
+        const box = document.getElementById('calllog-body'); if (!box || !callLogF) return;
+        const f = callLogF;
+        const rows = [];
+        getScopedLeads().forEach(l => (l.activities || []).forEach(a => {
+          const k = dayKey(a.at); if (!k || k < f.from || k > f.to) return;
+          if (f.kind === 'calls' && !isCallLike(a)) return;
+          if (f.kind === 'all' && !(isCallLike(a) || a.type === 'discussion' || a.type === 'meeting' || a.type === 'whatsapp')) return;
+          if (f.who && String(a.by || '').toLowerCase() !== f.who.toLowerCase()) return;
+          rows.push({ l, a, k });
+        }));
+        rows.sort((x, y) => String(y.a.at).localeCompare(String(x.a.at)));
+        const days = [...new Set(rows.map(r => r.k))];
+        box.innerHTML = `
+          <div class="calllog-filters">
+            <label><span>From</span><input class="input" type="date" data-cl="from" value="${f.from}" /></label>
+            <label><span>To</span><input class="input" type="date" data-cl="to" value="${f.to}" /></label>
+            <label><span>By</span><select class="select" data-cl="who"><option value="">Everyone</option>${state.staff.map(st => `<option value="${escapeHtml(st.email)}" ${f.who === st.email ? 'selected' : ''}>${escapeHtml(st.name)}</option>`).join('')}</select></label>
+            <label><span>Show</span><select class="select" data-cl="kind"><option value="calls" ${f.kind === 'calls' ? 'selected' : ''}>Calls only</option><option value="all" ${f.kind === 'all' ? 'selected' : ''}>Calls, meetings &amp; messages</option></select></label>
+          </div>
+          <div class="hub-muted" style="margin:8px 0 4px;"><strong style="color:var(--text-main);">${rows.length}</strong> ${f.kind === 'calls' ? 'call' : 'entr'}${rows.length === 1 ? (f.kind === 'calls' ? '' : 'y') : (f.kind === 'calls' ? 's' : 'ies')} · ${new Set(rows.map(r => r.l.id)).size} lead${new Set(rows.map(r => r.l.id)).size === 1 ? '' : 's'}</div>
+          ${days.map(dk => { const list = rows.filter(r => r.k === dk); return `
+            <div class="disc-day">${escapeHtml(dayTitle(list[0].a.at))} <span class="hub-muted">· ${list.length}</span></div>
+            ${list.map(({ l, a }) => `<div class="calllog-row">
+              <span class="calllog-time">${escapeHtml(new Date(a.at).toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit' }))}</span>
+              <div style="min-width:0; flex:1;">
+                <div><button type="button" class="lead-name-btn" data-open-lead="${l.id}" style="font-weight:700;">${escapeHtml(l.name)}</button> <span class="hub-muted">· ${escapeHtml(activityText(a))} · ${escapeHtml(staffFirst(a.by))}</span></div>
+                ${a.note ? `<div class="disc-note">${escapeHtml(a.note)}</div>` : ''}
+              </div>
+            </div>`).join('')}`; }).join('') || '<div class="hub-muted" style="padding:16px 0;">Nothing recorded for these dates.</div>'}`;
+      }
+      document.addEventListener('click', e => {
+        const t = e.target;
+        const dn = t.closest('[data-disc-new]'); if (dn) { openDiscussion(dn.dataset.discNew); return; }
+        if (t.closest('[data-disc-save]')) { saveDiscussion(); return; }
+        if (t.closest('[data-calllog-open]')) { openCallLog(); return; }
+        if (t.closest('#modal-calllog [data-open-lead]')) { closeModal('modal-calllog'); }
+      });
+      document.addEventListener('change', e => {
+        const t = e.target;
+        if (t.id === 'disc-channel') { const w = document.getElementById('disc-outcome-wrap'); if (w) w.style.display = t.value === 'Call' ? '' : 'none'; return; }
+        if (t.dataset && t.dataset.cl && callLogF) { callLogF[t.dataset.cl] = t.value; if (callLogF.from > callLogF.to) callLogF.to = callLogF.from; renderCallLog(); }
+      });
 
       // ===== Delete an onboarded client (and everything that belongs to them) =====
       function clientLinkedRecords(c) {
@@ -10133,6 +10294,7 @@
 
       function renderAll() {
         try { applyTierSettings(); } catch (err) { /* module not ready yet */ }
+        try { if (migrateStudioAdmin()) commitState(); } catch (err) { /* module not ready yet */ }
         try { normalizeAllLeads(); } catch (err) { /* module not ready yet */ }
         try { syncInvoiceReceipts(); } catch (err) { /* module not ready yet */ }
         try { ensureSite(); syncSiteRatesDatalist(); } catch (err) { /* module not ready yet */ }
@@ -10296,7 +10458,7 @@
       // Each window holds a full copy of the studio data. Without this, an older window
       // could save its outdated copy over newer work (e.g. a catalog item added elsewhere).
       const LOCAL_UI_KEYS = ['activeTab', 'activeBoqClientId', 'activeClientId', 'hubTab', 'hubOpen', 'hubFilter', 'hubSearch',
-        'billFilter', 'leadSourceFilter', 'leadViewMode', 'catalogDrawerOpen', 'catalogCategoryFilter', 'catalogTierView', 'catalogSegment', 'quickBoq', 'teamSel', 'leadSort', 'activeStaffEmail', 'boqSeparateRates'];
+        'billFilter', 'leadSourceFilter', 'teamEditId', 'leadViewMode', 'catalogDrawerOpen', 'catalogCategoryFilter', 'catalogTierView', 'catalogSegment', 'quickBoq', 'teamSel', 'leadSort', 'activeStaffEmail', 'boqSeparateRates'];
       let rerenderWhenIdle = false;
 
       function adoptSavedState(raw, fromOtherWindow) {
@@ -12105,6 +12267,7 @@
         if (a.type === 'followup') return `Follow-up changed → ${a.label || 'Follow up'} · ${a.nextAt ? new Date(parseDT(a.nextAt)).toLocaleString('en-IN', { weekday: 'short', day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' }) : ''}`;
         if (a.type === 'details') return 'Lead details edited';
         if (a.type === 'whatsapp') return `WhatsApp — ${a.title || 'message'}${a.copied ? ' (copied)' : ''}`;
+        if (a.type === 'discussion') return `${a.channel || 'Discussion'}${a.outcome && CALL_TEXT[a.outcome] ? ' — ' + CALL_TEXT[a.outcome] : ''}`;
         return a.note || 'Note';
       }
       function leadDueItems(l) { const n = leadNext(l); return n && n.at ? whenLabel(n.at) : { text: 'Not set', cls: '' }; }
@@ -12628,16 +12791,17 @@
           </div>
 
           <div class="ld-section">
-            <div class="ld-h">History <span class="hub-muted" style="font-weight:500;">· ${(l.activities || []).filter(a => a.type === 'call').length} calls</span></div>
-            ${(l.activities || []).length ? `<div class="hub-timeline">${l.activities.map(a => `
+            <div class="ld-h" style="display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap;"><span>Calls &amp; discussions <span class="hub-muted" style="font-weight:500;">· ${(() => { const n = (l.activities || []).filter(isCallLike).length; return `${n} call${n === 1 ? '' : 's'}`; })()}</span></span>${perms.canEditLeads ? `<button type="button" class="btn btn-primary btn-sm" data-disc-new="${l.id}">+ Add call / discussion</button>` : ''}</div>
+            ${(l.activities || []).length ? `<div class="hub-timeline">${l.activities.slice().sort((a, b) => String(b.at).localeCompare(String(a.at))).map((a, i, arr) => `
+              ${i === 0 || dayKey(a.at) !== dayKey(arr[i - 1].at) ? `<div class="disc-day">${escapeHtml(dayTitle(a.at))}</div>` : ''}
               <div class="hub-tl-item">
                 <span class="hub-tl-dot" style="border-color:${a.type === 'call' ? (a.outcome === 'no_answer' ? '#B4233F' : a.outcome === 'not_interested' ? '#A39A90' : '#0F7457') : a.type === 'meeting' ? '#1D6A96' : a.type === 'whatsapp' ? '#1FA855' : '#C4653A'};"></span>
                 <div style="flex:1; min-width:0;">
                   <div style="font-weight:600; font-size:13.5px;">${escapeHtml(activityText(a))}</div>
                   <div class="hub-row-meta">${escapeHtml(staffName(a.by))} · ${escapeHtml(new Date(a.at).toLocaleString('en-IN', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' }))}${a.editedBy ? ` · edited by ${escapeHtml(staffFirst(a.editedBy))}` : ''}${perms.canEditLeads && ['call', 'followup', 'whatsapp', 'estimate', 'meeting', 'requirements'].includes(a.type) ? ` · <button type="button" class="ld-tl-edit" data-lead-flow="edit_activity" data-lead-id="${l.id}" data-activity-id="${a.id}">Edit</button>` : ''}</div>
-                  ${a.note ? `<div style="font-size:13px; margin-top:2px; white-space:pre-wrap;">${escapeHtml(a.note)}</div>` : ''}
+                  ${a.note ? `<div class="disc-note">${escapeHtml(a.note)}</div>` : ''}
                 </div>
-              </div>`).join('')}</div>` : '<div class="hub-muted">No calls yet.</div>'}
+              </div>`).join('')}</div>` : '<div class="hub-muted">No calls yet. Use “+ Add call / discussion” to record one, also for earlier dates.</div>'}
           </div>
           ${l.notes ? `<div class="ld-section"><div class="ld-h">Lead notes</div><div style="font-size:13px; white-space:pre-wrap; color:var(--text-muted);">${escapeHtml(l.notes)}</div></div>` : ''}`;
       }
