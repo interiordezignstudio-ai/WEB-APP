@@ -10796,6 +10796,28 @@
         return { headers, idx };
       }
 
+      // Lead forms can have several budget questions (one per form version), e.g. Meta sheet columns P, Q and R.
+      // Use every budget column and take the first answer found.
+      const META_BUDGET_COLS = [15, 16, 17]; // P, Q, R
+      function budgetColumns(headers, idx, useMetaCols) {
+        const taken = new Set(Object.entries(idx).filter(([k, i]) => k !== 'budget' && i >= 0).map(([, i]) => i));
+        const cols = [];
+        if (idx.budget >= 0) cols.push(idx.budget);
+        headers.forEach((h, i) => { if (/budget/.test(h) && !taken.has(i) && !cols.includes(i)) cols.push(i); });
+        if (useMetaCols) META_BUDGET_COLS.forEach(i => { if (i < headers.length && !taken.has(i) && !cols.includes(i)) cols.push(i); });
+        return cols;
+      }
+      function budgetFromRow(r, cols) {
+        for (const i of cols) {
+          const raw = String((r && r[i]) || '').trim().replace(/^p:\s*/i, '');
+          if (!raw) continue;
+          if (/^\+?[\d\s-]{10,}$/.test(raw)) continue; // a phone number, not a budget
+          const n = parseBudget(raw.replace(/_/g, ' '));
+          if (n > 0 && n < 1000000000) return n;
+        }
+        return 0;
+      }
+
       function normHeader(h) { return String(h || '').trim().toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, ''); }
 
       function parseBudget(v) {
@@ -10866,6 +10888,9 @@
         const { headers, idx } = resolveMetaColumns(rows[0], state.metaMapping);
         const known = new Set(Object.values(idx).filter(i => i >= 0));
         headers.forEach((h, i) => { if (META_IGNORE_COLUMNS.includes(h)) known.add(i); });
+        const bCols = budgetColumns(headers, idx, true);
+        bCols.forEach(i => known.add(i));
+        let budgetFilled = 0;
         if (!Array.isArray(state.metaImportedIds)) state.metaImportedIds = [];
         const imported = new Set(state.metaImportedIds);
         const phones = new Set(state.leads.map(l => String(l.phone || '').replace(/\D/g, '').slice(-10)).filter(Boolean));
@@ -10877,7 +10902,16 @@
           const name = get('name') || [get('first'), get('last')].filter(Boolean).join(' ');
           if (!name && !phone10) return;
           const key = get('id') || `row:${phone10}:${get('created')}`;
-          if (imported.has(key)) return;
+          const rowBudget = budgetFromRow(r, bCols);
+          if (imported.has(key)) {
+            // already imported: fill in a budget that was missed before
+            if (rowBudget) {
+              const mid = 'meta_' + hashStr(key).replace(/[^a-z0-9]/gi, '');
+              const ex = state.leads.find(l => l.id === mid || (get('id') && l.metaLeadId === get('id')) || (phone10 && l.source === 'Meta Ads' && String(l.phone || '').replace(/\D/g, '').slice(-10) === phone10));
+              if (ex && !Number(ex.budget)) { ex.budget = rowBudget; budgetFilled++; }
+            }
+            return;
+          }
           imported.add(key);
           if (opts.markOnly) return; // "only new leads from now on": remember existing rows without importing them
           if (phone10 && phones.has(phone10)) return; // already in Leads
@@ -10892,7 +10926,7 @@
             email: get('email'),
             location: get('city'),
             property: normProperty(get('property')),
-            budget: parseBudget(get('budget')),
+            budget: rowBudget,
             possession: normPossession(get('possession')),
             source: 'Meta Ads',
             stage: 'New Enquiry',
@@ -10907,6 +10941,7 @@
         });
         const before = (state.metaImportedIds || []).length;
         state.metaImportedIds = Array.from(imported).slice(-20000);
+        if (budgetFilled) { commitState(); if (!added.length) renderAll(); if (opts.manual || !opts.silent) showToast(`Budget filled in for ${budgetFilled} Meta lead${budgetFilled === 1 ? '' : 's'}`); }
         if (added.length) {
           state.leads = added.concat(state.leads);
           commitState();
@@ -11521,6 +11556,8 @@
       function buildImportLeads(job) {
         const { idx, headers } = resolveMetaColumns(job.header, job.mapping);
         const known = new Set(Object.values(idx).filter(i => i >= 0));
+        const bCols = budgetColumns(headers, idx, false);
+        bCols.forEach(i => known.add(i));
         const phones = new Set(state.leads.map(l => String(l.phone || '').replace(/\D/g, '').slice(-10)).filter(Boolean));
         const normName = n => String(n || '').toLowerCase().replace(/\s+/g, ' ').trim();
         const names = new Set(state.leads.map(l => normName(l.name)).filter(Boolean));
@@ -11544,7 +11581,7 @@
             email: get('email'),
             location: get('city'),
             property: normProperty(get('property')),
-            budget: parseBudget(get('budget')),
+            budget: budgetFromRow(r.map(cleanCell), bCols),
             possession: normPossession(get('possession')),
             source: job.source || 'Purchased leads',
             stage: 'New Enquiry',
