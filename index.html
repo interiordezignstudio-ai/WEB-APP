@@ -2318,6 +2318,14 @@
     .lead-next.due-today .lead-next-when { color: var(--accent-terracotta-dark); }
     .lead-next-when { font-weight: 700; white-space: nowrap; }
     .lead-last { font-size: 12px; color: var(--text-muted); margin-top: 6px; }
+    .lead-facts { display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:5px 12px; margin-top:10px; padding:8px 10px; background:#FAF9F6; border:1px solid var(--border-subtle); border-radius:10px; }
+    .lead-facts > div { min-width:0; }
+    .lead-facts small { display:block; font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:0.05em; color:var(--text-light); }
+    .lead-facts span { display:block; font-size:12.5px; color:var(--text-main); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .ld-all { display:grid; grid-template-columns:repeat(3, minmax(0, 1fr)); gap:10px 16px; margin-top:12px; padding:12px 14px; border:1px solid var(--border-subtle); border-radius:12px; background:#FAF9F6; }
+    .ld-all small { display:block; font-size:10.5px; font-weight:700; text-transform:uppercase; letter-spacing:0.05em; color:var(--text-light); }
+    .ld-all span { display:block; font-size:13.5px; overflow-wrap:anywhere; }
+    @media (max-width: 640px) { .ld-all { grid-template-columns:repeat(2, minmax(0, 1fr)); } }
     .lead-actions-wide { width: 100%; }
     .lead-actions-wide .btn { flex: 1 1 auto; }
     .call-count { min-width: 30px; height: 30px; border-radius: 9px; background: var(--accent-terracotta-soft); color: var(--accent-terracotta-dark); font-weight: 800; display: inline-flex; align-items: center; justify-content: center; }
@@ -5420,6 +5428,30 @@
         if (t.closest('[data-qb-reset]')) { const keep = { seg: q.seg, tier: q.tier }; state.quickBoq = keep; window.__qbEdit = false; commitState(); renderQuickBoq(); document.querySelector('[data-qb-f="area"], [data-qb-f="comArea"]')?.focus(); }
       });
 
+      function leadDateText(l) {
+        const raw = l.createdAt || ''; if (!raw) return '';
+        let d = new Date(raw); if (isNaN(d)) d = new Date(String(raw).replace(/([+-]\d\d)(\d\d)$/, '$1:$2'));
+        return isNaN(d) ? String(raw) : d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+      }
+      // label / value pairs for a lead; `all` includes empty ones (shown as "Not given")
+      function leadInfoRows(l, all) {
+        const money = getCurrentPermissions().canSeeMoney;
+        const rows = [
+          ['Date', leadDateText(l)],
+          ['Platform', l.platform || (l.source === 'Meta Ads' ? 'Meta' : '')],
+          ['City', l.city || (!l.area ? l.location : '') || ''],
+          ['Area / location', l.area || ''],
+          ['Property type', l.propertyType || ''],
+          ['Property size', l.property || ''],
+          ['Budget', money ? (Number(l.budget) ? formatLakhs(l.budget) : '') : '—'],
+          ['Possession status', l.possession || ''],
+          ['Planning to start', l.startPlan || ''],
+          ['Email', l.email || ''],
+          ['Lead ID', l.metaLeadId || '']
+        ];
+        return all ? rows : rows.filter(([, v]) => v);
+      }
+
       // 9. RENDER: LEADS CRM
       // Bulk select & delete (selection lives only on this screen, not saved)
       let leadSelectMode = false;
@@ -5451,7 +5483,9 @@
           </div>`;
       }
 
+      let leadDetailsBackfilled = false;
       function renderLeads() {
+        if (!leadDetailsBackfilled) { leadDetailsBackfilled = true; try { if (backfillDetailsFromNotes() + backfillBudgetFromNotes()) commitState(); } catch (err) { /* ignore */ } }
         const staff = getCurrentStaff();
         const search = (document.getElementById('lead-search-input')?.value || '').toLowerCase();
         const stageFilter = document.getElementById('lead-filter-stage')?.value || 'ALL';
@@ -5466,6 +5500,7 @@
             (l.ownerEmail || '').toLowerCase().includes(search) ||
             (l.importBatch || '').toLowerCase().includes(search) ||
             (l.possession || '').toLowerCase().includes(search) ||
+            [l.city, l.area, l.propertyType, l.startPlan, l.email, l.metaLeadId].join(' ').toLowerCase().includes(search) ||
             (l.property || '').toLowerCase().includes(search);
           normalizeLead(l);
           const matchStage = stageFilter === 'ALL' ? l.stage !== 'Not Interested'
@@ -5548,11 +5583,12 @@
                 <div>
                   ${leadPickHtml(l)}
                   <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:8px;">
-                    <div>
+                    <div style="flex:1; min-width:0;">
                       <div style="font-size:16px; font-weight:700;"><button type="button" class="lead-name-btn" data-open-lead="${l.id}">${escapeHtml(l.name)}</button>${l.stage === 'New Enquiry' && l.createdAt && (Date.now() - new Date(l.createdAt).getTime()) < 86400000 ? ' <span class="badge badge-rose" style="font-size:10.5px; vertical-align:middle;">New</span>' : ''}</div>
                       <div style="font-size:12px; color:var(--text-muted); margin-top:2px;">${[l.property, l.location, l.source].filter(Boolean).map(escapeHtml).join(' • ')}</div>
                       ${l.phone ? `<div style="font-size:12.5px; margin-top:2px;" class="tabular">${escapeHtml(l.phone)}</div>` : ''}
                       ${leadOriginTag(l) || possessionTag(l) ? `<div style="margin-top:6px; display:flex; gap:6px; flex-wrap:wrap;">${possessionTag(l)}${leadOriginTag(l)}</div>` : ''}
+                      ${(() => { const info = leadInfoRows(l, false).filter(([k]) => !['Budget', 'Possession status'].includes(k)); return info.length ? `<div class="lead-facts">${info.map(([k, v]) => `<div><small>${escapeHtml(k)}</small><span>${escapeHtml(v)}</span></div>`).join('')}</div>` : ''; })()}
                     </div>
                     ${l.budget ? `<span class="badge badge-amber tabular" style="font-size:12px;">${formatLakhs(l.budget)}</span>` : '<span class="badge badge-stone" style="font-size:11px;">Budget ?</span>'}
                   </div>
@@ -10753,8 +10789,11 @@
         last: ['last_name'],
         phone: ['phone_number', 'phone', 'mobile', 'mobile_number', 'whatsapp_number', 'contact_number', 'mobile_no', 'contact_no', 'phone_no', 'mob', 'mob_no', 'cell', 'contact', 'whatsapp'],
         email: ['email', 'email_address', 'email_id', 'mail', 'e_mail'],
-        city: ['city', 'location', 'area', 'locality', 'address', 'site_location', 'project_location', 'society', 'project', 'project_name'],
-        property: ['property_type', 'property_size', 'property', 'bhk', 'configuration', 'flat_type', 'flat_size', 'home_type', 'home_size', 'apartment_size', 'size', 'unit_type', 'carpet_area', 'requirement', 'type'],
+        city: ['city', 'city_name', 'town', 'your_city'],
+        area: ['area', 'locality', 'location', 'area_location', 'your_area', 'area_name', 'locality_name', 'address', 'site_location', 'project_location', 'society', 'project', 'project_name'],
+        propertyType: ['property_type', 'type_of_property', 'home_type', 'flat_type', 'unit_type', 'apartment_type', 'type'],
+        property: ['property_size', 'property', 'bhk', 'configuration', 'flat_size', 'home_size', 'apartment_size', 'size', 'carpet_area', 'requirement'],
+        startPlan: ['when_are_you_planning_to_start_interior_work', 'when_do_you_plan_to_start', 'planning_to_start', 'when_to_start', 'start_date', 'interior_start', 'start_time', 'timeline'],
         possession: ['possession_status', 'possession', 'possession_date', 'possession_timeline', 'possession_time', 'possesion_status', 'possesion', 'property_status', 'ready_to_move', 'handover_date', 'handover'],
         budget: ['budget', 'your_budget', 'approx_budget', 'interior_budget', 'budget_range', 'budget_in_lakhs', 'budget_lakhs'],
         form: ['form_name', 'form'],
@@ -10766,8 +10805,8 @@
       // Meta's technical columns that should not be copied into lead notes
       const META_IGNORE_COLUMNS = ['ad_id', 'adset_id', 'adset_name', 'campaign_id', 'form_id', 'is_organic', 'lead_status', 'inbox_url', 'retailer_item_id', 'is_qualified', 'is_quality', 'is_converted'];
       const META_MAP_FIELDS = [
-        ['name', 'Name'], ['phone', 'Phone'], ['email', 'Email'], ['city', 'City / area'],
-        ['property', 'Property size (BHK)'], ['budget', 'Budget'], ['possession', 'Possession status'], ['notes', 'Message / notes'], ['id', 'Lead ID'], ['created', 'Date']
+        ['name', 'Name'], ['phone', 'Phone'], ['email', 'Email'], ['city', 'City'], ['area', 'Area / locality'],
+        ['propertyType', 'Property type'], ['property', 'Property size (BHK)'], ['budget', 'Budget'], ['possession', 'Possession status'], ['startPlan', 'Planning to start interiors'], ['notes', 'Message / notes'], ['id', 'Lead ID'], ['created', 'Date']
       ];
 
       function metaSheetRange(tab) {
@@ -10778,18 +10817,23 @@
       function resolveMetaColumns(headerRow, mapping) {
         const headers = headerRow.map(normHeader);
         const idx = {};
+        const hasMap = k => mapping && Object.prototype.hasOwnProperty.call(mapping, k);
+        const taken = new Set();
         Object.keys(META_FIELD_ALIASES).forEach(k => {
-          if (mapping && Object.prototype.hasOwnProperty.call(mapping, k)) {
-            idx[k] = mapping[k] ? headers.indexOf(normHeader(mapping[k])) : -1;
-            return;
-          }
+          if (!hasMap(k)) return;
+          idx[k] = mapping[k] ? headers.indexOf(normHeader(mapping[k])) : -1;
+          if (idx[k] >= 0) taken.add(idx[k]);
+        });
+        Object.keys(META_FIELD_ALIASES).forEach(k => {
+          if (hasMap(k)) return;
           idx[k] = -1;
-          for (const alias of META_FIELD_ALIASES[k]) { const i = headers.indexOf(alias); if (i >= 0) { idx[k] = i; break; } }
+          for (const alias of META_FIELD_ALIASES[k]) { const i = headers.indexOf(alias); if (i >= 0 && !taken.has(i)) { idx[k] = i; taken.add(i); break; } }
         });
         // Meta custom questions, e.g. "what_is_your_budget?", "what_is_the_possession_status_of_your_flat?"
         const used = new Set(Object.values(idx).filter(i => i >= 0));
         [['possession', ['possession', 'possesion', 'handover', 'ready_to_move']], ['budget', ['budget']], ['phone', ['phone', 'mobile']], ['email', ['email']],
-         ['property', ['bhk', 'property_size', 'size', 'property', 'configuration']], ['city', ['city', 'location', 'locality', 'area']]].forEach(([k, hints]) => {
+         ['startPlan', ['start', 'planning', 'plan_to', 'timeline', 'when_']], ['propertyType', ['property_type', 'type_of', 'home_type', 'flat_type', 'apartment_type', 'kind_of']],
+         ['property', ['bhk', 'property_size', 'size', 'configuration', 'carpet', 'property']], ['city', ['city', 'town']], ['area', ['area', 'locality', 'location', 'address', 'society']]].forEach(([k, hints]) => {
           if (idx[k] !== -1 || (mapping && Object.prototype.hasOwnProperty.call(mapping, k))) return;
           for (const hint of hints) { const i = headers.findIndex((h, j) => !used.has(j) && h.includes(hint) && (k === 'budget' || !BUDGET_HEADER_RE.test(h))); if (i >= 0) { idx[k] = i; used.add(i); break; } }
         });
@@ -10810,6 +10854,35 @@
         return cols;
       }
       // Leads imported earlier may only have the budget answer in their notes, e.g. "what_is_your_budget?: 5_lakh"
+      const tidyAnswer = v => String(v || '').replace(/_/g, ' ').replace(/\s+/g, ' ').trim().replace(/^./, c => c.toUpperCase());
+      const joinPlace = (area, city) => { const a = String(area || '').trim(), c = String(city || '').trim(); return a && c && a.toLowerCase() !== c.toLowerCase() ? `${a}, ${c}` : (a || c); };
+      // lead fields filled from a sheet row / notes; returns how many fields were added
+      function fillLeadDetails(l, get) {
+        let n = 0;
+        const put = (k, v) => { if (v && !l[k]) { l[k] = v; n++; } };
+        put('email', get('email'));
+        put('city', tidyAnswer(get('city')));
+        put('area', tidyAnswer(get('area')));
+        put('propertyType', tidyAnswer(get('propertyType')));
+        put('startPlan', tidyAnswer(get('startPlan')));
+        put('property', normProperty(get('property')));
+        put('possession', normPossession(get('possession')));
+        if (n && (l.city || l.area) && (!l.location || l.location === l.city || l.location === l.area)) l.location = joinPlace(l.area, l.city);
+        return n;
+      }
+      // details that were saved as "question: answer" lines in notes
+      function backfillDetailsFromNotes() {
+        let n = 0;
+        (state.leads || []).forEach(l => {
+          if (!l.notes) return;
+          const pairs = String(l.notes).split(/\n/).map(line => line.match(/^([^:·]{2,90}):\s*(.+)$/)).filter(Boolean);
+          if (!pairs.length) return;
+          const { idx } = resolveMetaColumns(pairs.map(m => m[1]), null);
+          const get = k => (idx[k] >= 0 ? pairs[idx[k]][2].trim() : '');
+          if (fillLeadDetails(l, get)) n++;
+        });
+        return n;
+      }
       function backfillBudgetFromNotes() {
         let n = 0;
         (state.leads || []).forEach(l => {
@@ -10907,6 +10980,7 @@
         const bCols = budgetColumns(headers, idx, true, state.metaMapping);
         bCols.forEach(i => known.add(i));
         let budgetFilled = backfillBudgetFromNotes();
+        let detailsFilled = backfillDetailsFromNotes();
         {
           const dataRows = rows.slice(1).filter(r => r.some(v => String(v || '').trim()));
           cloud.metaBudgetInfo = { cols: bCols.map(i => `${colLetter(i)} (${rows[0][i] || 'no heading'})`), found: dataRows.filter(r => budgetFromRow(r, bCols) > 0).length, total: dataRows.length };
@@ -10931,6 +11005,14 @@
               const ex = state.leads.find(l => l.id === mid || (get('id') && l.metaLeadId === get('id')) || (phone10 && l.source === 'Meta Ads' && String(l.phone || '').replace(/\D/g, '').slice(-10) === phone10));
               if (ex && !Number(ex.budget)) { ex.budget = rowBudget; budgetFilled++; }
             }
+            {
+              const mid2 = 'meta_' + hashStr(key).replace(/[^a-z0-9]/gi, '');
+              const ex2 = state.leads.find(l => l.id === mid2 || (get('id') && l.metaLeadId === get('id')));
+              if (ex2) {
+                if (fillLeadDetails(ex2, get)) detailsFilled++;
+                if (!ex2.metaLeadId && get('id')) ex2.metaLeadId = get('id');
+              }
+            }
             return;
           }
           imported.add(key);
@@ -10945,7 +11027,11 @@
             name: name || `Meta lead ${phoneRaw}`,
             phone: phoneRaw,
             email: get('email'),
-            location: get('city'),
+            city: tidyAnswer(get('city')),
+            area: tidyAnswer(get('area')),
+            location: joinPlace(tidyAnswer(get('area')), tidyAnswer(get('city'))),
+            propertyType: tidyAnswer(get('propertyType')),
+            startPlan: tidyAnswer(get('startPlan')),
             property: normProperty(get('property')),
             budget: rowBudget,
             possession: normPossession(get('possession')),
@@ -10962,6 +11048,7 @@
         });
         const before = (state.metaImportedIds || []).length;
         state.metaImportedIds = Array.from(imported).slice(-20000);
+        if (detailsFilled && !budgetFilled) { commitState(); if (!added.length) renderAll(); }
         if (budgetFilled) { commitState(); if (!added.length) renderAll(); if (opts.manual || !opts.silent) showToast(`Budget filled in for ${budgetFilled} Meta lead${budgetFilled === 1 ? '' : 's'}`); }
         if (added.length) {
           state.leads = added.concat(state.leads);
@@ -11616,7 +11703,11 @@
             name: name || `Lead ${phoneRaw}`,
             phone: phoneRaw,
             email: get('email'),
-            location: get('city'),
+            city: tidyAnswer(get('city')),
+            area: tidyAnswer(get('area')),
+            location: joinPlace(tidyAnswer(get('area')), tidyAnswer(get('city'))),
+            propertyType: tidyAnswer(get('propertyType')),
+            startPlan: tidyAnswer(get('startPlan')),
             property: normProperty(get('property')),
             budget: budgetFromRow(r.map(cleanCell), bCols),
             possession: normPossession(get('possession')),
@@ -12228,7 +12319,10 @@
             <div class="form-grid">
               <div><label class="form-label">Name *</label><input class="input" id="el-name" value="${escapeHtml(l.name || '')}" /></div>
               <div><label class="form-label">Contact number</label><input class="input" id="el-phone" type="tel" inputmode="tel" value="${escapeHtml(l.phone || '')}" /></div>
-              <div><label class="form-label">Location</label><input class="input" id="el-location" value="${escapeHtml(l.location || '')}" placeholder="Area / society" /></div>
+              <div><label class="form-label">City</label><input class="input" id="el-city" value="${escapeHtml(l.city || '')}" placeholder="e.g. Pune" /></div>
+              <div><label class="form-label">Area / location</label><input class="input" id="el-location" value="${escapeHtml(l.area || (l.city ? '' : l.location) || '')}" placeholder="Area / society" /></div>
+              <div><label class="form-label">Property type</label><input class="input" id="el-ptype" value="${escapeHtml(l.propertyType || '')}" placeholder="Apartment, villa, office…" /></div>
+              <div><label class="form-label">Planning to start</label><input class="input" id="el-start" value="${escapeHtml(l.startPlan || '')}" placeholder="Immediately, within 3 months…" /></div>
               <div><label class="form-label">Property size</label><input class="input" id="el-property" list="dl-property" value="${escapeHtml(l.property || '')}" placeholder="3BHK, 1450 sq.ft…" /></div>
               ${perms2.canSeeMoney ? `<div><label class="form-label">Budget (₹ lakhs)</label><input class="input" id="el-budget" type="number" inputmode="decimal" min="0" step="0.5" value="${l.budget ? Math.round(l.budget / 100000 * 100) / 100 : ''}" /></div>` : ''}
               <div><label class="form-label">Possession status</label><input class="input" id="el-possession" list="dl-possession" value="${escapeHtml(l.possession || '')}" placeholder="Ready, within 3 months…" /></div>
@@ -12305,14 +12399,16 @@
         if (f.step === 'edit_lead') {
           const v = id => ((document.getElementById(id) || {}).value || '').trim();
           if (!v('el-name')) { showToast('Name is required'); return; }
-          const before = { name: l.name, phone: l.phone, location: l.location, property: l.property, budget: l.budget, possession: l.possession, email: l.email };
-          l.name = v('el-name'); l.phone = v('el-phone'); l.location = v('el-location'); l.email = v('el-email');
+          const before = { name: l.name, phone: l.phone, location: l.location, property: l.property, budget: l.budget, possession: l.possession, email: l.email, propertyType: l.propertyType, startPlan: l.startPlan };
+          l.name = v('el-name'); l.phone = v('el-phone'); l.email = v('el-email');
+          l.area = v('el-location'); l.city = v('el-city'); l.location = joinPlace(l.area, l.city);
+          l.propertyType = v('el-ptype'); l.startPlan = v('el-start');
           l.property = normProperty(v('el-property'));
           if (document.getElementById('el-budget')) l.budget = Math.round((Number(v('el-budget')) || 0) * 100000);
           l.possession = normPossession(v('el-possession'));
           const req = l.requirements || (l.requirements = {});
           req.propertyType = l.property; req.area = l.location; req.possession = l.possession; if (l.budget) req.budgetLakhs = String(Math.round(l.budget / 100000 * 100) / 100);
-          const labels = { name: 'name', phone: 'contact', location: 'location', property: 'property size', budget: 'budget', possession: 'possession', email: 'email' };
+          const labels = { name: 'name', phone: 'contact', location: 'location', property: 'property size', budget: 'budget', possession: 'possession', email: 'email', propertyType: 'property type', startPlan: 'planning to start' };
           const changed = Object.keys(before).filter(k => String(before[k] || '') !== String(l[k] || '')).map(k => labels[k]);
           if (changed.length) addLeadActivity(l, { type: 'details', note: `Updated ${changed.join(', ')}` });
           msg = changed.length ? 'Lead details saved' : 'No changes';
@@ -12483,14 +12579,13 @@
             </div>
           </div>
 
-          <div class="ld-facts">
-            <div><small>Contact</small>${l.phone ? `<a href="tel:${escapeHtml(phoneDigits(l.phone))}" data-call-lead="${l.id}" class="tabular">${escapeHtml(l.phone)}</a>` : '<span class="ld-missing">Not given</span>'}${l.email ? `<span class="ld-sub">${escapeHtml(l.email)}</span>` : ''}</div>
-            <div><small>Location</small>${l.location ? escapeHtml(l.location) : '<span class="ld-missing">Not given</span>'}</div>
-            <div><small>Property size</small>${l.property ? escapeHtml(l.property) : '<span class="ld-missing">Not given</span>'}</div>
-            <div><small>Budget</small>${perms.canSeeMoney ? (l.budget ? formatLakhs(l.budget) : '<span class="ld-missing">Not given</span>') : '—'}</div>
-            <div class="ld-facts-wide"><small>Possession status</small>${l.possession ? possessionTag(l) : '<span class="ld-missing">Not given</span>'}</div>
-            ${perms.canEditLeads ? `<button type="button" class="btn btn-outline btn-sm ld-facts-edit" data-lead-flow="edit_lead" data-lead-id="${l.id}">Edit details</button>` : ''}
+
+          <div class="ld-all">
+            <div><small>Name</small><span>${escapeHtml(l.name || '')}</span></div>
+            <div><small>Phone number</small><span>${l.phone ? escapeHtml(l.phone) : '<em class="ld-missing">Not given</em>'}</span></div>
+            ${leadInfoRows(l, true).map(([k, v]) => `<div><small>${escapeHtml(k)}</small><span>${v ? escapeHtml(v) : '<em class="ld-missing">Not given</em>'}</span></div>`).join('')}
           </div>
+          ${perms.canEditLeads ? `<div style="display:flex; justify-content:flex-end; margin-top:8px;"><button type="button" class="btn btn-outline btn-sm" data-lead-flow="edit_lead" data-lead-id="${l.id}">Edit details</button></div>` : ''}
 
           ${!closed ? `<div class="ld-next ${due ? due.cls : ''}">
             <div><small>Next</small><strong>${escapeHtml(nx.label || 'Follow up')}</strong>${due ? `<span>${escapeHtml(due.text)}</span>` : '<span>not scheduled</span>'}${nx.note ? `<span style="font-weight:500; white-space:pre-wrap;">${escapeHtml(nx.note)}</span>` : ''}</div>
