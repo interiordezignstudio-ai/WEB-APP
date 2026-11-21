@@ -2212,7 +2212,8 @@
     .cloud-chip .cloud-ico { display: inline-flex; }
     .cloud-chip[data-state="synced"] { color: var(--accent-emerald); }
     .cloud-chip[data-state="syncing"] .cloud-ico, .cloud-chip[data-state="pending"] .cloud-ico { animation: cloudPulse 1s ease-in-out infinite; }
-    .cloud-chip[data-state="signin"], .cloud-chip[data-state="error"] { color: var(--accent-rose); border-color: #F5C2CC; background: var(--accent-rose-soft); }
+    .cloud-chip[data-state="error"] { color: var(--accent-rose); border-color: #F5C2CC; background: var(--accent-rose-soft); }
+    .cloud-chip[data-state="signin"] { color: #8A4A12; border-color: #F3D2AE; background: #FDF0E3; font-weight: 700; }
     .cloud-chip[data-state="offline"] { color: var(--text-light); }
     @keyframes cloudPulse { 50% { opacity: 0.35; } }
     .cloud-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
@@ -10595,7 +10596,7 @@
         try { cloud.cfg = JSON.parse(localStorage.getItem(CLOUD_CFG_KEY) || '{}') || {}; } catch (e) { cloud.cfg = {}; }
         try { cloud.base = localStorage.getItem(CLOUD_BASE_KEY); } catch (e) { cloud.base = null; }
         try {
-          const t = JSON.parse(sessionStorage.getItem(CLOUD_TOKEN_KEY) || 'null');
+          const t = JSON.parse(localStorage.getItem(CLOUD_TOKEN_KEY) || sessionStorage.getItem(CLOUD_TOKEN_KEY) || 'null');
           if (t && t.exp > Date.now() + 60000) { cloud.token = t.token; cloud.tokenExp = t.exp; cloud.tokenScopes = t.scopes || DRIVE_SCOPE; }
         } catch (e) { /* no token */ }
         cloud.remoteVersion = cloud.cfg.remoteVersion || null;
@@ -10756,7 +10757,7 @@
                 cloud.token = resp.access_token;
                 cloud.tokenScopes = granted;
                 cloud.tokenExp = Date.now() + (Number(resp.expires_in) || 3600) * 1000;
-                try { sessionStorage.setItem(CLOUD_TOKEN_KEY, JSON.stringify({ token: cloud.token, exp: cloud.tokenExp, scopes: granted })); } catch (e) { /* ignore */ }
+                saveCloudToken();
                 resolve(cloud.token);
               },
               error_callback: (err) => reject(new Error(err && err.type === 'popup_closed' ? 'Google sign-in window was closed' : 'Google sign-in failed — allow pop-ups for this site'))
@@ -10771,7 +10772,8 @@
         const res = await fetch(url, Object.assign({}, opts, { headers: Object.assign({ Authorization: `Bearer ${cloud.token}` }, opts.headers || {}) }));
         if (res.status === 401) {
           cloud.token = null; cloud.tokenExp = 0;
-          try { sessionStorage.removeItem(CLOUD_TOKEN_KEY); } catch (e) { /* ignore */ }
+          try { localStorage.removeItem(CLOUD_TOKEN_KEY); sessionStorage.removeItem(CLOUD_TOKEN_KEY); } catch (e) { /* ignore */ }
+          armTokenRenewal();
           const err = new Error('Google sign-in expired'); err.code = 401; throw err;
         }
         if (!res.ok) {
@@ -10894,6 +10896,8 @@
           cloud.cfg.connected = true;
           saveCloudCfg();
           setCloudStatus('synced');
+          rememberCloudAccount();
+          prepareRenewClient();
           if (opts.interactive || Date.now() - cloud.lastMetaCheck > META_POLL_MS) importMetaLeads().catch(() => {});
         } catch (err) {
           cloud.lastError = err.message || String(err);
@@ -10912,6 +10916,55 @@
         clearTimeout(cloud.syncTimer);
         if (cloud.status !== 'signin') setCloudStatus('pending');
         cloud.syncTimer = setTimeout(() => cloudSync(), delay);
+      }
+
+
+      // ===== Keep Google Drive connected =====
+      // Google's browser sign-in lasts 1 hour and can't renew in the background. Shortly before it runs out
+      // (or after), the next tap anywhere renews it — browsers only allow Google's window right after a tap.
+      function saveCloudToken() {
+        try { localStorage.setItem(CLOUD_TOKEN_KEY, JSON.stringify({ token: cloud.token, exp: cloud.tokenExp, scopes: cloud.tokenScopes })); } catch (e) { /* ignore */ }
+      }
+      const tokenNeedsRenewal = () => cloud.cfg.connected && cloudClientId() && cloudHttpOk() && (!cloud.token || cloud.tokenExp < Date.now() + 5 * 60000);
+      async function prepareRenewClient() {
+        if (!cloudClientId() || !cloudHttpOk()) return;
+        try { await loadScriptOnce('https://accounts.google.com/gsi/client'); } catch (e) { return; }
+        const scope = wantedScopes();
+        if (cloud.renewClient && cloud.renewScope === scope) return;
+        cloud.renewScope = scope;
+        cloud.renewClient = window.google.accounts.oauth2.initTokenClient({
+          client_id: cloudClientId(), scope, include_granted_scopes: true,
+          callback: resp => {
+            cloud.renewing = false;
+            if (!resp || resp.error || !resp.access_token) { if (!cloud.token) setCloudStatus('signin'); return; }
+            cloud.token = resp.access_token;
+            cloud.tokenScopes = resp.scope || scope;
+            cloud.tokenExp = Date.now() + (Number(resp.expires_in) || 3600) * 1000;
+            saveCloudToken();
+            cloud.renewFails = 0;
+            cloudSync();
+          },
+          error_callback: () => { cloud.renewing = false; cloud.renewFails = (cloud.renewFails || 0) + 1; if (!cloud.token) setCloudStatus('signin'); }
+        });
+      }
+      function armTokenRenewal() {
+        if (!tokenNeedsRenewal()) return;
+        prepareRenewClient();
+        if (!cloud.token && cloud.status !== 'signin') setCloudStatus('signin');
+      }
+      document.addEventListener('click', e => {
+        if (!tokenNeedsRenewal() || !cloud.renewClient || cloud.renewing) return;
+        if (e.target.closest('input, textarea, select, [contenteditable], #cloud-chip, [data-cloud]')) return; // don't jump out of a box you're typing in
+        if (Date.now() - (cloud.lastRenewTry || 0) < (cloud.renewFails ? 5 * 60000 : 45000)) return;
+        cloud.lastRenewTry = Date.now(); cloud.renewing = true;
+        try { cloud.renewClient.requestAccessToken({ prompt: '', login_hint: cloud.cfg.email || undefined }); } catch (err) { cloud.renewing = false; }
+      }, true);
+      setInterval(armTokenRenewal, 60000);
+      setTimeout(armTokenRenewal, 3000);
+      // remember which Google account holds the data, so Google doesn't ask to pick an account
+      async function rememberCloudAccount() {
+        if (cloud.cfg.email || !cloud.token) return;
+        try { const r = await gApi(`${DRIVE}/about?fields=user(emailAddress)`); if (r && r.user && r.user.emailAddress) { cloud.cfg.email = r.user.emailAddress; saveCloudCfg(); } } catch (e) { /* ignore */ }
       }
 
       function startCloudPolling() {
@@ -11248,7 +11301,7 @@
         if (chip) {
           const show = Boolean(cloudClientId()) && cloudHttpOk();
           chip.hidden = !show;
-          const labels = { off: 'Connect Drive', signin: 'Sign in to Drive', pending: 'Saving…', syncing: 'Syncing…', synced: 'Saved to Drive', offline: 'Offline', error: 'Sync problem' };
+          const labels = { off: 'Connect Drive', signin: 'Tap to reconnect Drive', pending: 'Saving…', syncing: 'Syncing…', synced: 'Saved to Drive', offline: 'Offline', error: 'Sync problem' };
           chip.dataset.state = st;
           const lab = chip.querySelector('.cloud-label');
           if (lab) lab.textContent = labels[st] || 'Drive';
@@ -11264,7 +11317,7 @@
         const httpOk = cloudHttpOk();
         const connected = cloud.cfg.connected && cloud.token;
         const statusText = {
-          off: 'Not connected', signin: 'Signed out — sign in again to keep syncing', pending: 'Saving…', syncing: 'Syncing…',
+          off: 'Not connected', signin: 'Paused — Google sign-in expired. Tap anywhere (or “Connect Google Drive”) to reconnect. Your changes are kept and will sync.', pending: 'Saving…', syncing: 'Syncing…',
           synced: `Up to date${cloud.lastSync ? ' · ' + new Date(cloud.lastSync).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }) : ''}`,
           offline: 'Offline — changes will sync when you are back online', error: `Problem: ${cloud.lastError}`
         }[cloud.status] || '';
@@ -11493,7 +11546,7 @@
           if (!await appConfirm('Stop syncing this device with Google Drive? Your data stays in Drive and on this device.')) return;
           try { if (cloud.token && window.google && window.google.accounts) window.google.accounts.oauth2.revoke(cloud.token, () => {}); } catch (err) { /* ignore */ }
           cloud.token = null; cloud.tokenExp = 0; cloud.cfg.connected = false;
-          try { sessionStorage.removeItem(CLOUD_TOKEN_KEY); } catch (err) { /* ignore */ }
+          try { localStorage.removeItem(CLOUD_TOKEN_KEY); sessionStorage.removeItem(CLOUD_TOKEN_KEY); } catch (err) { /* ignore */ }
           saveCloudCfg();
           clearInterval(cloud.pollTimer); clearInterval(cloud.metaTimer);
           setCloudStatus('off');
