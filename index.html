@@ -10791,7 +10791,7 @@
         [['possession', ['possession', 'possesion', 'handover', 'ready_to_move']], ['budget', ['budget']], ['phone', ['phone', 'mobile']], ['email', ['email']],
          ['property', ['bhk', 'property_size', 'size', 'property', 'configuration']], ['city', ['city', 'location', 'locality', 'area']]].forEach(([k, hints]) => {
           if (idx[k] !== -1 || (mapping && Object.prototype.hasOwnProperty.call(mapping, k))) return;
-          for (const hint of hints) { const i = headers.findIndex((h, j) => !used.has(j) && h.includes(hint)); if (i >= 0) { idx[k] = i; used.add(i); break; } }
+          for (const hint of hints) { const i = headers.findIndex((h, j) => !used.has(j) && h.includes(hint) && (k === 'budget' || !BUDGET_HEADER_RE.test(h))); if (i >= 0) { idx[k] = i; used.add(i); break; } }
         });
         return { headers, idx };
       }
@@ -10799,6 +10799,8 @@
       // Lead forms can have several budget questions (one per form version), e.g. Meta sheet columns P, Q and R.
       // Use every budget column and take the first answer found.
       const META_BUDGET_COLS = [15, 16, 17]; // P, Q, R
+      const BUDGET_HEADER_RE = /budget|spend|investment|invest_|cost|price|how_much/;
+      const colLetter = i => { let s2 = ''; i += 1; while (i > 0) { const m = (i - 1) % 26; s2 = String.fromCharCode(65 + m) + s2; i = Math.floor((i - 1) / 26); } return s2; };
       function budgetColumns(headers, idx, useMetaCols, mapping) {
         // Columns chosen in "Match the columns" (Budget, Budget 2, Budget 3) are used exactly as chosen
         if (mapping && (Object.prototype.hasOwnProperty.call(mapping, 'budget2') || Object.prototype.hasOwnProperty.call(mapping, 'budget3'))) {
@@ -10806,10 +10808,10 @@
           ['budget', 'budget2', 'budget3'].forEach(k => { const i = mapping[k] ? headers.indexOf(normHeader(mapping[k])) : -1; if (i >= 0 && !out.includes(i)) out.push(i); });
           return out;
         }
-        const taken = new Set(Object.entries(idx).filter(([k, i]) => k !== 'budget' && i >= 0).map(([, i]) => i));
+        const taken = new Set(Object.entries(idx).filter(([k, i]) => k !== 'budget' && i >= 0 && !BUDGET_HEADER_RE.test(headers[i] || '')).map(([, i]) => i));
         const cols = [];
         if (idx.budget >= 0) cols.push(idx.budget);
-        headers.forEach((h, i) => { if (/budget/.test(h) && !taken.has(i) && !cols.includes(i)) cols.push(i); });
+        headers.forEach((h, i) => { if (BUDGET_HEADER_RE.test(h) && !taken.has(i) && !cols.includes(i)) cols.push(i); });
         if (useMetaCols) META_BUDGET_COLS.forEach(i => { if (i < headers.length && !taken.has(i) && !cols.includes(i)) cols.push(i); });
         return cols;
       }
@@ -10820,11 +10822,25 @@
         const main = mainBudget ? headers.indexOf(normHeader(mainBudget)) : -1;
         return budgetColumns(headers, idx, useMetaCols, null).filter(i => i !== main).slice(0, 2).map(i => header[i]);
       }
+      // Leads imported earlier may only have the budget answer in their notes, e.g. "what_is_your_budget?: 5_lakh"
+      function backfillBudgetFromNotes() {
+        let n = 0;
+        (state.leads || []).forEach(l => {
+          if (Number(l.budget) || !l.notes) return;
+          for (const line of String(l.notes).split(/\n/)) {
+            const m = line.match(/^([^:]{2,80}):\s*(.+)$/);
+            if (!m || !BUDGET_HEADER_RE.test(normHeader(m[1]))) continue;
+            const v = budgetFromRow([m[2]], [0]);
+            if (v) { l.budget = v; n++; break; }
+          }
+        });
+        return n;
+      }
       function budgetFromRow(r, cols) {
         for (const i of cols) {
           const raw = String((r && r[i]) || '').trim().replace(/^p:\s*/i, '');
           if (!raw) continue;
-          if (/^\+?[\d\s-]{10,}$/.test(raw)) continue; // a phone number, not a budget
+          if (/^\+?(91)?[6-9]\d{9}$/.test(raw.replace(/[\s-]/g, '')) && !/[a-z₹]/i.test(raw)) continue; // a mobile number, not a budget
           const n = parseBudget(raw.replace(/_/g, ' '));
           if (n > 0 && n < 1000000000) return n;
         }
@@ -10903,7 +10919,11 @@
         headers.forEach((h, i) => { if (META_IGNORE_COLUMNS.includes(h)) known.add(i); });
         const bCols = budgetColumns(headers, idx, true, state.metaMapping);
         bCols.forEach(i => known.add(i));
-        let budgetFilled = 0;
+        let budgetFilled = backfillBudgetFromNotes();
+        {
+          const dataRows = rows.slice(1).filter(r => r.some(v => String(v || '').trim()));
+          cloud.metaBudgetInfo = { cols: bCols.map(i => `${colLetter(i)} (${rows[0][i] || 'no heading'})`), found: dataRows.filter(r => budgetFromRow(r, bCols) > 0).length, total: dataRows.length };
+        }
         if (!Array.isArray(state.metaImportedIds)) state.metaImportedIds = [];
         const imported = new Set(state.metaImportedIds);
         const phones = new Set(state.leads.map(l => String(l.phone || '').replace(/\D/g, '').slice(-10)).filter(Boolean));
@@ -10946,7 +10966,7 @@
             stage: 'New Enquiry',
             ownerEmail: defaultLeadOwner(),
             followup: getDateOffset(0),
-            notes: [get('notes'), ...extras, src].filter(Boolean).join('\n'),
+            notes: [get('notes'), rowBudget ? '' : bCols.map(i => String(r[i] || '').trim()).filter(Boolean).map(v => `Budget: ${v.replace(/_/g, ' ')}`)[0], ...extras, src].filter(Boolean).join('\n'),
             metaLeadId: get('id') || '',
             platform: plat === 'ig' || plat === 'instagram' ? 'Instagram' : plat === 'fb' || plat === 'facebook' ? 'Facebook' : (plat ? plat.charAt(0).toUpperCase() + plat.slice(1) : ''),
             createdAt: get('created') || new Date().toISOString()
@@ -11154,6 +11174,7 @@
             <div class="cloud-row">
               <div style="flex:1; min-width:0;">
                 <div style="font-weight:600;">${escapeHtml(state.metaSheetTitle || META_SHEET_TITLE)}${state.metaSheetTab ? ` <span class="hub-muted">· ${escapeHtml(state.metaSheetTab)}</span>` : ''}</div>
+                ${cloud.metaBudgetInfo ? `<div class="hub-muted" style="margin-top:2px; font-size:12.5px;">Budget: found for <strong>${cloud.metaBudgetInfo.found} of ${cloud.metaBudgetInfo.total}</strong> leads in the sheet · ${cloud.metaBudgetInfo.cols.length ? 'columns ' + escapeHtml(cloud.metaBudgetInfo.cols.join(', ')) : '<strong style="color:var(--accent-rose);">no budget column found — press Columns and choose them</strong>'}</div>` : ''}
                 <div class="hub-muted" style="margin-top:2px;">${count} Meta lead${count === 1 ? '' : 's'} in the app${cloud.lastMetaCheck ? ` · last checked ${new Date(cloud.lastMetaCheck).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}` : ''} · checked every 2 minutes while the app is open</div>
                 <div style="margin-top:4px;"><a href="https://docs.google.com/spreadsheets/d/${escapeHtml(state.metaSheetId)}/edit" target="_blank" rel="noopener">Open sheet ↗</a></div>
               </div>
