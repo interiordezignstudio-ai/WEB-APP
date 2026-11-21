@@ -2352,6 +2352,27 @@
       .att-row > span:first-child, .att-row .att-workcell { grid-column:1 / -1; }
       .ad-work-row { grid-template-columns:1fr 1fr; } .ad-work-row .input[data-k="text"] { grid-column:1 / -1; }
     }
+    .sal-settings { display:flex; gap:14px; flex-wrap:wrap; align-items:center; margin-bottom:12px; font-size:13px; font-weight:600; }
+    .sal-settings label { display:flex; align-items:center; gap:6px; margin:0; }
+    .sal-settings .input { width:74px; padding:6px 8px; }
+    .sal-table { border:1px solid var(--border-subtle); border-radius:12px; overflow:hidden; }
+    .sal-row { display:grid; grid-template-columns: 1.2fr 1fr 1.25fr 0.95fr 0.95fr 0.95fr 1fr 1fr; gap:8px; padding:10px 12px; border-bottom:1px solid var(--border-subtle); align-items:center; font-size:13px; }
+    .sal-mine { display:grid; grid-template-columns: 1.1fr 1.6fr 1.1fr 0.8fr 0.8fr 0.9fr 1fr 0.6fr; gap:8px; padding:10px 12px; border-bottom:1px solid var(--border-subtle); align-items:center; font-size:13px; }
+    .sal-row:last-child, .sal-mine:last-child { border-bottom:0; }
+    .sal-row em, .sal-net em { display:block; font-style:normal; font-size:11.5px; color:var(--text-muted); }
+    .sal-row label { margin:0; }
+    .sal-row .input { padding:7px 8px; font-size:13.5px; width:100%; min-width:0; }
+    .sal-paid { background:#F3FAF6; }
+    .sal-net strong { font-size:15px; }
+    .sal-acts { display:flex; gap:6px; flex-wrap:wrap; justify-content:flex-end; }
+    .sal-att { font-size:12px; color:var(--text-muted); }
+    .sal-l { display:none; }
+    @media (max-width: 1100px) {
+      .sal-head { display:none; }
+      .sal-row, .sal-mine { grid-template-columns: 1fr 1fr; }
+      .sal-row > span:first-child, .sal-row .sal-att, .sal-mine > span:first-child { grid-column:1 / -1; }
+      .sal-l { display:block; font-size:10.5px; font-weight:700; text-transform:uppercase; letter-spacing:0.05em; color:var(--text-light); margin-bottom:2px; }
+    }
     .caller-tag { display:inline-block; font-weight:700; color:#1D6A96; background:#E3F0F8; border-radius:999px; padding:1px 8px; font-size:12px; }
     .caller-tag.outside { color:#8A4A12; background:#FDF0E3; }
     .caller-sum { display:flex; gap:6px; flex-wrap:wrap; margin-top:10px; }
@@ -3350,6 +3371,12 @@
     <div class="modal-box modal-lg">
       <div class="modal-header"><h3 class="font-serif" style="font-size:22px; font-weight:700;" id="sel-title">Selection</h3><button class="btn btn-outline btn-sm" data-close-modal="modal-sel">✕</button></div>
       <div id="sel-body"></div>
+    </div>
+  </div>
+  <div class="modal-backdrop" id="modal-salpay">
+    <div class="modal-box">
+      <div class="modal-header"><h3 class="font-serif" style="font-size:20px; font-weight:700;" id="salpay-title">Pay salary</h3><button class="btn btn-outline btn-sm" data-close-modal="modal-salpay">✕</button></div>
+      <div id="salpay-body"></div>
     </div>
   </div>
   <div class="modal-backdrop" id="modal-attday">
@@ -8288,14 +8315,14 @@
         const root = document.getElementById('attendance-root'); if (!root) return;
         const me = getCurrentStaff() || {};
         const all = attCanSeeAll();
-        const view = all && state.attView === 'team' ? 'team' : 'me';
+        const view = state.attView === 'salary' ? 'salary' : (all && state.attView === 'team' ? 'team' : 'me');
         if (!window.__attMonth) window.__attMonth = attToday().slice(0, 7);
         if (!window.__attDate) window.__attDate = attToday();
         const month = window.__attMonth;
         const sub = document.getElementById('att-sub');
-        if (sub) sub.textContent = view === 'team' ? 'Everyone’s attendance and work — view only' : `${me.name || ''} · ${me.email || ''} — only you can see and change your records${all ? ' (and admins can view them)' : ''}`;
-        const tabs = all ? `<div class="seg-toggle" style="margin-bottom:14px;"><button type="button" class="${view === 'me' ? 'on' : ''}" data-att-view="me">My attendance</button><button type="button" class="${view === 'team' ? 'on' : ''}" data-att-view="team">Team (all staff)</button></div>` : '';
-        root.innerHTML = tabs + (view === 'team' ? attTeamHtml(month) : attMineHtml(month));
+        if (sub) sub.textContent = view === 'salary' ? (all ? 'Monthly salary for all staff, worked out from attendance' : 'Your salary and salary slips — only you and the admin can see them') : view === 'team' ? 'Everyone’s attendance and work — view only' : `${me.name || ''} · ${me.email || ''} — only you can see and change your records${all ? ' (and admins can view them)' : ''}`;
+        const tabs = `<div class="seg-toggle" style="margin-bottom:14px;"><button type="button" class="${view === 'me' ? 'on' : ''}" data-att-view="me">My attendance</button>${all ? `<button type="button" class="${view === 'team' ? 'on' : ''}" data-att-view="team">Team (all staff)</button>` : ''}<button type="button" class="${view === 'salary' ? 'on' : ''}" data-att-view="salary">${all ? 'Salary' : 'My salary'}</button></div>`;
+        root.innerHTML = tabs + (view === 'salary' ? (all ? salTeamHtml(month) : salMineHtml()) : view === 'team' ? attTeamHtml(month) : attMineHtml(month));
       }
       function attMineHtml(month) {
         const today = attToday(); const r = attGet(attMe(), today);
@@ -8470,6 +8497,168 @@
         r.work.push({ id: uid('w'), text, clientId: fd.get('clientId') || '', hours: Number(fd.get('hours')) || '' });
         commitState(); renderAttendance(); showToast('Work added'); document.querySelector('#att-work-form [name="text"]')?.focus();
       }, true);
+
+
+      // ===================== SALARY =====================
+      // Admin ("Manage team & access") sets salaries and pays; each staff member sees only their own salary.
+      const SAL_MODES = ['Bank transfer', 'UPI', 'Cash', 'Cheque'];
+      function salSettings() { if (!state.salarySettings) state.salarySettings = { basis: 26, paidLeaves: 1 }; return state.salarySettings; }
+      function salProfiles() { if (!Array.isArray(state.salaryProfiles)) state.salaryProfiles = []; return state.salaryProfiles; }
+      function salRuns() { if (!Array.isArray(state.salaryRuns)) state.salaryRuns = []; return state.salaryRuns; }
+      const salProfile = email => salProfiles().find(x => x.email === String(email).toLowerCase());
+      const salRun = (email, month) => salRuns().find(x => x.email === String(email).toLowerCase() && x.month === month);
+      function salEnsureRun(email, month) {
+        let r = salRun(email, month);
+        if (!r) { r = { id: uid('sal'), email: String(email).toLowerCase(), month, lop: '', bonus: '', deduct: '', note: '', paid: false }; salRuns().push(r); }
+        return r;
+      }
+      function salCalc(email, month) {
+        const run = salRun(email, month);
+        if (run && run.paid && run.snap) return Object.assign({}, run.snap, { run, paid: true });
+        const set = salSettings();
+        const monthly = Number((salProfile(email) || {}).monthly) || 0;
+        const rs = attList().filter(r => r.email === String(email).toLowerCase() && r.date.startsWith(month));
+        const c = k => rs.filter(r => r.status === k).length;
+        const absent = c('absent'), leave = c('leave'), half = c('half');
+        const autoLop = absent + Math.max(0, leave - (Number(set.paidLeaves) || 0)) + half * 0.5;
+        const lop = run && run.lop !== '' && run.lop !== undefined ? Number(run.lop) || 0 : autoLop;
+        const basis = Number(set.basis) || 26;
+        const perDay = monthly / basis;
+        const lopAmt = Math.round(perDay * lop);
+        const bonus = Number(run && run.bonus) || 0, deduct = Number(run && run.deduct) || 0;
+        const net = Math.max(0, Math.round(monthly - lopAmt + bonus - deduct));
+        return { monthly, basis, perDay: Math.round(perDay), present: c('present') + c('site') + c('wfh'), half, leave, absent, autoLop, lop, lopAmt, bonus, deduct, net, note: (run && run.note) || '', run, paid: false };
+      }
+      const monthTitle = m => new Date(m + '-01T00:00').toLocaleDateString('en-IN', { month: 'long', year: 'numeric' });
+      function salTeamHtml(month) {
+        const set = salSettings(); const staff = state.staff || [];
+        const rows = staff.map(st => ({ st, k: salCalc(st.email, month) }));
+        const totalNet = rows.reduce((a, x) => a + x.k.net, 0), paidNet = rows.filter(x => x.k.paid).reduce((a, x) => a + x.k.net, 0);
+        return `
+          <div class="card">
+            <div class="hub-card-title" style="display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap;">
+              <span>Salary · ${escapeHtml(monthTitle(month))}</span>
+              <span style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
+                <input class="input" type="month" data-att-month value="${month}" style="max-width:170px;" />
+                <button type="button" class="btn btn-outline btn-sm" data-sal-csv>Download (Excel CSV)</button>
+              </span>
+            </div>
+            <div class="sal-settings">
+              <label>Working days per month <input class="input" type="number" min="20" max="31" data-sal-set="basis" value="${escapeHtml(set.basis)}" /></label>
+              <label>Paid leaves per month <input class="input" type="number" min="0" max="10" step="0.5" data-sal-set="paidLeaves" value="${escapeHtml(set.paidLeaves)}" /></label>
+              <span class="hub-muted">Loss-of-pay days = absent + half days × ½ + leave beyond the paid leaves. You can change it for anyone.</span>
+            </div>
+            <div class="att-sum" style="grid-template-columns:repeat(3, minmax(0, 1fr));"><div><small>Total to pay</small><strong>${formatINR(totalNet)}</strong></div><div><small>Paid</small><strong class="pay-in">${formatINR(paidNet)}</strong></div><div><small>Still to pay</small><strong>${formatINR(totalNet - paidNet)}</strong></div></div>
+            <div class="sal-table">
+              <div class="sal-row sal-head"><span>Staff</span><span>Monthly salary</span><span>Attendance</span><span>Loss-of-pay days</span><span>Bonus / incentive</span><span>Deductions / advance</span><span>Net pay</span><span></span></div>
+              ${rows.map(({ st, k }) => { const e = escapeHtml(st.email.toLowerCase()); const ro = k.paid ? 'disabled' : ''; return `
+                <div class="sal-row${k.paid ? ' sal-paid' : ''}">
+                  <span><strong>${escapeHtml(st.name)}</strong><em>${escapeHtml(st.role || '')}</em></span>
+                  <label><span class="sal-l">Monthly salary</span><input class="input tabular" type="number" min="0" step="500" data-sal-monthly="${e}" value="${k.monthly || ''}" placeholder="₹ per month" ${ro} /></label>
+                  <span class="sal-att"><span class="sal-l">Attendance</span>${k.present} present · ${k.half} half · ${k.leave} leave · ${k.absent} absent</span>
+                  <label><span class="sal-l">Loss-of-pay days</span><input class="input tabular" type="number" min="0" step="0.5" data-sal-f="lop" data-email="${e}" value="${k.lop}" ${ro} title="Worked out: ${k.autoLop} day(s)" /><em>− ${formatINR(k.lopAmt)}</em></label>
+                  <label><span class="sal-l">Bonus / incentive</span><input class="input tabular" type="number" min="0" step="100" data-sal-f="bonus" data-email="${e}" value="${k.bonus || ''}" placeholder="0" ${ro} /></label>
+                  <label><span class="sal-l">Deductions / advance</span><input class="input tabular" type="number" min="0" step="100" data-sal-f="deduct" data-email="${e}" value="${k.deduct || ''}" placeholder="0" ${ro} /></label>
+                  <span class="sal-net"><span class="sal-l">Net pay</span><strong class="tabular">${formatINR(k.net)}</strong>${k.paid ? `<em class="pay-in">Paid ${escapeHtml(fmtDay(k.run.paidOn))}</em>` : ''}</span>
+                  <span class="sal-acts">
+                    ${k.monthly ? `<button type="button" class="btn btn-outline btn-sm" data-sal-slip="${e}">Slip</button>` : ''}
+                    ${k.paid ? `<button type="button" class="wa-linkbtn" data-sal-unpay="${e}">Undo paid</button>` : (k.monthly ? `<button type="button" class="btn btn-primary btn-sm" data-sal-pay="${e}">Mark paid</button>` : '')}
+                  </span>
+                </div>`; }).join('')}
+            </div>
+            <div class="hub-muted" style="font-size:12px; margin-top:8px;">Per-day rate = monthly salary ÷ ${escapeHtml(set.basis)}. Once marked paid, that month's figures are kept as they were paid.</div>
+          </div>`;
+      }
+      function salMineHtml() {
+        const me = attMe(); const prof = salProfile(me);
+        if (!prof || !Number(prof.monthly)) return `<div class="card hub-muted" style="padding:24px;">Your salary hasn't been set up yet. Ask the admin to add it.</div>`;
+        const months = []; const d = new Date(); d.setDate(1);
+        for (let i = 0; i < 12; i++) { months.push(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`); d.setMonth(d.getMonth() - 1); }
+        return `<div class="card">
+          <div class="hub-card-title">My salary · ${formatINR(prof.monthly)} per month</div>
+          <div class="sal-table">
+            <div class="sal-mine sal-head"><span>Month</span><span>Attendance</span><span>Loss of pay</span><span>Bonus</span><span>Deductions</span><span>Net pay</span><span>Status</span><span></span></div>
+            ${months.map(m => { const k = salCalc(me, m); const any = k.paid || salRun(me, m) || attList().some(r => r.email === me && r.date.startsWith(m)); if (!any) return ''; return `
+              <div class="sal-mine">
+                <span><strong>${escapeHtml(monthTitle(m))}</strong></span>
+                <span>${k.present} present · ${k.half} half · ${k.leave} leave · ${k.absent} absent</span>
+                <span>${k.lop} day${k.lop === 1 ? '' : 's'} (− ${formatINR(k.lopAmt)})</span>
+                <span>${k.bonus ? formatINR(k.bonus) : '—'}</span>
+                <span>${k.deduct ? formatINR(k.deduct) : '—'}</span>
+                <span><strong class="tabular">${formatINR(k.net)}</strong></span>
+                <span>${k.paid ? `<span class="att-badge" style="--c:#0F7457;">Paid ${escapeHtml(fmtDay(k.run.paidOn))}</span>` : '<span class="att-badge" style="--c:#B45309;">Not paid yet</span>'}</span>
+                <span><button type="button" class="btn btn-outline btn-sm" data-sal-slip="${escapeHtml(me)}" data-month="${m}">Slip</button></span>
+              </div>`; }).join('') || '<div class="hub-muted" style="padding:12px;">No months yet.</div>'}
+          </div>
+        </div>`;
+      }
+      function salSlipSpec(email, month) {
+        const st = (state.staff || []).find(x => x.email.toLowerCase() === email) || { name: email, email };
+        const k = salCalc(email, month);
+        const rows = [
+          { cells: ['Monthly salary', formatINR(k.monthly)] },
+          { cells: [{ main: 'Loss of pay', sub: `${k.lop} day(s) × ${formatINR(k.perDay)} per day` }, `− ${formatINR(k.lopAmt)}`] }
+        ];
+        if (k.bonus) rows.push({ cells: ['Bonus / incentive', formatINR(k.bonus)] });
+        if (k.deduct) rows.push({ cells: ['Deductions / advance', `− ${formatINR(k.deduct)}`] });
+        return {
+          title: 'SALARY SLIP', docTitle: `Salary slip — ${st.name} — ${monthTitle(month)}`, filename: `Salary_${String(st.name).replace(/[^\w]+/g, '_')}_${month}.html`,
+          info: { leftLabel: 'Employee', leftName: st.name, leftSub: [st.role, st.email].filter(Boolean).join(' · '), rightLabel: 'Salary for', rightLines: [monthTitle(month), k.paid ? `Paid on ${fmtDay(k.run.paidOn)}${k.run.mode ? ' · ' + k.run.mode : ''}` : 'Not paid yet', k.paid && k.run.ref ? `Ref: ${k.run.ref}` : ''].filter(Boolean) },
+          blocks: [
+            { type: 'table', cols: [{ label: 'Description', w: 130 }, { label: 'Amount', w: 56, align: 'right' }], rows },
+            { type: 'totals', rows: [['Net pay', formatINR(k.net), { bold: true, fill: '#F8E9DF', color: '#A44A22' }]] },
+            { type: 'text', text: `Attendance: ${k.present} present, ${k.half} half day(s), ${k.leave} leave, ${k.absent} absent. Working days basis: ${k.basis}.${k.note ? ' Note: ' + k.note : ''}` }
+          ],
+          signatures: ['Employee signature', `For ${(state.studioProfile || {}).name || 'Studio'}`]
+        };
+      }
+      let salPayCtx = null;
+      function openSalPay(email, month) {
+        const st = (state.staff || []).find(x => x.email.toLowerCase() === email) || { name: email };
+        const k = salCalc(email, month);
+        salPayCtx = { email, month };
+        document.getElementById('salpay-title').textContent = `Pay ${st.name} · ${monthTitle(month)}`;
+        document.getElementById('salpay-body').innerHTML = `
+          <div class="flow-lead"><strong>Net pay ${formatINR(k.net)}</strong><span>${formatINR(k.monthly)} − ${formatINR(k.lopAmt)} loss of pay${k.bonus ? ` + ${formatINR(k.bonus)} bonus` : ''}${k.deduct ? ` − ${formatINR(k.deduct)} deductions` : ''}</span></div>
+          <div class="form-grid" style="margin-top:12px;">
+            <div><label class="form-label">Paid on</label><input class="input" type="date" id="sp-date" value="${getDateOffset(0)}" /></div>
+            <div><label class="form-label">Mode</label><select class="select" id="sp-mode">${SAL_MODES.map(m => `<option>${m}</option>`).join('')}</select></div>
+            <div class="form-full"><label class="form-label">Reference (optional)</label><input class="input" id="sp-ref" placeholder="UTR / UPI ref / cheque no." /></div>
+            <div class="form-full"><label class="form-label">Note (optional)</label><input class="input" id="sp-note" value="${escapeHtml(k.note)}" placeholder="e.g. Diwali bonus included" /></div>
+          </div>
+          <div class="modal-actions-row"><button type="button" class="btn btn-outline" data-close-modal="modal-salpay">Cancel</button><button type="button" class="btn btn-primary" data-salpay-save>Mark as paid</button></div>`;
+        openModal('modal-salpay');
+      }
+      function salCsv(month) {
+        const q = v => `"${String(v == null ? '' : v).replace(/"/g, '""')}"`;
+        const lines = [['Staff', 'Email', 'Monthly salary', 'Present', 'Half days', 'Leave', 'Absent', 'Loss-of-pay days', 'Loss of pay', 'Bonus', 'Deductions', 'Net pay', 'Paid on', 'Mode', 'Reference'].map(q).join(',')];
+        (state.staff || []).forEach(st => { const k = salCalc(st.email, month); lines.push([st.name, st.email, k.monthly, k.present, k.half, k.leave, k.absent, k.lop, k.lopAmt, k.bonus, k.deduct, k.net, k.paid ? k.run.paidOn : '', k.paid ? k.run.mode : '', k.paid ? k.run.ref : ''].map(q).join(',')); });
+        const blob = new Blob(['﻿' + lines.join('\r\n')], { type: 'text/csv;charset=utf-8' });
+        const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `Salary_${month}.csv`; document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 500);
+      }
+      document.addEventListener('change', e => {
+        const t = e.target; if (!t.closest || !t.closest('#attendance-root')) return;
+        if (!attCanSeeAll() && (t.dataset.salSet || t.dataset.salMonthly || t.dataset.salF)) return;
+        if (t.dataset.salSet) { salSettings()[t.dataset.salSet] = Number(t.value) || 0; commitState(); renderAttendance(); return; }
+        if (t.dataset.salMonthly) { let pr = salProfile(t.dataset.salMonthly); if (!pr) { pr = { id: uid('sp'), email: t.dataset.salMonthly }; salProfiles().push(pr); } pr.monthly = Number(t.value) || 0; commitState(); renderAttendance(); return; }
+        if (t.dataset.salF) { const r = salEnsureRun(t.dataset.email, window.__attMonth); r[t.dataset.salF] = t.value === '' ? '' : Number(t.value) || 0; commitState(); renderAttendance(); }
+      });
+      document.addEventListener('click', e => {
+        const t = e.target;
+        const sl = t.closest('[data-sal-slip]'); if (sl) { const em = sl.dataset.salSlip; if (em !== attMe() && !attCanSeeAll()) return; openSpecPreview(salSlipSpec(em, sl.dataset.month || window.__attMonth)); return; }
+        if (!attCanSeeAll()) return;
+        if (t.closest('[data-sal-csv]')) { salCsv(window.__attMonth); return; }
+        const py = t.closest('[data-sal-pay]'); if (py) { openSalPay(py.dataset.salPay, window.__attMonth); return; }
+        if (t.closest('[data-salpay-save]') && salPayCtx) {
+          const g = id => ((document.getElementById(id) || {}).value || '').trim();
+          const r = salEnsureRun(salPayCtx.email, salPayCtx.month);
+          r.note = g('sp-note');
+          const k = salCalc(salPayCtx.email, salPayCtx.month);
+          Object.assign(r, { paid: true, paidOn: g('sp-date') || getDateOffset(0), mode: g('sp-mode'), ref: g('sp-ref'), paidBy: state.activeStaffEmail, snap: Object.assign({}, k, { run: undefined, paid: undefined }) });
+          commitState(); closeModal('modal-salpay'); salPayCtx = null; renderAttendance(); showToast(`Salary marked paid · ${formatINR(k.net)}`); return;
+        }
+        const up = t.closest('[data-sal-unpay]'); if (up) { const r = salRun(up.dataset.salUnpay, window.__attMonth); if (r) { r.paid = false; delete r.snap; delete r.paidOn; commitState(); renderAttendance(); showToast('Marked as not paid'); } }
+      });
 
       // ===== Delete an onboarded client (and everything that belongs to them) =====
       function clientLinkedRecords(c) {
