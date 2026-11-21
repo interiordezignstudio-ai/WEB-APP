@@ -10767,7 +10767,7 @@
       const META_IGNORE_COLUMNS = ['ad_id', 'adset_id', 'adset_name', 'campaign_id', 'form_id', 'is_organic', 'lead_status', 'inbox_url', 'retailer_item_id', 'is_qualified', 'is_quality', 'is_converted'];
       const META_MAP_FIELDS = [
         ['name', 'Name'], ['phone', 'Phone'], ['email', 'Email'], ['city', 'City / area'],
-        ['property', 'Property size (BHK)'], ['budget', 'Budget'], ['budget2', 'Budget 2'], ['budget3', 'Budget 3'], ['possession', 'Possession status'], ['notes', 'Message / notes'], ['id', 'Lead ID'], ['created', 'Date']
+        ['property', 'Property size (BHK)'], ['budget', 'Budget'], ['possession', 'Possession status'], ['notes', 'Message / notes'], ['id', 'Lead ID'], ['created', 'Date']
       ];
 
       function metaSheetRange(tab) {
@@ -10802,25 +10802,12 @@
       const BUDGET_HEADER_RE = /budget|spend|investment|invest_|cost|price|how_much/;
       const colLetter = i => { let s2 = ''; i += 1; while (i > 0) { const m = (i - 1) % 26; s2 = String.fromCharCode(65 + m) + s2; i = Math.floor((i - 1) / 26); } return s2; };
       function budgetColumns(headers, idx, useMetaCols, mapping) {
-        // Columns chosen in "Match the columns" (Budget, Budget 2, Budget 3) are used exactly as chosen
-        if (mapping && (Object.prototype.hasOwnProperty.call(mapping, 'budget2') || Object.prototype.hasOwnProperty.call(mapping, 'budget3'))) {
-          const out = [];
-          ['budget', 'budget2', 'budget3'].forEach(k => { const i = mapping[k] ? headers.indexOf(normHeader(mapping[k])) : -1; if (i >= 0 && !out.includes(i)) out.push(i); });
-          return out;
-        }
         const taken = new Set(Object.entries(idx).filter(([k, i]) => k !== 'budget' && i >= 0 && !BUDGET_HEADER_RE.test(headers[i] || '')).map(([, i]) => i));
         const cols = [];
         if (idx.budget >= 0) cols.push(idx.budget);
         headers.forEach((h, i) => { if (BUDGET_HEADER_RE.test(h) && !taken.has(i) && !cols.includes(i)) cols.push(i); });
         if (useMetaCols) META_BUDGET_COLS.forEach(i => { if (i < headers.length && !taken.has(i) && !cols.includes(i)) cols.push(i); });
         return cols;
-      }
-      // best guess for Budget 2 / Budget 3 when setting up the columns
-      function guessExtraBudgets(header, mainBudget, useMetaCols) {
-        const headers = header.map(normHeader);
-        const { idx } = resolveMetaColumns(header, null);
-        const main = mainBudget ? headers.indexOf(normHeader(mainBudget)) : -1;
-        return budgetColumns(headers, idx, useMetaCols, null).filter(i => i !== main).slice(0, 2).map(i => header[i]);
       }
       // Leads imported earlier may only have the budget answer in their notes, e.g. "what_is_your_budget?: 5_lakh"
       function backfillBudgetFromNotes() {
@@ -11070,9 +11057,6 @@
         META_MAP_FIELDS.forEach(([k]) => {
           map[k] = Object.prototype.hasOwnProperty.call(mapping, k) ? mapping[k] : (guess[k] >= 0 ? header[guess[k]] : '');
         });
-        if (!Object.prototype.hasOwnProperty.call(mapping, 'budget2') && !Object.prototype.hasOwnProperty.call(mapping, 'budget3')) {
-          const ex = guessExtraBudgets(header, map.budget, true); map.budget2 = ex[0] || ''; map.budget3 = ex[1] || '';
-        }
         cloud.pendingSheet = { id: sheetId, title: (info.properties && info.properties.title) || 'Google Sheet', tabs, tab: chosen, header, rows, mapping: map, mode: cloud.pendingSheet && cloud.pendingSheet.mode || 'new' };
       }
 
@@ -11095,6 +11079,7 @@
         state.metaSheetTitle = ps.title;
         state.metaSheetExternal = true;
         state.metaMapping = Object.assign({}, ps.mapping);
+        delete state.metaMapping.budget2; delete state.metaMapping.budget3;
         if (sameSheet && ps.mode !== 'all') { cloud.pendingSheet = null; commitState(); renderMetaStatus(); showToast('Column choices saved'); return; }
         const importAll = ps.mode === 'all';
         cloud.pendingSheet = null;
@@ -11603,7 +11588,6 @@
         const guess = resolveMetaColumns(job.header, null).idx;
         job.mapping = {};
         META_MAP_FIELDS.forEach(([k]) => { job.mapping[k] = guess[k] >= 0 ? job.header[guess[k]] : ''; });
-        { const ex = guessExtraBudgets(job.header, job.mapping.budget, false); job.mapping.budget2 = ex[0] || ''; job.mapping.budget3 = ex[1] || ''; }
       }
 
       function buildImportLeads(job) {
