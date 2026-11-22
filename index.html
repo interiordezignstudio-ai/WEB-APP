@@ -733,6 +733,10 @@
     .pay-what { font-weight: 500; color: var(--text-muted); }
     .pay-row .hub-row-meta, .vendor-card .hub-row-meta { white-space: normal; overflow-wrap: anywhere; }
     .pay-row > div:nth-child(2) { min-width: 0; }
+    /* in narrow columns (e.g. client Payments tab) let the buttons go to their own line */
+    .pay-row { flex-wrap: wrap; }
+    .pay-row > div:nth-child(2) { flex: 1 1 160px; }
+    .pay-row .pay-acts { margin-left: auto; }
     .pay-note { font-size: 12.5px; color: var(--text-muted); margin-top: 2px; }
     .pay-amt { font-weight: 800; font-size: 15px; white-space: nowrap; }
     .pay-acts { display: flex; gap: 6px; flex: none; }
@@ -2352,6 +2356,14 @@
       .att-row > span:first-child, .att-row .att-workcell { grid-column:1 / -1; }
       .ad-work-row { grid-template-columns:1fr 1fr; } .ad-work-row .input[data-k="text"] { grid-column:1 / -1; }
     }
+    .fee-row { display:grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto; gap:8px 10px; align-items:end; padding:10px 0; border-bottom:1px solid var(--border-subtle); }
+    .fee-row .fee-main { grid-column: 1 / -1; }
+    .fee-row:last-of-type { border-bottom:0; }
+    .fee-main small { display:block; font-size:12px; color:var(--text-muted); margin-top:2px; }
+    .fee-agreed { margin:0; display:flex; flex-direction:column; gap:2px; font-size:10.5px; font-weight:700; text-transform:uppercase; letter-spacing:0.05em; color:var(--text-light); }
+    .fee-agreed .input { padding:7px 8px; font-size:14px; text-transform:none; letter-spacing:0; }
+    .fee-bal small { display:block; font-size:10.5px; font-weight:700; text-transform:uppercase; letter-spacing:0.05em; color:var(--text-light); }
+
     .mse-token { display:flex; gap:12px; align-items:flex-end; flex-wrap:wrap; background:#FFF7F2; border:1px solid #F3D2AE; border-radius:12px; padding:10px 12px; margin-bottom:10px; }
     .mse-token label { margin:0; display:flex; flex-direction:column; gap:4px; font-size:12px; font-weight:700; }
     .mse-token .input { width:160px; padding:8px; }
@@ -5789,6 +5801,26 @@
       const msName = label => String(label || '').replace(/^\s*\d+(\.\d+)?\s*%\s*/, '').trim().toLowerCase();
       function msDefaultRaw() { const d = state.studioProfile && state.studioProfile.milestones; return Array.isArray(d) && d.length ? d : MS_DEFAULTS; }
       function msRaw(c) { return c && Array.isArray(c.milestones) && c.milestones.length ? c.milestones : msDefaultRaw(); }
+      // ===== Design & project management fees (collected separately from milestones) =====
+      const feesSeparate = c => !(c && c.feesSeparate === false);
+      function clientFees(c, fin) {
+        fin = fin || getClientFinance(c);
+        const mult = fin.feeGstMult || 1;
+        const estD = Math.round((fin.estDesignFee || 0) * mult), estP = Math.round((fin.estPmFee || 0) * mult);
+        const f = (c && c.fees) || {};
+        const agreedD = f.design !== undefined && f.design !== '' ? Number(f.design) || 0 : estD;
+        const agreedP = f.pm !== undefined && f.pm !== '' ? Number(f.pm) || 0 : estP;
+        const ins = c ? moneyList({ dir: 'in', clientId: c.id }) : [];
+        const recD = moneySum(ins.filter(m => m.kind === 'Design fee')), recP = moneySum(ins.filter(m => m.kind === 'Project management fee'));
+        return { estD, estP, inEstimate: estD + estP, agreedD, agreedP, recD, recP, balD: Math.max(0, agreedD - recD), balP: Math.max(0, agreedP - recP), separate: feesSeparate(c) };
+      }
+      // amount the payment milestones are worked out on
+      function msBase(c, fin) {
+        fin = fin || getClientFinance(c);
+        const est = fin.estimateValue || 0;
+        if (!c || !feesSeparate(c)) return est;
+        return Math.max(0, est - clientFees(c, fin).inEstimate);
+      }
       const TOKEN_LABEL = 'Token / booking amount';
       // fixed token amount (₹) for a client: its own, else the studio default
       function msTokenOf(c) {
@@ -5881,6 +5913,7 @@
           const sum = computeVersionSummary(fb.versions.A);
           Object.assign(f, {
             isFinal: true, isApproved: true, verKey: 'F', verTitle: 'Final estimate', contract: sum.grandTotal, estimateValue: sum.grandTotal,
+            estDesignFee: sum.designFee, estPmFee: sum.execFee, feeGstMult: fb.versions.A.includeGst && sum.gstBasis !== 'material' ? 1.18 : 1,
             taxableBase: sum.taxableTotal, invoiceGstBase: sum.gstBasis === 'material' ? sum.materialTotal : sum.taxableTotal,
             toBill: Math.max(0, sum.grandTotal - f.billed)
           });
@@ -5910,6 +5943,9 @@
           verTitle: ver ? ver.title : '',
           contract,
           estimateValue: sum ? sum.grandTotal : 0,
+          estDesignFee: sum ? sum.designFee : 0,
+          estPmFee: sum ? sum.execFee : 0,
+          feeGstMult: sum && ver && ver.includeGst && sum.gstBasis !== 'material' ? 1.18 : 1,
           taxableBase: sum ? sum.taxableTotal : 0,
           invoiceGstBase: sum ? (sum.gstBasis === 'material' ? sum.materialTotal : sum.taxableTotal) : 0,
           invoices,
@@ -6305,7 +6341,7 @@
               </div>` : ''}
             </div>`;
         }).join('');
-        const loose = moneyList({ dir: 'in', clientId: c.id }).filter(p2 => milestoneIndexOf(p2) < 0);
+        const loose = moneyList({ dir: 'in', clientId: c.id }).filter(p2 => milestoneIndexOf(p2) < 0 && !FEE_KINDS.includes(p2.kind));
 
         // per-project filters (kept separately for each client)
         if (!state.hubPayF || typeof state.hubPayF !== 'object') state.hubPayF = {};
@@ -6360,6 +6396,7 @@
               ${schedule}
               ${loose.length ? `<div class="ms-loose">${formatINR(moneySum(loose))} received is not linked to a milestone (${loose.length} payment${loose.length === 1 ? '' : 's'}). Use <strong>Edit</strong> on a payment to link it.</div>` : ''}
             </div>
+            ${feesCardHtml(c, fin, perms)}
             <div class="card">
               <div class="hub-card-title" style="display:flex; justify-content:space-between; align-items:center;">
                 <span>Bills for this client</span>
@@ -8732,10 +8769,10 @@
       function msTotal() { return Math.round(msEdit.rows.reduce((a, r) => a + (Number(r.pct) || 0), 0) * 100) / 100; }
       function renderMsEditor() {
         const box = document.getElementById('ms-body'); if (!box || !msEdit) return;
-        const c = clientById(msEdit.clientId); const fin = c ? getClientFinance(c) : null; const base = fin ? fin.estimateValue || 0 : 0;
+        const c = clientById(msEdit.clientId); const fin = c ? getClientFinance(c) : null; const base = c ? msBase(c, fin) : 0;
         const tot = msTotal();
         box.innerHTML = `
-          <div class="hub-muted" style="margin:-4px 0 10px;">${escapeHtml(c ? c.name : '')}${base ? ` · estimate ${formatINR(base)}` : ''}${msEdit.own ? '' : ' · now using the studio default'}</div>
+          <div class="hub-muted" style="margin:-4px 0 10px;">${escapeHtml(c ? c.name : '')}${base ? ` · ${fin && base !== fin.estimateValue ? 'estimate without design &amp; PM fees' : 'estimate'} ${formatINR(base)}` : ''}${msEdit.own ? '' : ' · now using the studio default'}</div>
           <div class="mse-token">
             <label><span>Token / booking amount (₹)</span><input class="input tabular" type="number" inputmode="numeric" min="0" step="1000" id="mse-token" value="${escapeHtml(msEdit.token)}" placeholder="0 = no token" /></label>
             <span class="hub-muted">A fixed amount to book the project, paid first. It is taken off the <strong>last milestone</strong>.</span>
@@ -8759,6 +8796,37 @@
             <button type="button" class="btn btn-primary" data-mse-save>Save schedule</button>
           </div>`;
       }
+      function feesCardHtml(c, fin, perms) {
+        const F = clientFees(c, fin);
+        const row = (key, label, agreed, est, rec, bal, kind) => `
+          <div class="fee-row">
+            <div class="fee-main"><strong>${label}</strong>
+              <small>${est ? `In estimate: ${formatINR(est)}` : 'Not in the estimate'}${rec ? ` · received ${formatINR(rec)}` : ''}</small>
+              ${agreed ? `<span class="ms-bar"><span style="width:${Math.min(100, Math.round(rec / agreed * 100))}%"></span></span>` : ''}
+            </div>
+            <label class="fee-agreed"><span>Agreed ₹</span><input class="input tabular" type="number" min="0" step="1000" data-fee-agreed="${key}" data-client="${c.id}" value="${agreed || ''}" placeholder="0" ${perms.canEditBilling ? '' : 'disabled'} /></label>
+            <div class="fee-bal"><small>Balance</small><strong class="tabular ${agreed && !bal ? 'pay-in' : ''}">${agreed ? (bal ? formatINR(bal) : 'Paid ✓') : '—'}</strong></div>
+            ${perms.canEditBilling ? `<button type="button" class="btn btn-outline btn-sm" data-fee-pay="${kind}" data-client="${c.id}" data-amount="${bal || ''}">+ Record</button>` : ''}
+          </div>`;
+        return `
+          <div class="card">
+            <div class="hub-card-title">Design &amp; project management fees</div>
+            <div class="hub-muted" style="margin:-6px 0 10px;">Recorded separately from the payment milestones.</div>
+            ${row('design', 'Design fee', F.agreedD, F.estD, F.recD, F.balD, 'Design fee')}
+            ${row('pm', 'Project management fee', F.agreedP, F.estP, F.recP, F.balP, 'Project management fee')}
+            ${F.inEstimate ? `<label class="pay-check" style="margin-top:10px;"><input type="checkbox" data-fee-separate="${c.id}" ${F.separate ? 'checked' : ''} ${perms.canEditBilling ? '' : 'disabled'} /> Collect these fees separately — milestones are worked out on the estimate without the fees (${formatINR(F.inEstimate)})</label>` : ''}
+          </div>`;
+      }
+      document.addEventListener('change', e => {
+        const t = e.target;
+        if (t.dataset && t.dataset.feeAgreed) { if (!getCurrentPermissions().canEditBilling) return; const c = clientById(t.dataset.client); if (!c) return; c.fees = c.fees || {}; c.fees[t.dataset.feeAgreed] = t.value === '' ? '' : Number(t.value) || 0; commitState(); renderClients(); showToast('Agreed fee saved'); return; }
+        if (t.dataset && t.dataset.feeSeparate) { if (!getCurrentPermissions().canEditBilling) return; const c = clientById(t.dataset.feeSeparate); if (!c) return; c.feesSeparate = t.checked; commitState(); renderClients(); showToast(t.checked ? 'Fees collected separately — milestones updated' : 'Milestones now include the fees'); }
+      });
+      document.addEventListener('click', e => {
+        const b = e.target.closest('[data-fee-pay]'); if (!b) return;
+        if (!getCurrentPermissions().canEditBilling) { showToast('Only Admin / Accounts can record payments'); return; }
+        openPay('in', { clientId: b.dataset.client, kind: b.dataset.feePay, amount: Number(b.dataset.amount) || '' });
+      });
       function msRowAmt(base, r, i) {
         if (!base) return '—';
         const tok = Number(msEdit.token) || 0;
@@ -8767,7 +8835,7 @@
       }
       function msLiveUpdate() {
         msCapture();
-        const c = clientById(msEdit.clientId); const base = c ? getClientFinance(c).estimateValue || 0 : 0;
+        const c = clientById(msEdit.clientId); const base = c ? msBase(c) : 0;
         msEdit.rows.forEach((r, i) => { const el = document.querySelector(`[data-mse-amt="${r.id}"]`); if (el) el.innerHTML = msRowAmt(base, r, i); });
         const tot = msTotal(); const t = document.getElementById('mse-total');
         if (t) { t.textContent = `Total ${fmtPct(tot)}%${Math.abs(tot - 100) < 0.01 ? ' ✓' : ' — must be 100%'}`; t.className = Math.abs(tot - 100) < 0.01 ? 'pay-in' : 'pay-out'; }
@@ -8798,7 +8866,7 @@
         const asDefault = document.getElementById('mse-default') && document.getElementById('mse-default').checked;
         const clean = rows.map(r => ({ id: r.id, name: r.name, pct: r.pct }));
         const token = Math.max(0, Number(msEdit.token) || 0);
-        const fin0 = getClientFinance(c);
+        const fin0 = { estimateValue: msBase(c) };
         if (token && fin0.estimateValue && token > Math.round(fin0.estimateValue * rows[rows.length - 1].pct / 100) && !await appConfirm(`The token ${formatINR(token)} is more than the last milestone (${formatINR(Math.round(fin0.estimateValue * rows[rows.length - 1].pct / 100))}).\n\nThe last milestone will show ₹0. Save anyway?`, { ok: 'Save', danger: false })) return;
         relabelClientMilestones(c, rows.map(r => [r.oldLabel, `${fmtPct(r.pct)}% ${r.name}`]));
         if (asDefault) {
@@ -14133,7 +14201,8 @@
       // leads that are close to paying a token
       const TOKEN_READY_STAGES = ['Closed Won', 'Negotiation', 'Estimate Sent', 'Meeting Done'];
       const PAY_MODES = ['UPI', 'Bank transfer', 'Cash', 'Cheque', 'Card'];
-      const IN_KINDS = ['Token', 'Advance', 'Milestone', 'Site bill', 'Final payment', 'Other'];
+      const FEE_KINDS = ['Design fee', 'Project management fee'];
+      const IN_KINDS = ['Token', 'Advance', 'Milestone', 'Design fee', 'Project management fee', 'Site bill', 'Final payment', 'Other'];
       const OUT_CATS = ['Labour', 'Material', 'Contractor', 'Transport', 'Site expense', 'Design / consultant', 'Other'];
       const VENDOR_TYPES = ['Labour', 'Contractor', 'Vendor / supplier'];
       const VENDOR_TRADES = ['Carpenter', 'Electrician', 'Plumber', 'Painter', 'POP / false ceiling', 'Tiler / mason', 'Fabricator', 'Glass & aluminium', 'Ply & laminate supplier', 'Hardware supplier', 'Modular kitchen vendor', 'Granite / marble', 'Helper', 'Transport', 'Other'];
@@ -14199,13 +14268,15 @@
         if (m.dir !== 'in') return -1;
         let label = m.milestone || '';
         if (!label && m.invoiceId) { const inv = (state.invoices || []).find(i => i.id === m.invoiceId); label = inv ? inv.milestone || '' : ''; }
+        if (FEE_KINDS.includes(m.kind)) return -1;
         const list = msList(clientById(m.clientId));
         if (m.kind === 'Token') { const ti = list.findIndex(x => x.token); if (ti >= 0) return ti; }
         return label ? msFind(list, label) : -1;
       }
       function milestoneStatus(c, fin, idx) {
         const item = msList(c)[idx] || {};
-        const expected = item.token ? item.fixed : Math.max(0, Math.round((fin.estimateValue || 0) * (item.pct || 0)) - (fin.estimateValue ? item.lessToken || 0 : 0));
+        const base = msBase(c, fin);
+        const expected = item.token ? item.fixed : Math.max(0, Math.round(base * (item.pct || 0)) - (base ? item.lessToken || 0 : 0));
         const payments = moneyList({ dir: 'in', clientId: c.id }).filter(m => milestoneIndexOf(m) === idx);
         const received = moneySum(payments);
         const balance = Math.max(0, expected - received);
@@ -14447,6 +14518,7 @@
         if (!m && (opts.siteBillId || opts.poId)) { if (opts.siteBillId) payCtx.d.siteBillId = opts.siteBillId; if (opts.poId) payCtx.d.poId = opts.poId; if (opts.amount) payCtx.d.amount = opts.amount; if (opts.note) payCtx.d.note = opts.note; if (opts.work) payCtx.d.work = opts.work; }
         if (!m && dir === 'out' && payCtx.d.vendorId) { const v = vendorById(payCtx.d.vendorId); if (v) payCtx.d.category = v.type === 'Vendor / supplier' ? 'Material' : v.type === 'Contractor' ? 'Contractor' : 'Labour'; }
         if (!m && opts.category) payCtx.d.category = opts.category;
+        if (!m && dir === 'in' && FEE_KINDS.includes(payCtx.d.kind) && opts.amount) payCtx.d.amount = opts.amount;
         renderPayModal();
         openModal('modal-pay');
       }
@@ -14458,6 +14530,12 @@
           ['pv-name', 'nvName'], ['pv-phone', 'nvPhone'], ['pv-type', 'nvType'], ['pv-trade', 'nvTrade']].forEach(([id, k]) => { const x = v(id); if (x !== undefined) d[k] = x; });
       }
       function renderPayModal() {
+        renderPayModalBase();
+        if (!payCtx || payCtx.d.dir !== 'in' || !FEE_KINDS.includes(payCtx.d.kind)) return;
+        const ms = document.getElementById('pay-ms');
+        if (ms) { ms.value = ''; payCtx.d.milestone = ''; const row = ms.closest('.form-full'); if (row) { row.style.display = 'none'; row.insertAdjacentHTML('afterend', `<div class="form-full hub-muted" style="font-size:12.5px;">${escapeHtml(payCtx.d.kind)} is recorded separately — it is not counted against the payment milestones.</div>`); } }
+      }
+      function renderPayModalBase() {
         const box = document.getElementById('pay-body'); if (!box || !payCtx) return;
         const d = payCtx.d; const isIn = d.dir === 'in';
         document.getElementById('pay-title').textContent = payCtx.id ? 'Edit payment' : isIn ? 'Money received' : 'Payment made';
@@ -14536,7 +14614,7 @@
         if (isIn) {
           entry.kind = d.kind || 'Advance'; entry.invoiceId = d.invoiceId || entry.invoiceId || ''; delete entry.vendorId;
           const inv = entry.invoiceId && (state.invoices || []).find(i => i.id === entry.invoiceId);
-          entry.milestone = d.milestone || (inv && inv.milestone) || '';
+          entry.milestone = FEE_KINDS.includes(entry.kind) ? '' : (d.milestone || (inv && inv.milestone) || '');
         }
         else { entry.vendorId = vendorId; entry.work = (d.work || '').trim(); entry.category = d.category || 'Labour'; delete entry.kind; delete entry.invoiceId; }
         if (d.siteBillId) entry.siteBillId = d.siteBillId;
@@ -16747,9 +16825,9 @@
             const firstId = records[0]?.id || state.activeBoqClientId;
             const boq = ensureBoqForClient(firstId);
             const verKey = boq.approvedVersion || boq.activeVersion || 'A';
-            const sub = computeVersionSummary(boq.versions[verKey]).taxableTotal;
-            document.getElementById('bill-modal-amount').value = Math.round(sub * 0.30);
+            fillBillMilestones(firstId, 0);
             openModal('modal-bill');
+            document.getElementById('bill-modal-milestone').dispatchEvent(new Event('change', { bubbles: true }));
             return;
           }
           if (act === 'open-new-staff') {
@@ -18154,7 +18232,9 @@
           const pct = Number(optD.pct) || 0;
           const boq = ensureBoqForClient(cId);
           const verKey = boq.approvedVersion || boq.activeVersion || 'A';
-          const sub = computeVersionSummary(boq.versions[verKey]).taxableTotal;
+          const sumB = computeVersionSummary(boq.versions[verKey]);
+          const clB = clientById(cId);
+          const sub = clB && feesSeparate(clB) ? Math.max(0, sumB.taxableTotal - sumB.designFee - sumB.execFee) : sumB.taxableTotal;
           document.getElementById('bill-modal-amount').value = optD.fixed ? Number(optD.fixed) : Math.max(0, Math.round(sub * pct) - (Number(optD.less) || 0));
           return;
         }
