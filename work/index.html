@@ -31,8 +31,14 @@
     a { color: inherit; }
     .wrap { max-width: 1180px; margin: 0 auto; padding: 0 16px; }
 
+    /* banner (studio letterhead) */
+    .banner { background: #FFFFFF; border-bottom: 1px solid var(--line); }
+    .banner img { display: block; width: 100%; max-width: 1600px; height: auto; margin: 0 auto; }
+    @media (max-width: 760px) { .banner img { height: 112px; width: 100%; object-fit: cover; object-position: 99% 50%; } }
+    .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+    .tagline { margin: 0; color: var(--muted); font-size: 16px; max-width: 620px; }
     /* hero */
-    header.hero { padding: 36px 0 22px; }
+    header.hero { padding: 22px 0 22px; }
     .brand { display: flex; align-items: center; gap: 18px; }
     .brand img { height: 92px; width: auto; flex: 0 0 auto; filter: drop-shadow(0 6px 10px rgba(0,0,0,.08)); }
     .brand h1 { font-family: var(--serif); font-weight: 600; font-size: clamp(28px, 5vw, 46px); line-height: 1.05; margin: 0; letter-spacing: -0.01em; }
@@ -101,21 +107,16 @@
     .ic { width: 44px; height: 44px; border-radius: 50%; border: 0; background: rgba(255,255,255,.12); color: #fff; font-size: 22px; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; }
     .lb-nav { position: absolute; top: 50%; transform: translateY(-50%); }
     .lb-prev { left: 12px; } .lb-next { right: 12px; }
-    @media (max-width: 700px) { .lb-nav { display: none; } .brand img { height: 72px; } header.hero { padding-top: 24px; } .contact { padding: 24px 18px; } }
+    @media (max-width: 700px) { .lb-nav { display: none; } header.hero { padding-top: 16px; } .contact { padding: 24px 18px; } }
     .loading { color: var(--muted); padding: 40px 0; text-align: center; }
   </style>
 </head>
 <body>
+  <div class="banner"><img src="banner.jpg" alt="Interior Dezign Studio — Elevate your space!" width="2000" height="323" /></div>
   <header class="hero">
     <div class="wrap">
-      <div class="brand">
-        <img src="logo.png" alt="Interior Dezign Studio logo" />
-        <div>
-          <h1 id="studio-name">Interior Dezign Studio</h1>
-          <div class="rule"></div>
-          <p id="tagline">Homes and workspaces designed and built end-to-end in Pune.</p>
-        </div>
-      </div>
+      <h1 class="sr" id="studio-name">Interior Dezign Studio</h1>
+      <p class="tagline" id="tagline">Homes and workspaces designed and built end-to-end in Pune.</p>
       <div id="for"></div>
       <div class="ctas" id="ctas"></div>
       <div class="stats" id="stats"></div>
