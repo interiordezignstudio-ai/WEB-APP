@@ -6406,7 +6406,7 @@
           <div class="card" style="margin-bottom:20px;">
             <div class="hub-card-title" style="display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap;">
               <span>Money in &amp; out</span>
-              ${perms.canEditBilling ? `<span style="display:flex; gap:6px; flex-wrap:wrap;">${moneyList({ dir: 'in', clientId: c.id }).length ? `<button type="button" class="btn btn-outline btn-sm" data-client-stmt="${c.id}">Statement PDF</button>` : ''}<button type="button" class="btn btn-primary btn-sm" data-pay-new="in" data-client="${c.id}">+ Received</button><button type="button" class="btn btn-outline btn-sm" data-pay-new="out" data-client="${c.id}">+ Paid out</button></span>` : ''}
+              ${perms.canEditBilling ? `<span style="display:flex; gap:6px; flex-wrap:wrap;">${moneyList({ clientId: c.id }).length ? `<button type="button" class="btn btn-outline btn-sm" data-client-stmt="${c.id}" title="PDF of the payments shown with the filters below">PDF (as filtered)</button>` : ''}<button type="button" class="btn btn-primary btn-sm" data-pay-new="in" data-client="${c.id}">+ Received</button><button type="button" class="btn btn-outline btn-sm" data-pay-new="out" data-client="${c.id}">+ Paid out</button></span>` : ''}
             </div>
             <div class="pay-mini">
               <div><small>Received</small><strong class="pay-in tabular">${formatINR(fin.received)}</strong></div>
@@ -9115,11 +9115,11 @@
         const v = who.vendor, c = who.client;
         const studio = (state.studioProfile || {}).name || 'Studio';
         const onlyOut = !ins.length && outs.length, onlyIn = ins.length && !outs.length;
-        const title = v ? 'PAYMENT STATEMENT' : c && onlyIn ? 'PAYMENT RECEIPT STATEMENT' : 'PAYMENT STATEMENT';
+        const title = v ? 'PAYMENT STATEMENT' : c && onlyIn ? 'PAYMENT RECEIPT STATEMENT' : c ? 'PROJECT PAYMENT STATEMENT' : 'PAYMENT STATEMENT';
         const cells = m => {
           const proj = (clientById(m.clientId) || {}).name || (m.dir === 'out' ? 'Office / general' : '');
           const main = m.dir === 'in' ? (moneyTitle(m) || 'Payment received') : (m.work || moneyTitle(m) || 'Payment');
-          const sub = [!c && proj ? proj : '', !v && m.dir === 'out' ? partyName(m) : '', !c && m.dir === 'in' ? partyName(m) : '', m.note && !m.auto ? m.note : ''].filter(Boolean).join(' · ');
+          const sub = [!c && !who.project && proj ? proj : '', !v && m.dir === 'out' ? partyName(m) : '', !c && m.dir === 'in' ? partyName(m) : '', m.note && !m.auto ? m.note : ''].filter(Boolean).join(' · ');
           return [fmtDay(m.date), { main, sub }, [m.mode, m.ref ? 'Ref ' + m.ref : ''].filter(Boolean).join('\n') || '—', `${onlyIn || onlyOut ? '' : m.dir === 'in' ? '+ ' : '− '}${formatINR(m.amount)}`];
         };
         const cols = [{ label: 'Date', w: 26 }, { label: v ? 'Paid for' : c ? 'Payment for' : 'Details', w: 92 }, { label: 'Mode / reference', w: 36, muted: true }, { label: 'Amount', w: 32, align: 'right' }];
@@ -9127,6 +9127,7 @@
         const tot = [];
         if (ins.length) tot.push([onlyIn ? 'Total received' : 'Total received (in)', formatINR(moneySum(ins)), { bold: true, fill: onlyIn ? '#F8E9DF' : undefined, color: onlyIn ? '#A44A22' : undefined }]);
         if (outs.length) tot.push([onlyOut ? 'Total paid' : 'Total paid (out)', formatINR(moneySum(outs)), { bold: true, fill: onlyOut ? '#F8E9DF' : undefined, color: onlyOut ? '#A44A22' : undefined }]);
+        if (ins.length && outs.length) { const net = moneySum(ins) - moneySum(outs); tot.push(['Net (received − paid)', `${net < 0 ? '− ' : ''}${formatINR(Math.abs(net))}`, { bold: true, fill: '#F8E9DF', color: '#A44A22' }]); }
         if (c && onlyIn) {
           const f = getClientFinance(c); const all = clientReceived(c.id);
           if (f.contract) {
@@ -9136,20 +9137,20 @@
           }
         }
         blocks.push({ type: 'totals', rows: tot });
-        blocks.push({ type: 'text', text: v ? `Payments made by ${studio} to ${v.name} (${periodLabel}). Please check and confirm.` : c ? `Payments received by ${studio} from ${c.name} (${periodLabel}). Thank you.` : `Payments (${periodLabel}).` });
+        blocks.push({ type: 'text', text: v ? `Payments made by ${studio} to ${v.name}${who.project ? ' for ' + who.project.name : ''} (${periodLabel}). Please check and confirm.` : c && onlyIn ? `Payments received by ${studio} from ${c.name} (${periodLabel}). Thank you.` : c ? `Money received and paid for ${c.name} (${periodLabel}).` : `Payments (${periodLabel}).` });
         const party = v || c;
         return {
           title, docTitle: `${title.charAt(0) + title.slice(1).toLowerCase()} — ${party ? party.name : 'Payments'}`,
           filename: `Statement_${String(party ? party.name : 'Payments').replace(/[^\w]+/g, '_')}.html`,
           info: {
-            leftLabel: v ? 'Paid to' : c ? 'Received from' : 'Statement',
+            leftLabel: v ? 'Paid to' : c ? (onlyIn ? 'Received from' : 'Project') : 'Statement',
             leftName: party ? party.name : 'All payments',
             leftSub: v ? [v.trade, v.phone].filter(Boolean).join(' · ') : c ? [c.address, c.phone].filter(Boolean).join(' · ') : '',
             rightLabel: 'Statement',
-            rightLines: [periodLabel, `${list.length} payment${list.length === 1 ? '' : 's'}`, `Date: ${fmtDay(getDateOffset(0))}`]
+            rightLines: [periodLabel, who.project ? `Project: ${who.project.name}` : `${list.length} payment${list.length === 1 ? '' : 's'}`, who.filterNote || `Date: ${fmtDay(getDateOffset(0))}`].filter(Boolean)
           },
           blocks,
-          signatures: v ? [`For ${studio}`, `${v.name} — received`] : c ? ['Client acknowledgement', `For ${studio}`] : [`For ${studio}`, 'Checked by']
+          signatures: v ? [`For ${studio}`, `${v.name} — received`] : c && onlyIn ? ['Client acknowledgement', `For ${studio}`] : [`For ${studio}`, 'Checked by']
         };
       }
       function periodText(rows, rngLabel) {
@@ -9182,9 +9183,17 @@
         if (cs) {
           const c = clientById(cs.dataset.clientStmt); if (!c) return;
           const hf = (state.hubPayF || {})[c.id] || {};
-          const dirF = payDirIsIn(hf.dir) ? hf.dir : 'in';
-          const rows = moneyList({ dir: 'in', clientId: c.id }).filter(m => payDirMatch(m, dirF));
-          openSpecPreview(paymentStatementSpec(rows, { client: c }, periodText(rows, 'All payments')));
+          const hq = (hf.q || '').toLowerCase();
+          // exactly what the Money in & out lists show
+          const ins = hf.v || hf.cat || hf.dir === 'out' ? [] : moneyList({ dir: 'in', clientId: c.id }).filter(m => payDirMatch(m, hf.dir || '') && (!hq || paySearchText(m).includes(hq)));
+          const outs = payDirIsIn(hf.dir) || !getCurrentPermissions().canEditBilling ? [] : moneyList({ dir: 'out', clientId: c.id }).filter(m => payMatchesVendorCat(m, hf.v || '', hf.cat || '') && (!hq || paySearchText(m).includes(hq)));
+          const rows = ins.concat(outs);
+          if (!rows.length) { showToast('Nothing to put in the PDF with these filters'); return; }
+          const vIds = [...new Set(outs.map(m => m.vendorId).filter(Boolean))];
+          const note = [hf.dir && { in: 'Received only', out: 'Paid out only', fees: 'Design & PM fees', 'fee:design': 'Design fee', 'fee:pm': 'Project management fee', nofees: 'Without fees' }[hf.dir], hf.cat ? hf.cat.replace(/^\w+:/, '') : '', hf.q ? `“${hf.q}”` : ''].filter(Boolean).join(' · ');
+          const who = !ins.length && vIds.length === 1 && outs.every(m => m.vendorId === vIds[0]) ? { vendor: vendorById(vIds[0]), project: c } : { client: c };
+          if (note) who.filterNote = `Filter: ${note}`;
+          openSpecPreview(paymentStatementSpec(rows, who, periodText(rows, 'All payments')));
         }
       });
 
