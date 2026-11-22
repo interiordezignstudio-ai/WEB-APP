@@ -1,6 +1,16 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+  <script>
+    (function () {
+      try {
+        var t = localStorage.getItem('ids_theme') || 'light';
+        var dark = t === 'dark' || (t === 'auto' && window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches);
+        document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light');
+        document.documentElement.setAttribute('data-theme-pref', t);
+      } catch (e) { document.documentElement.setAttribute('data-theme', 'light'); }
+    })();
+  </script>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <meta name="theme-color" content="#F7F4EF" />
@@ -2510,7 +2520,111 @@
       .sidebar, .topbar, .mobile-nav, .nav-scrim { display: none !important; }
       .main-wrapper { margin: 0 !important; }
     }
-  </style>
+  
+    /* ============ DARK MODE ============ */
+    html[data-theme="dark"] {
+      color-scheme: dark;
+      --bg-alabaster: #121010;
+      --bg-card: #1C1917;
+      --bg-sunken: #24201D;
+      --bg-sidebar: #0E0C0B;
+      --border-subtle: #332C27;
+      --border-strong: #4A413A;
+      --text-main: #F1EBE5;
+      --text-muted: #B8ADA3;
+      --text-light: #8A7F75;
+      --accent-terracotta: #C9612F;
+      --accent-terracotta-dark: #F0A47E;
+      --accent-terracotta-soft: #3A241A;
+      --accent-emerald: #45C79D;
+      --accent-emerald-soft: #12332A;
+      --accent-rose: #F2768D;
+      --accent-rose-soft: #3B1B22;
+      --accent-sky: #72B9E2;
+      --accent-sky-soft: #13303F;
+      --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
+      --shadow-md: 0 18px 40px -12px rgba(0, 0, 0, 0.7), 0 4px 10px -4px rgba(0, 0, 0, 0.5);
+      --shadow-hover: 0 8px 22px -10px rgba(0, 0, 0, 0.6);
+    }
+    html[data-theme="dark"] body { background: var(--bg-alabaster); color: var(--text-main); }
+    html[data-theme="dark"] .topbar { background: rgba(18, 16, 16, 0.86); border-color: var(--border-subtle); }
+    html[data-theme="dark"] .modal-box,
+    html[data-theme="dark"] .pop-menu,
+    html[data-theme="dark"] .btn-outline,
+    html[data-theme="dark"] .input, html[data-theme="dark"] .select, html[data-theme="dark"] .textarea,
+    html[data-theme="dark"] .input-inline { background-color: var(--bg-card); color: var(--text-main); border-color: var(--border-strong); }
+    html[data-theme="dark"] .input:disabled, html[data-theme="dark"] .select:disabled { background-color: var(--bg-sunken); color: var(--text-light); }
+    html[data-theme="dark"] select.input, html[data-theme="dark"] select.select, html[data-theme="dark"] .select {
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23B8ADA3' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+    }
+    html[data-theme="dark"] .input::placeholder, html[data-theme="dark"] .textarea::placeholder, html[data-theme="dark"] .input-inline::placeholder { color: #7A6F66; }
+    html[data-theme="dark"] .btn-outline:hover { background-color: var(--bg-sunken); }
+    html[data-theme="dark"] .badge-stone { background: #2E2824; color: #D6CCC2; }
+    html[data-theme="dark"] .modal-backdrop { background: rgba(0, 0, 0, 0.62); }
+    html[data-theme="dark"] table th, html[data-theme="dark"] thead th { background: var(--bg-sunken); color: var(--text-muted); border-color: var(--border-subtle); }
+    html[data-theme="dark"] table td { border-color: var(--border-subtle); }
+    html[data-theme="dark"] .seg-toggle, html[data-theme="dark"] .lvl { background: var(--bg-sunken); border-color: var(--border-subtle); }
+    html[data-theme="dark"] .seg-toggle button.on, html[data-theme="dark"] .lvl button.on { background: #3A322C; color: var(--text-main); }
+    html[data-theme="dark"] .lvl button.on.off { color: var(--accent-rose); }
+    html[data-theme="dark"] .lvl button { color: var(--text-muted); }
+    html[data-theme="dark"] .mobile-nav { background: rgba(18, 16, 16, 0.95); border-color: var(--border-subtle); }
+    html[data-theme="dark"] img { filter: none; }
+    /* light colours written straight into the page */
+    html[data-theme="dark"] :is([style*="background:#FFF;"], [style*="background:#FFF "], [style*="background: #FFF;"], [style*="background:#FFFFFF"], [style*="background: #FFFFFF"], [style*="background-color:#FFFFFF"], [style*="background:#fff"], [style*="background: #fff"]):not(#print-preview-body):not(#print-preview-body *) { background: var(--bg-card) !important; }
+    html[data-theme="dark"] :is([style*="#FAF9F6"], [style*="#FFFDF9"], [style*="#F5F5F4"], [style*="#FBF6F1"], [style*="#FFFBF8"], [style*="#FFFBF7"], [style*="#F2EEE9"], [style*="#FAFAF9"]):not(#print-preview-body):not(#print-preview-body *) { background-color: var(--bg-sunken) !important; }
+    html[data-theme="dark"] :is([style*="background:#FFF7F2"], [style*="background:#FDF0E3"], [style*="background:#FDF2F4"], [style*="background:#F3FAF6"], [style*="background:#ECF7F1"]):not(#print-preview-body):not(#print-preview-body *) { background-color: #2A211C !important; }
+    html[data-theme="dark"] :is([style*="color:#1C1917"], [style*="color: #1C1917"], [style*="color:#44403C"], [style*="color:#292524"]):not(#print-preview-body):not(#print-preview-body *) { color: var(--text-main) !important; }
+    html[data-theme="dark"] :is([style*="color:#57534E"], [style*="color: #57534E"], [style*="color:#78716C"], [style*="color:#625A53"]):not(#print-preview-body):not(#print-preview-body *) { color: var(--text-muted) !important; }
+    html[data-theme="dark"] :is([style*="border:1px solid #E7E5E4"], [style*="border: 1px solid #E7E5E4"], [style*="border:1px solid #D6D3D1"], [style*="border-color:#E7E5E4"]):not(#print-preview-body):not(#print-preview-body *) { border-color: var(--border-subtle) !important; }
+    html[data-theme="dark"] [style*="background:#E7E5E4"]:not(#print-preview-body):not(#print-preview-body *) { background: var(--bg-sunken) !important; }
+    /* soft highlight boxes used around the app */
+    html[data-theme="dark"] :is(.vlist-row.on, .sal-paid, .team-person.on, .lead-card-picked, .sel-card.picked, .vpick-new, .mse-token, .team-warn, .fee-token, .ls-edit, .att-click:hover, .disc-note, .lead-facts, .ld-all, .pay-note, .ms-loose, .caller-sum span, .acc-chip, .tier-sum > div, .qb-tiers div, .att-clock > div, .att-sum > div, .sel-photo, .sb-photo-btn, .pay-mini > div, .sb-tot-grid > div, .appx-text) { background-color: var(--bg-sunken) !important; color: var(--text-main); border-color: var(--border-subtle) !important; }
+    html[data-theme="dark"] :is(.lead-bulk-bar, .qb-tiers div.on, .team-quick button.on, .tier-tabs button.on, .qb-pills button.on) { background-color: #3A241A !important; color: var(--text-main) !important; }
+    html[data-theme="dark"] :is(.qb-pills button, .team-quick button, .tier-tabs button, .mse-move button, .sb-thumb button) { background-color: var(--bg-sunken); color: var(--text-main); border-color: var(--border-subtle); }
+    html[data-theme="dark"] .caller-tag { background: #13303F; color: #9ED0EE; }
+    html[data-theme="dark"] .caller-tag.outside, html[data-theme="dark"] .ms-tag { background: #3A2A18; color: #F2C48E; }
+    html[data-theme="dark"] .acc-chip-on { background: #12332A !important; color: #8FE0C2 !important; }
+    html[data-theme="dark"] .att-badge { background: color-mix(in srgb, var(--c) 22%, #1C1917); border-color: color-mix(in srgb, var(--c) 45%, #1C1917); color: color-mix(in srgb, var(--c) 55%, #fff); }
+    /* components that set their own light background */
+    html[data-theme="dark"] :is(.kpi-card, .catalog-drawer, .version-card, .hub-tabs, .tb-search, .account-btn, .hub-kpi, .final-card, .sb-card, .sel-card, .selb-row, .ls-card, .ls-pick, .ob-card, .rem-card, .won-card, .src-list, .import-drop, .pay-proj, .ck-stage, .meta-prev, .flow-big > button, .wa-pick button, .chip, .bill-filters, .modal-header, .input-inline, .final-nums > div, .cmdk-close, .lead-pop-x, .rem-more, .lead-pop, .cmdk-box, .cmdk) { background: var(--bg-card) !important; color: var(--text-main); border-color: var(--border-subtle) !important; }
+    html[data-theme="dark"] .room-boq-card .stack-table tr, html[data-theme="dark"] .stack-table td { background: transparent; }
+    html[data-theme="dark"] .kpi-card::after { opacity: 0.15; }
+    html[data-theme="dark"] .version-card.active { background: #2A1E18 !important; border-color: var(--accent-terracotta) !important; }
+    html[data-theme="dark"] :is(.hub-filters, .seg, .hub-step-dot, .hub-ms-num, .tb-kbd, .appx-help code, .poss-later) { background: var(--bg-sunken) !important; color: var(--text-muted); border-color: var(--border-subtle); }
+    html[data-theme="dark"] :is(.hub-filter.active, .seg button.on, .chip.on) { background: #3A322C !important; color: var(--text-main) !important; }
+    html[data-theme="dark"] .chip.on { background: var(--accent-terracotta) !important; color: #FFF !important; }
+    html[data-theme="dark"] .hub-ms-num.paid { background: var(--accent-emerald) !important; color: #0B1F18; }
+    html[data-theme="dark"] .btn-wa { background: transparent; border-color: #2F6B48; color: #6FD89C; }
+    html[data-theme="dark"] .btn-wa:hover { background: #14301F; }
+    html[data-theme="dark"] .btn-emerald { color: #0B1F18; }
+    html[data-theme="dark"] .boq-sticky .btn-dark { background: #F1EBE5; color: #1C1917; }
+    html[data-theme="dark"] :is(.poss-ready, .ms-pill-paid, .pay-ico.in) { background: #12332A !important; color: #6FD8B0 !important; border-color: #1F5A45 !important; }
+    html[data-theme="dark"] :is(.poss-soon, .ms-pill-part, .hub-ms-num.part, .vendor-due, .ms-tag) { background: #3A2A18 !important; color: #F2C48E !important; border-color: #5C4224 !important; }
+    html[data-theme="dark"] :is(.ms-pill-due, .pay-ico.out) { background: #3B1B22 !important; color: #F2768D !important; border-color: #6A2A37 !important; }
+    html[data-theme="dark"] .src-ig { background: #3A1A2A; color: #F28DB8; }
+    html[data-theme="dark"] .src-fb { background: #15263F; color: #8DB5F2; }
+    html[data-theme="dark"] .lead-next.due-late { border-color: #6A2A37; }
+    html[data-theme="dark"] .lead-next.due-today { border-color: #5C3A26; }
+    html[data-theme="dark"] .hub-tab.active { background: #F1EBE5; color: #1C1917; }
+    html[data-theme="dark"] .hub-tl-dot { background: var(--bg-card); }
+    html[data-theme="dark"] .pop-tag { background: var(--bg-sunken); color: var(--text-muted); }
+    /* PDFs and print previews stay as printed documents (white paper) */
+    html[data-theme="dark"] #print-preview-body {
+      color-scheme: light; background: #FFFFFF !important; color: #1C1917;
+      --bg-card: #FFFFFF; --bg-sunken: #FBF9F6; --border-subtle: #ECE6DE; --border-strong: #DCD3C8;
+      --text-main: #1C1917; --text-muted: #625A53; --text-light: #A39A90;
+      --accent-terracotta: #A44A22; --accent-terracotta-dark: #7C3618; --accent-terracotta-soft: #F8E9DF;
+      --accent-emerald: #0F7457; --accent-emerald-soft: #DDF3EA; --accent-rose: #B4233F; --accent-rose-soft: #FCE7EA;
+    }
+    html[data-theme="dark"] #print-preview-body table th { background: #F5F5F4; color: #57534E; }
+    /* theme switch */
+    .theme-switch { display:inline-flex; background: rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.08); border-radius:9px; padding:2px; gap:2px; margin-top:8px; }
+    .theme-switch button { border:0; background:transparent; color:#B8ADA3; font-size:11.5px; font-weight:600; padding:4px 9px; border-radius:7px; cursor:pointer; }
+    .theme-switch button.on { background: rgba(255,255,255,0.14); color:#FFF; }
+    .pop-theme { display:flex; gap:4px; padding:4px 8px 6px; }
+    .pop-theme button { flex:1; border:1px solid var(--border-subtle); background: var(--bg-sunken); color: var(--text-main); border-radius:8px; padding:6px 4px; font-size:12.5px; font-weight:600; cursor:pointer; }
+    .pop-theme button.on { border-color: var(--accent-terracotta); background: var(--accent-terracotta-soft); color: var(--accent-terracotta-dark); }
+</style>
 </head>
 <body>
 
@@ -2586,7 +2700,7 @@
           <span class="status-dot" id="conn-dot"></span>
           <span id="conn-text">Saved on this device</span>
         </div>
-        <div style="margin-top:4px; font-size:11px; color:#8F867D;">Windows · Mac · iPad · iPhone · Android</div>
+        <div class="theme-switch" role="group" aria-label="Light or dark mode"><button type="button" data-theme-set="light">☀️ Light</button><button type="button" data-theme-set="dark">🌙 Dark</button><button type="button" data-theme-set="auto">Auto</button></div>
       </div>
     </aside>
     <div class="nav-scrim" id="nav-scrim"></div>
@@ -2642,6 +2756,8 @@
                 <div class="pop-muted" id="account-head-email">girish@interiordezign.in</div>
                 <div class="pop-muted" id="account-head-role">Principal / Admin · sees all records</div>
               </div>
+              <div class="pop-title">Appearance</div>
+              <div class="pop-theme" role="group" aria-label="Light or dark mode"><button type="button" data-theme-set="light">☀️ Light</button><button type="button" data-theme-set="dark">🌙 Dark</button><button type="button" data-theme-set="auto">Auto</button></div>
               <div class="pop-title">Switch team member</div>
               <div id="account-staff-list"></div>
               <div class="pop-sep"></div>
@@ -9196,6 +9312,26 @@
           openSpecPreview(paymentStatementSpec(rows, who, periodText(rows, 'All payments')));
         }
       });
+
+
+      // ===== Light / dark mode (remembered on this device) =====
+      function themePref() { try { return localStorage.getItem('ids_theme') || 'light'; } catch (e) { return 'light'; } }
+      function applyTheme() {
+        const pref = themePref();
+        const dark = pref === 'dark' || (pref === 'auto' && window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches);
+        document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light');
+        document.documentElement.setAttribute('data-theme-pref', pref);
+        document.querySelectorAll('[data-theme-set]').forEach(b => b.classList.toggle('on', b.dataset.themeSet === pref));
+        const mc = document.querySelector('meta[name="theme-color"]'); if (mc) mc.setAttribute('content', dark ? '#121010' : '#F7F4EF');
+      }
+      document.addEventListener('click', e => {
+        const b = e.target.closest('[data-theme-set]'); if (!b) return;
+        try { localStorage.setItem('ids_theme', b.dataset.themeSet); } catch (err) { /* ignore */ }
+        applyTheme();
+        showToast({ light: 'Light mode', dark: 'Dark mode', auto: 'Follows your device (auto)' }[b.dataset.themeSet]);
+      });
+      if (window.matchMedia) { try { matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => { if (themePref() === 'auto') applyTheme(); }); } catch (e) { /* old browsers */ } }
+      setTimeout(applyTheme, 0);
 
       // ===== Delete an onboarded client (and everything that belongs to them) =====
       function clientLinkedRecords(c) {
