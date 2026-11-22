@@ -2572,6 +2572,15 @@
     .qp-dir small { font-weight:500; font-size:12.5px; opacity:.9; }
     .qp-in { background:#0F7457; } .qp-out { background:#A44A22; }
     .qp-foot { margin-top:14px; padding-top:12px; border-top:1px solid var(--border-subtle); font-size:12.5px; color: var(--text-muted); display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+    /* iPhone Shortcut setup */
+    .qs-steps { margin:0; padding-left:20px; font-size:13.5px; line-height:1.65; color: var(--text-main); }
+    .qs-steps li { margin-bottom:6px; }
+    .qs-steps b { font-weight:700; }
+    .qs-steps .hub-muted { font-size:12.5px; }
+    .qs-copy { display:flex; gap:8px; align-items:center; flex-wrap:wrap; background: var(--bg-sunken); border:1px solid var(--border-subtle); border-radius:10px; padding:8px 10px; margin:6px 0; }
+    .qs-copy code { flex:1 1 220px; font-size:12px; overflow-wrap:anywhere; color: var(--text-muted); }
+    .qs-step-h { font-weight:700; font-size:14px; margin:6px 0 4px; }
+    .qs-ok { color: var(--accent-emerald); font-weight:700; }
     /* Trash */
     .trash-row { display:flex; gap:12px; align-items:center; padding:12px 0; border-bottom:1px solid var(--border-subtle); flex-wrap:wrap; }
     .trash-row:last-child { border-bottom:0; }
@@ -3431,6 +3440,10 @@
             <div class="card" style="display:flex; flex-direction:column; gap:10px;">
               <h3 style="font-size:16px; font-weight:700;">Alerts &amp; notifications</h3>
               <div id="lead-alert-settings"></div>
+            </div>
+            <div class="card" style="display:flex; flex-direction:column; gap:10px; grid-column: 1 / -1;">
+              <h3 style="font-size:16px; font-weight:700;">iPhone / iPad Shortcut — record a payment without opening the app</h3>
+              <div id="quick-shortcut-settings"></div>
             </div>
 
           </div>
@@ -9444,6 +9457,150 @@
 
 
 
+
+      // ===== iPhone / iPad Shortcut: record payments without opening the app =====
+      // A small Google Apps Script (in the studio Google account) gives the Shortcut the client list and
+      // drops payments into an inbox file in the app's Drive folder; every device imports them on sync.
+      const QUICK_INBOX_NAME = 'quick-payments-inbox.json';
+      const SHORTCUT_HELPER_CODE = "// Interior Dezign Studio — iPhone / iPad Shortcut helper (Google Apps Script)\n// Runs in the studio Google account. Lets an iPhone Shortcut read the client list\n// and record a payment without opening the app. The app imports the payment on its next sync.\n// Setup: script.google.com → New project → paste this → Deploy → New deployment → Web app\n//        (Execute as: Me, Who has access: Anyone) → copy the Web app URL into the app.\n\nvar FOLDER = 'Interior Dezign Studio OS';\nvar DATA = 'interior-dezign-studio-data.json';\nvar INBOX = 'quick-payments-inbox.json';\n\nfunction filesNamed_(name) {\n  var out = [];\n  var folders = DriveApp.getFoldersByName(FOLDER);\n  while (folders.hasNext()) {\n    var it = folders.next().getFilesByName(name);\n    while (it.hasNext()) out.push(it.next());\n  }\n  out.sort(function (a, b) { return b.getLastUpdated() - a.getLastUpdated(); });\n  return out;\n}\nfunction appData_() {\n  var f = filesNamed_(DATA);\n  if (!f.length) throw 'the app data was not found in Google Drive (connect Drive in the app first)';\n  return JSON.parse(f[0].getBlob().getDataAsString());\n}\nfunction text_(t) { return ContentService.createTextOutput(String(t)).setMimeType(ContentService.MimeType.TEXT); }\nfunction checkKey_(d, k) { if (!d.quickKey || String(k || '') !== String(d.quickKey)) throw 'wrong key — copy the links again from the app'; }\nfunction inr_(n) {\n  var s = String(Math.round(n)), last3 = s.slice(-3), rest = s.slice(0, -3);\n  return '₹' + (rest ? rest.replace(/\\B(?=(\\d{2})+(?!\\d))/g, ',') + ',' : '') + last3;\n}\n\n// GET ?k=KEY&list=clients | vendors | test\nfunction doGet(e) {\n  try {\n    var d = appData_();\n    checkKey_(d, e.parameter.k);\n    var list = e.parameter.list || 'clients';\n    if (list === 'test') return text_('OK');\n    if (list === 'vendors') {\n      return text_((d.vendors || []).map(function (v) { return v.name; }).filter(String).sort().join('\\n'));\n    }\n    var clients = (d.clients || []).slice().sort(function (a, b) {\n      return ((b.status === 'Active') - (a.status === 'Active')) || String(a.name).localeCompare(String(b.name));\n    }).map(function (c) { return c.name; }).filter(String);\n    clients.push('Office / no project');\n    return text_(clients.join('\\n'));\n  } catch (err) {\n    return text_('Error: ' + err);\n  }\n}\n\n// POST JSON { k, client, type: \"Received\" | \"Paid out\", amount, mode, note }\nfunction doPost(e) {\n  var lock = LockService.getScriptLock();\n  lock.waitLock(20000);\n  try {\n    var p = JSON.parse((e.postData && e.postData.contents) || '{}');\n    var d = appData_();\n    checkKey_(d, p.k || (e.parameter && e.parameter.k));\n    var amount = Number(String(p.amount || '').replace(/[^\\d.]/g, ''));\n    if (!amount) return text_('Error: the amount is missing');\n    var f = filesNamed_(INBOX);\n    if (!f.length) return text_('Error: open the app once (Sync & Backup → iPhone Shortcut) to finish setup');\n    var file = f[0], box = [];\n    try { box = JSON.parse(file.getBlob().getDataAsString()) || []; } catch (x) { box = []; }\n    var keepFrom = Date.now() - 120 * 86400000;\n    box = box.filter(function (x) { return new Date(x.at).getTime() > keepFrom; });\n    var entry = {\n      id: 'qs' + Date.now().toString(36) + Math.floor(Math.random() * 1e6).toString(36),\n      at: new Date().toISOString(),\n      client: String(p.client || ''),\n      type: String(p.type || ''),\n      amount: amount,\n      mode: String(p.mode || ''),\n      note: String(p.note || '')\n    };\n    box.push(entry);\n    file.setContent(JSON.stringify(box));\n    var received = /receiv/i.test(entry.type);\n    return text_('✓ Saved ' + inr_(amount) + (received ? ' received from ' : ' paid out · ') + (entry.client || 'Office') + (entry.mode ? ' (' + entry.mode + ')' : '') + '. It appears in the app within a minute.');\n  } catch (err) {\n    return text_('Error: ' + err);\n  } finally {\n    lock.releaseLock();\n  }\n}\n";
+      function quickKey(make) {
+        if (!state.quickKey && make) { const a = new Uint8Array(12); (window.crypto || {}).getRandomValues ? crypto.getRandomValues(a) : a.forEach((_, i) => { a[i] = Math.random() * 256; }); state.quickKey = 'ids' + [...a].map(b => b.toString(16).padStart(2, '0')).join(''); commitState(); }
+        return state.quickKey || '';
+      }
+      function quickScriptUrl() { return String(state.quickScriptUrl || '').trim(); }
+      function quickListLink() { return `${quickScriptUrl()}?k=${quickKey()}&list=clients`; }
+      function quickSaveLink() { return `${quickScriptUrl()}?k=${quickKey()}`; }
+      async function ensureQuickInbox(folderId) {
+        if (cloud.cfg.inboxId) {
+          try { const f = await gApi(`${DRIVE}/files/${cloud.cfg.inboxId}?fields=id,version,trashed`); if (!f.trashed) return f; }
+          catch (e) { if (e.code !== 404) throw e; }
+        }
+        const q = encodeURIComponent(`name='${QUICK_INBOX_NAME}' and '${folderId}' in parents and trashed=false`);
+        const found = await gApi(`${DRIVE}/files?q=${q}&fields=files(id,version)&spaces=drive`);
+        if (found.files && found.files.length) { cloud.cfg.inboxId = found.files[0].id; saveCloudCfg(); return found.files[0]; }
+        const boundary = 'idq' + Date.now();
+        const body = `--${boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n` + JSON.stringify({ name: QUICK_INBOX_NAME, parents: [folderId], mimeType: 'application/json' }) + `\r\n--${boundary}\r\nContent-Type: application/json\r\n\r\n[]\r\n--${boundary}--`;
+        const f = await gApi(`${DRIVE_UP}/files?uploadType=multipart&fields=id,version`, { method: 'POST', headers: { 'Content-Type': `multipart/related; boundary=${boundary}` }, body });
+        cloud.cfg.inboxId = f.id; saveCloudCfg();
+        return f;
+      }
+      async function syncQuickInbox(folderId) {
+        if (!state.quickKey) return;
+        const meta = await ensureQuickInbox(folderId);
+        if (cloud.cfg.inboxVer && String(meta.version) === String(cloud.cfg.inboxVer)) return;
+        const raw = await gApi(`${DRIVE}/files/${meta.id}?alt=media`);
+        let list = raw;
+        if (typeof raw === 'string') { try { list = JSON.parse(raw || '[]'); } catch (e) { list = []; } }
+        importQuickPayments(Array.isArray(list) ? list : []);
+        cloud.cfg.inboxVer = meta.version; saveCloudCfg();
+      }
+      function quickMode(m) { const t = String(m || '').toLowerCase(); return PAY_MODES.find(x => x.toLowerCase() === t) || (/bank|neft|imps|rtgs/.test(t) ? 'Bank transfer' : /upi|gpay|phonepe|paytm/.test(t) ? 'UPI' : /cash/.test(t) ? 'Cash' : /cheque|check/.test(t) ? 'Cheque' : 'UPI'); }
+      function importQuickPayments(list) {
+        ensureMoney();
+        const done = new Set(Array.isArray(state.quickDone) ? state.quickDone : []);
+        const have = new Set(state.money.map(m => m.id));
+        const added = [];
+        const pad = n => String(n).padStart(2, '0');
+        list.forEach(x => {
+          if (!x || !x.id || done.has(x.id) || have.has(x.id)) return;
+          done.add(x.id);
+          const amount = Number(x.amount) || 0; if (!amount) return;
+          const cname = String(x.client || '').trim();
+          const office = !cname || /^office/i.test(cname);
+          const c = office ? null : (state.clients || []).find(k => String(k.name).trim().toLowerCase() === cname.toLowerCase());
+          const dir = /receiv/i.test(x.type) ? 'in' : 'out';
+          const dt = new Date(x.at);
+          const date = isNaN(dt) ? getDateOffset(0) : `${dt.getFullYear()}-${pad(dt.getMonth() + 1)}-${pad(dt.getDate())}`;
+          const note = String(x.note || '').trim();
+          const m = { id: x.id, createdAt: x.at || new Date().toISOString(), by: '', source: 'iPhone Shortcut', dir, date, amount, mode: quickMode(x.mode), ref: '', clientId: c ? c.id : '', note: '' };
+          const lost = !office && !c ? `Client: ${cname}` : '';
+          if (dir === 'in') { m.kind = 'Advance'; m.invoiceId = ''; m.milestone = ''; m.note = [lost, note].filter(Boolean).join(' · '); }
+          else {
+            const low = note.toLowerCase();
+            const v = (state.vendors || []).filter(k => k.name && low.includes(String(k.name).toLowerCase())).sort((a, b) => b.name.length - a.name.length)[0];
+            m.vendorId = v ? v.id : '';
+            m.category = v ? (v.type === 'Supplier' ? 'Material' : v.type === 'Contractor' ? 'Contractor' : 'Labour') : 'Labour';
+            m.work = v ? note.replace(new RegExp(String(v.name).replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i'), '').replace(/^[\s\-–—,:·]+|[\s\-–—,:·]+$/g, '') : note;
+            m.note = lost;
+          }
+          state.money.push(m); added.push(m);
+        });
+        state.quickDone = [...done].slice(-1000);
+        if (added.length) {
+          commitState(); renderAll();
+          const a = added[0];
+          showToast(added.length === 1 ? `iPhone Shortcut: ${formatINR(a.amount)} ${a.dir === 'in' ? 'received' : 'paid out'} added` : `iPhone Shortcut: ${added.length} payments added`);
+        } else if (done.size !== (state.quickDone || []).length) commitState();
+      }
+      function renderQuickShortcut() {
+        const box = document.getElementById('quick-shortcut-settings'); if (!box) return;
+        const perms = getCurrentPermissions();
+        if (!perms.canEditBilling) { box.innerHTML = '<div class="hub-muted" style="font-size:13px;">Only Admin / Accounts can set this up.</div>'; return; }
+        const url = quickScriptUrl();
+        const driveOn = typeof cloudEnabled === 'function' && cloudEnabled();
+        const copyRow = (label, val, id) => `<div class="qs-copy"><span style="font-weight:600; font-size:12.5px; flex:0 0 auto;">${label}</span><code id="${id}">${escapeHtml(val)}</code><button type="button" class="btn btn-outline btn-sm" data-qs-copy="${id}">Copy</button></div>`;
+        box.innerHTML = `
+          <div class="hub-muted" style="font-size:13px;">Tap the Shortcut → pick the client → Received or Paid out → amount → mode. It is saved straight to the studio data — no browser — and shows in the app within a minute on every device.</div>
+          ${!driveOn ? '<div class="notif-status warn"><b>Connect Google Drive first</b> (above). The Shortcut saves into the studio Drive.</div>' : ''}
+          <div class="qs-step-h">1. Add the helper to your Google account (one time, on a laptop)</div>
+          <ol class="qs-steps">
+            <li>Open <a href="https://script.google.com/home/projects/create" target="_blank" rel="noopener"><b>script.google.com</b></a> signed in with the <b>studio Google account</b> (the one used for Drive) → a new project opens.</li>
+            <li>Delete what is there, then paste the helper: <button type="button" class="btn btn-primary btn-sm" data-qs-copyscript>Copy helper script</button> → press 💾 Save. Name it “Dezign Studio Shortcut”.</li>
+            <li><b>Deploy → New deployment</b> → ⚙ <b>Web app</b>. Execute as: <b>Me</b>. Who has access: <b>Anyone</b>. Press <b>Deploy</b>.</li>
+            <li><b>Authorize access</b> → choose the studio account → <b>Advanced</b> → <b>Go to Dezign Studio Shortcut</b> → <b>Allow</b>. <span class="hub-muted">(Google shows this because the script is yours, not from the store.)</span></li>
+            <li>Copy the <b>Web app URL</b> and paste it here:</li>
+          </ol>
+          <div style="display:flex; gap:8px; flex-wrap:wrap;"><input class="input" id="qs-url" placeholder="https://script.google.com/macros/s/…/exec" value="${escapeHtml(url)}" style="flex:1 1 300px;" /><button type="button" class="btn btn-primary btn-sm" data-qs-save>Save</button>${url ? '<button type="button" class="btn btn-outline btn-sm" data-qs-test>Test</button>' : ''}</div>
+          <div id="qs-test-out" class="hub-muted" style="font-size:13px;"></div>
+          ${url ? `
+          <div class="qs-step-h" style="margin-top:8px;">2. Make the Shortcut on your iPhone / iPad</div>
+          <div class="hub-muted" style="font-size:12.5px;">Open this page on the iPhone to copy the two links. In the <b>Shortcuts</b> app tap <b>+</b>, then add these actions in order (search each name):</div>
+          ${copyRow('Client list link', quickListLink(), 'qs-list')}
+          ${copyRow('Save link', quickSaveLink(), 'qs-savelink')}
+          <ol class="qs-steps">
+            <li><b>Get Contents of URL</b> → paste the <b>Client list link</b>.</li>
+            <li><b>Split Text</b> → Separator: <b>New Lines</b>.</li>
+            <li><b>Choose from List</b> → Prompt: <i>Client</i>.</li>
+            <li><b>List</b> → two items: <i>Received</i>, <i>Paid out</i>.</li>
+            <li><b>Choose from List</b> → Prompt: <i>Received or paid out?</i></li>
+            <li><b>Ask for Input</b> → Input Type: <b>Number</b> → Prompt: <i>Amount ₹</i>.</li>
+            <li><b>List</b> → <i>UPI</i>, <i>Cash</i>, <i>Bank transfer</i>, <i>Cheque</i>. Then <b>Choose from List</b> → Prompt: <i>Paid by</i>.</li>
+            <li><b>Ask for Input</b> → Text → Prompt: <i>Note — for paid out: vendor name + work</i> <span class="hub-muted">(e.g. “Ramesh mistry kitchen carcass”; the vendor is matched by name)</span>.</li>
+            <li><b>Get Contents of URL</b> → paste the <b>Save link</b> → tap <b>Show More</b> → Method <b>POST</b> → Request Body <b>JSON</b> → add 5 Text fields:<br />
+              <b>client</b> = <i>Chosen Item</i> (step 3) · <b>type</b> = <i>Chosen Item</i> (step 5) · <b>amount</b> = <i>Provided Input</i> (step 6) · <b>mode</b> = <i>Chosen Item</i> (step 7) · <b>note</b> = <i>Provided Input</i> (step 8).</li>
+            <li><b>Show Notification</b> → <i>Contents of URL</i>.</li>
+            <li>Name it <b>Payment</b> → ⓘ → <b>Add to Home Screen</b>. Also works with “Hey Siri, Payment”.</li>
+          </ol>
+          <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:4px;"><button type="button" class="btn btn-outline btn-sm" data-qs-rekey>New key</button><span class="hub-muted" style="font-size:12.5px; align-self:center;">Use if a phone with the Shortcut is lost — then copy the two links again.</span></div>` : ''}`;
+      }
+      document.addEventListener('click', async e => {
+        const t = e.target;
+        if (t.closest('[data-qs-copyscript]')) { try { await navigator.clipboard.writeText(SHORTCUT_HELPER_CODE); showToast('Helper script copied — paste it in script.google.com'); } catch (err) { window.prompt('Copy the script', SHORTCUT_HELPER_CODE); } return; }
+        const cp = t.closest('[data-qs-copy]');
+        if (cp) { const el = document.getElementById(cp.dataset.qsCopy); const v = el ? el.textContent : ''; try { await navigator.clipboard.writeText(v); showToast('Copied'); } catch (err) { window.prompt('Copy', v); } return; }
+        if (t.closest('[data-qs-save]')) {
+          const v = ((document.getElementById('qs-url') || {}).value || '').trim();
+          if (v && !/^https:\/\/script\.google(usercontent)?\.com\/.+/.test(v)) { showToast('Paste the Web app URL from Apps Script (starts with https://script.google.com/macros/…)'); return; }
+          quickKey(true); state.quickScriptUrl = v; commitState(); renderQuickShortcut();
+          showToast(v ? 'Saved — now make the Shortcut (step 2)' : 'Removed');
+          if (typeof cloudSync === 'function') cloudSync().catch(() => {});
+          return;
+        }
+        if (t.closest('[data-qs-test]')) {
+          const out = document.getElementById('qs-test-out'); if (out) out.textContent = 'Checking…';
+          try {
+            const r = await fetch(`${quickScriptUrl()}?k=${quickKey()}&list=clients`, { cache: 'no-store' });
+            const txt = (await r.text()).trim();
+            if (out) out.innerHTML = /^Error/.test(txt) ? `<span style="color:var(--accent-rose); font-weight:600;">${escapeHtml(txt)}</span>` : `<span class="qs-ok">✓ Working.</span> The Shortcut will show ${txt.split('\n').length} choices, e.g. ${escapeHtml(txt.split('\n').slice(0, 3).join(', '))}.`;
+          } catch (err) { if (out) out.textContent = 'Could not check from this browser — try the Shortcut itself. (The data in Drive must be synced at least once.)'; }
+          return;
+        }
+        if (t.closest('[data-qs-rekey]')) {
+          if (!await appConfirm('Make a new key?\n\nShortcuts on all phones stop working until you copy the two new links into them.', { ok: 'New key' })) return;
+          state.quickKey = ''; quickKey(true); renderQuickShortcut(); showToast('New key made — update the links in the Shortcut');
+        }
+      });
+
       // ===== Quick payment: pick client → received / paid out (for an iPhone / iPad Shortcut) =====
       // Shortcut link: <site>/?quick=pay   (optional: &dir=in|out  &amount=5000)
       let qpCtx = null;
@@ -12210,6 +12367,7 @@
         if (state.activeTab === 'portfolio' && typeof renderPortfolio === 'function') renderPortfolio();
         if (state.activeTab === 'backup' && typeof renderCloudSettings === 'function') renderCloudSettings();
         if (state.activeTab === 'backup' && typeof renderLeadAlertSettings === 'function') renderLeadAlertSettings();
+        if (state.activeTab === 'backup' && typeof renderQuickShortcut === 'function') renderQuickShortcut();
         if (state.activeTab === 'leads' && typeof leadPopQueue !== 'undefined' && !leadPopQueue.length) document.title = BASE_TITLE;
       }
 
@@ -12780,6 +12938,7 @@
             cloud.remoteVersion = f.version;
             setCloudBase(localJson);
           }
+          try { await syncQuickInbox(folderId); } catch (err) { /* the Shortcut inbox is optional */ }
           cloud.lastSync = Date.now();
           cloud.lastError = '';
           cloud.cfg.connected = true;
