@@ -2356,6 +2356,11 @@
       .att-row > span:first-child, .att-row .att-workcell { grid-column:1 / -1; }
       .ad-work-row { grid-template-columns:1fr 1fr; } .ad-work-row .input[data-k="text"] { grid-column:1 / -1; }
     }
+    .trade-list { display:flex; flex-direction:column; gap:6px; max-height:52vh; overflow:auto; }
+    .trade-row { display:grid; grid-template-columns: minmax(0, 1fr) 80px 36px; gap:8px; align-items:center; }
+    .trade-row .input { padding:8px; font-size:14px; }
+    .trade-row .hub-muted { font-size:12px; text-align:right; }
+    .trade-edit-link { font-size:11px; margin-left:6px; text-transform:none; letter-spacing:0; }
     .fee-row { display:grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto; gap:8px 10px; align-items:end; padding:10px 0; border-bottom:1px solid var(--border-subtle); }
     .fee-row .fee-main { grid-column: 1 / -1; }
     .fee-token { padding-left:14px; border-left:3px solid #F3D2AE; background:#FFFBF7; }
@@ -3397,6 +3402,12 @@
     <div class="modal-box modal-lg">
       <div class="modal-header"><h3 class="font-serif" style="font-size:22px; font-weight:700;" id="sel-title">Selection</h3><button class="btn btn-outline btn-sm" data-close-modal="modal-sel">✕</button></div>
       <div id="sel-body"></div>
+    </div>
+  </div>
+  <div class="modal-backdrop" id="modal-trades">
+    <div class="modal-box">
+      <div class="modal-header"><h3 class="font-serif" style="font-size:20px; font-weight:700;">Trades / work</h3><button class="btn btn-outline btn-sm" data-close-modal="modal-trades">✕</button></div>
+      <div id="trades-body"></div>
     </div>
   </div>
   <div class="modal-backdrop" id="modal-ms">
@@ -8914,6 +8925,70 @@
       });
       document.addEventListener('input', e => { if (msEdit && e.target.dataset && (e.target.dataset.mse || e.target.id === 'mse-token')) msLiveUpdate(); });
 
+
+      // ===== Trade / work list (editable; used as suggestions everywhere a trade is typed) =====
+      const DEFAULT_TRADES = ['Carpenter', 'Electrician', 'Plumber', 'Painter', 'POP / false ceiling', 'Tiler / mason', 'Fabricator', 'Glass & aluminium', 'Ply & laminate supplier', 'Hardware supplier', 'Modular kitchen vendor', 'Granite / marble', 'Helper', 'Transport'];
+      // starter trades get fixed ids so every device creates the same list (no duplicates after sync)
+      const starterTrades = () => DEFAULT_TRADES.map((n, i) => ({ id: `trd_${i + 1}`, name: n }));
+      function tradeList() { if (!Array.isArray(state.trades)) state.trades = starterTrades(); return state.trades; }
+      function syncTradesDatalist() {
+        const dl = document.getElementById('dl-trades'); if (!dl) return;
+        const html = tradeList().map(t => `<option value="${escapeHtml(t.name)}"></option>`).join('');
+        if (dl.innerHTML !== html) dl.innerHTML = html;
+      }
+      function rememberTrade(name) {
+        const n = String(name || '').trim(); if (!n) return;
+        if (tradeList().some(t => t.name.toLowerCase() === n.toLowerCase())) return;
+        tradeList().push({ id: uid('tr'), name: n }); syncTradesDatalist();
+      }
+      let tradesEdit = null;
+      function openTradesEditor() {
+        tradesEdit = tradeList().map(t => ({ id: t.id, name: t.name, orig: t.name }));
+        renderTradesEditor(); openModal('modal-trades');
+      }
+      function tradesCapture() { document.querySelectorAll('[data-trade-row]').forEach(el => { const r = tradesEdit.find(x => x.id === el.dataset.tradeRow); if (r) r.name = el.value; }); }
+      function renderTradesEditor() {
+        const box = document.getElementById('trades-body'); if (!box || !tradesEdit) return;
+        const used = n => (state.vendors || []).filter(v => String(v.trade || '').toLowerCase() === String(n || '').toLowerCase()).length;
+        box.innerHTML = `
+          <div class="hub-muted" style="margin:-4px 0 10px;">These show as suggestions when you type a trade (Payment made, vendors, site vendors). Renaming a trade also updates the vendors that have it.</div>
+          <div class="trade-list">${tradesEdit.map(r => { const u = used(r.orig); return `<div class="trade-row">
+            <input class="input" data-trade-row="${r.id}" value="${escapeHtml(r.name)}" placeholder="e.g. Carpenter" />
+            <span class="hub-muted">${u ? `${u} vendor${u === 1 ? '' : 's'}` : ''}</span>
+            <button type="button" class="btn btn-outline btn-sm pay-del" data-trade-del="${r.id}" aria-label="Delete ${escapeHtml(r.name)}">✕</button>
+          </div>`; }).join('') || '<div class="hub-muted">No trades. Add one below.</div>'}</div>
+          <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:10px;">
+            <button type="button" class="btn btn-outline btn-sm" data-trade-add>+ Add trade</button>
+            <button type="button" class="btn btn-outline btn-sm" data-trade-reset>Restore starter list</button>
+          </div>
+          <div class="modal-actions-row"><button type="button" class="btn btn-outline" data-close-modal="modal-trades">Cancel</button><button type="button" class="btn btn-primary" data-trade-save>Save list</button></div>`;
+      }
+      function saveTrades() {
+        tradesCapture();
+        const rows = tradesEdit.map(r => ({ id: r.id, name: String(r.name || '').trim(), orig: r.orig })).filter(r => r.name);
+        const seen = new Set(); const clean = [];
+        rows.forEach(r => { const k = r.name.toLowerCase(); if (seen.has(k)) return; seen.add(k); clean.push(r); });
+        let renamed = 0;
+        clean.forEach(r => {
+          if (!r.orig || r.orig === r.name) return;
+          (state.vendors || []).forEach(v => { if (String(v.trade || '').toLowerCase() === r.orig.toLowerCase()) { v.trade = r.name; renamed++; } });
+        });
+        state.trades = clean.map(r => ({ id: r.id, name: r.name }));
+        commitState(); syncTradesDatalist(); closeModal('modal-trades'); tradesEdit = null;
+        if (state.activeTab === 'payments') renderPayments();
+        showToast(`Trade list saved${renamed ? ` · ${renamed} vendor${renamed === 1 ? '' : 's'} updated` : ''}`);
+      }
+      document.addEventListener('click', async e => {
+        const t = e.target;
+        if (t.closest('[data-trades-manage]')) { e.preventDefault(); openTradesEditor(); return; }
+        if (!tradesEdit || !t.closest('#modal-trades')) return;
+        if (t.closest('[data-trade-add]')) { tradesCapture(); const r = { id: uid('tr'), name: '', orig: '' }; tradesEdit.push(r); renderTradesEditor(); document.querySelector(`[data-trade-row="${r.id}"]`)?.focus(); return; }
+        const dl = t.closest('[data-trade-del]'); if (dl) { tradesCapture(); tradesEdit = tradesEdit.filter(r => r.id !== dl.dataset.tradeDel); renderTradesEditor(); return; }
+        if (t.closest('[data-trade-reset]')) { if (!await appConfirm('Restore the starter trade list?\n\nYour own trades in the list are replaced. Vendors keep their trade.', { ok: 'Restore', danger: true })) return; tradesEdit = starterTrades().map(t => Object.assign(t, { orig: (tradesEdit.find(x => x.id === t.id) || {}).orig || '' })); renderTradesEditor(); return; }
+        if (t.closest('[data-trade-save]')) saveTrades();
+      });
+      document.addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.dataset && e.target.dataset.tradeRow) { e.preventDefault(); document.querySelector('[data-trade-add]')?.click(); } });
+
       // ===== Delete an onboarded client (and everything that belongs to them) =====
       function clientLinkedRecords(c) {
         const own = x => x && x.clientId === c.id;
@@ -11019,6 +11094,7 @@
 
       function renderAll() {
         try { applyTierSettings(); } catch (err) { /* module not ready yet */ }
+        try { syncTradesDatalist(); } catch (err) { /* module not ready yet */ }
         try { if (migrateStudioAdmin()) commitState(); } catch (err) { /* module not ready yet */ }
         try { normalizeAllLeads(); } catch (err) { /* module not ready yet */ }
         try { syncInvoiceReceipts(); } catch (err) { /* module not ready yet */ }
@@ -14594,7 +14670,7 @@
                 <div><label class="form-label">Name *</label><input class="input" id="pv-name" value="${escapeHtml(d.nvName || '')}" placeholder="e.g. Ramesh Mistry" /></div>
                 <div><label class="form-label">Phone</label><input class="input" id="pv-phone" type="tel" inputmode="tel" value="${escapeHtml(d.nvPhone || '')}" placeholder="98XXXXXXXX" /></div>
                 <div><label class="form-label">Type</label><select class="select" id="pv-type">${VENDOR_TYPES.map(t => `<option ${d.nvType === t ? 'selected' : ''}>${t}</option>`).join('')}</select></div>
-                <div><label class="form-label">Trade / work</label><input class="input" id="pv-trade" list="dl-trades" value="${escapeHtml(d.nvTrade || '')}" placeholder="Carpenter, Electrician…" /></div>
+                <div><label class="form-label">Trade / work <button type="button" class="wa-linkbtn trade-edit-link" data-trades-manage>Edit list</button></label><input class="input" id="pv-trade" list="dl-trades" value="${escapeHtml(d.nvTrade || '')}" placeholder="Carpenter, Electrician…" /></div>
               </div></div>` : ''}
               <div><label class="form-label">Project</label><select class="select" id="pay-client">${clientOpts}</select></div>
               <div><label class="form-label">Category</label><select class="select" id="pay-cat">${OUT_CATS.map(k => `<option ${d.category === k ? 'selected' : ''}>${k}</option>`).join('')}</select></div>
@@ -14627,6 +14703,7 @@
             const name = (d.nvName || '').trim();
             if (!name) { showToast('Enter the vendor / labour name'); document.getElementById('pv-name')?.focus(); return; }
             const nv = { id: uid('v'), name, phone: (d.nvPhone || '').trim(), type: d.nvType || 'Labour', trade: (d.nvTrade || '').trim(), work: '', createdAt: new Date().toISOString() };
+            rememberTrade(nv.trade);
             state.vendors.push(nv); vendorId = nv.id;
           }
           if (!vendorId) { showToast('Choose who you paid'); return; }
@@ -14674,7 +14751,7 @@
             <div><label class="form-label">Name *</label><input class="input" id="vd-name" value="${escapeHtml(v ? v.name : '')}" placeholder="e.g. Ramesh Mistry / Shree Plywood" /></div>
             <div><label class="form-label">Phone (WhatsApp)</label><input class="input" id="vd-phone" type="tel" inputmode="tel" value="${escapeHtml(v ? v.phone || '' : '')}" placeholder="98XXXXXXXX" /></div>
             <div><label class="form-label">Type</label><select class="select" id="vd-type">${VENDOR_TYPES.map(t => `<option ${v && v.type === t ? 'selected' : ''}>${t}</option>`).join('')}</select></div>
-            <div><label class="form-label">Trade</label><input class="input" id="vd-trade" list="dl-trades" value="${escapeHtml(v ? v.trade || '' : '')}" placeholder="Carpenter, Electrician, Ply supplier…" /></div>
+            <div><label class="form-label">Trade <button type="button" class="wa-linkbtn trade-edit-link" data-trades-manage>Edit list</button></label><input class="input" id="vd-trade" list="dl-trades" value="${escapeHtml(v ? v.trade || '' : '')}" placeholder="Carpenter, Electrician, Ply supplier…" /></div>
             <div class="form-full"><label class="form-label">Work they do / rates</label><textarea class="textarea" id="vd-work" rows="2" placeholder="e.g. Modular carcass & shutters · ₹450 per sq.ft labour">${escapeHtml(v ? v.work || '' : '')}</textarea></div>
             <div class="form-full"><label class="form-label">Bank / UPI details (optional)</label><input class="input" id="vd-bank" value="${escapeHtml(v ? v.bank || '' : '')}" placeholder="e.g. ramesh@upi or A/C no. & IFSC" /></div>
           </div>
@@ -14693,6 +14770,7 @@
         let v = vendorCtx && vendorCtx.id ? vendorById(vendorCtx.id) : null;
         if (!v) { v = { id: uid('v'), createdAt: new Date().toISOString() }; state.vendors.push(v); }
         Object.assign(v, { name: g('vd-name'), phone: g('vd-phone'), type: g('vd-type') || 'Labour', trade: g('vd-trade'), work: g('vd-work'), bank: g('vd-bank') });
+        rememberTrade(v.trade);
         commitState(); closeModal('modal-vendor'); vendorCtx = null;
         state.payView = 'vendors';
         renderAll(); showToast(`${v.name} saved`);
