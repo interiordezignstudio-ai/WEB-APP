@@ -39,3 +39,10 @@ The app creates a folder **"Interior Dezign Studio OS"** in that Drive, with one
 ## Updating the app
 
 Replace `index.html` with the new version and commit it. GitHub Pages updates the website within a minute or two. Your data in Google Drive is not affected.
+
+## Our work (public portfolio)
+
+`work/` is the public page leads see: `https://interiordezignstudio-ai.github.io/WEB-APP/work/`.
+Photos and videos are added from the app (**Our Work** in the menu). The app publishes them to this
+repository with a GitHub fine-grained access key (Contents: Read and write on this repository only),
+which is kept on the admin's device and never synced. `work/data.json` lists what is shown.

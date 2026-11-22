@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>Our Work — Interior Dezign Studio, Pune</title>
+  <meta name="description" content="Photos and videos of homes and offices designed and built by Interior Dezign Studio, Baner, Pune." />
+  <meta property="og:type" content="website" />
+  <meta property="og:title" content="Our Work — Interior Dezign Studio" />
+  <meta property="og:description" content="Photos and videos of homes and offices we have designed and built in Pune." />
+  <meta property="og:image" content="https://interiordezignstudio-ai.github.io/WEB-APP/work/cover.jpg" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+  <meta property="og:url" content="https://interiordezignstudio-ai.github.io/WEB-APP/work/" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="theme-color" content="#F7F4EF" />
+  <link rel="icon" href="logo.png" />
+  <link rel="apple-touch-icon" href="../icon-192.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #F7F4EF; --card: #FFFFFF; --ink: #1C1917; --muted: #625A53; --line: #E7E2DC;
+      --accent: #A44A22; --accent-soft: #F8E9DF; --red: #C41E2E; --wa: #1FA855;
+      --serif: 'Fraunces', Georgia, serif; --sans: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+    }
+    * { box-sizing: border-box; }
+    html { -webkit-text-size-adjust: 100%; }
+    body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--sans); line-height: 1.5; }
+    a { color: inherit; }
+    .wrap { max-width: 1180px; margin: 0 auto; padding: 0 16px; }
+
+    /* hero */
+    header.hero { padding: 36px 0 22px; }
+    .brand { display: flex; align-items: center; gap: 18px; }
+    .brand img { height: 92px; width: auto; flex: 0 0 auto; filter: drop-shadow(0 6px 10px rgba(0,0,0,.08)); }
+    .brand h1 { font-family: var(--serif); font-weight: 600; font-size: clamp(28px, 5vw, 46px); line-height: 1.05; margin: 0; letter-spacing: -0.01em; }
+    .brand .rule { width: 64px; height: 4px; background: var(--red); border-radius: 2px; margin: 12px 0 10px; }
+    .brand p { margin: 0; color: var(--muted); font-size: 15px; max-width: 560px; }
+    .for { margin-top: 18px; display: inline-block; background: var(--accent-soft); color: var(--accent); font-weight: 600; font-size: 14px; padding: 7px 14px; border-radius: 999px; }
+    .ctas { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 20px; }
+    .btn { display: inline-flex; align-items: center; gap: 8px; text-decoration: none; border-radius: 12px; padding: 11px 18px; font-weight: 600; font-size: 15px; border: 1px solid var(--line); background: var(--card); color: var(--ink); cursor: pointer; }
+    .btn svg { width: 18px; height: 18px; flex: 0 0 18px; }
+    .btn.wa { background: var(--wa); border-color: var(--wa); color: #fff; }
+    .btn.dark { background: var(--ink); border-color: var(--ink); color: #fff; }
+    .btn:hover { filter: brightness(0.96); }
+    .stats { display: flex; gap: 26px; margin-top: 22px; color: var(--muted); font-size: 14px; flex-wrap: wrap; }
+    .stats b { color: var(--ink); font-size: 20px; font-family: var(--serif); font-weight: 600; margin-right: 4px; }
+
+    /* filters */
+    .bar { position: sticky; top: 0; z-index: 5; background: rgba(247, 244, 239, 0.92); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); border-bottom: 1px solid var(--line); }
+    .chips { display: flex; gap: 8px; overflow-x: auto; padding: 12px 0; scrollbar-width: none; }
+    .chips::-webkit-scrollbar { display: none; }
+    .chip { flex: 0 0 auto; border: 1px solid var(--line); background: var(--card); color: var(--ink); border-radius: 999px; padding: 8px 15px; font: 600 14px var(--sans); cursor: pointer; }
+    .chip.on { background: var(--ink); border-color: var(--ink); color: #fff; }
+    .chip small { font-weight: 500; opacity: .65; margin-left: 4px; }
+
+    main { padding: 24px 0 40px; }
+    h2 { font-family: var(--serif); font-weight: 600; font-size: 26px; margin: 8px 0 14px; }
+
+    /* photo grid (masonry) */
+    .grid { column-count: 3; column-gap: 14px; }
+    @media (max-width: 900px) { .grid { column-count: 2; column-gap: 10px; } }
+    @media (max-width: 380px) { .grid { column-count: 1; } }
+    .ph { break-inside: avoid; margin: 0 0 14px; position: relative; border-radius: 14px; overflow: hidden; background: #EAE4DD; cursor: zoom-in; display: block; width: 100%; border: 0; padding: 0; text-align: left; }
+    @media (max-width: 900px) { .ph { margin-bottom: 10px; border-radius: 12px; } }
+    .ph img { width: 100%; height: auto; display: block; transition: transform .5s ease; }
+    .ph:hover img { transform: scale(1.03); }
+    .ph .cap { position: absolute; left: 0; right: 0; bottom: 0; padding: 26px 12px 10px; background: linear-gradient(transparent, rgba(0,0,0,.62)); color: #fff; font-size: 13.5px; font-weight: 600; }
+    .ph .cap small { display: block; font-weight: 500; opacity: .85; font-size: 12px; }
+
+    /* videos */
+    .vids { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 16px; align-items: start; }
+    .vid { background: var(--card); border: 1px solid var(--line); border-radius: 14px; overflow: hidden; }
+    .vid iframe { display: block; width: 100%; border: 0; background: #fff; }
+    .vid.ig iframe { height: 640px; }
+    .vid.yt iframe { aspect-ratio: 16 / 9; height: auto; }
+    .vid.yt.short iframe { aspect-ratio: 9 / 16; }
+    .vid .vcap { padding: 10px 14px; font-weight: 600; font-size: 14px; border-top: 1px solid var(--line); }
+    .vid .vcap small { color: var(--muted); font-weight: 500; }
+
+    .section { margin-bottom: 34px; }
+    .empty { text-align: center; color: var(--muted); padding: 60px 0; }
+
+    /* contact */
+    .contact { background: var(--ink); color: #fff; border-radius: 20px; padding: 30px 26px; display: flex; gap: 20px; align-items: center; justify-content: space-between; flex-wrap: wrap; margin-top: 10px; }
+    .contact h3 { font-family: var(--serif); font-weight: 600; font-size: 26px; margin: 0 0 4px; }
+    .contact p { margin: 0; color: #D6CCC2; }
+    .contact .btn { border-color: transparent; }
+    footer { color: var(--muted); font-size: 13px; padding: 24px 0 40px; text-align: center; }
+
+    /* lightbox */
+    .lb { position: fixed; inset: 0; background: rgba(12, 10, 9, 0.96); z-index: 50; display: none; flex-direction: column; }
+    .lb.open { display: flex; }
+    .lb-top { display: flex; align-items: center; justify-content: space-between; color: #fff; padding: 12px 14px; gap: 10px; }
+    .lb-top .t { font-weight: 600; font-size: 14px; }
+    .lb-top .t small { display: block; opacity: .7; font-weight: 500; }
+    .lb-img { flex: 1; display: flex; align-items: center; justify-content: center; min-height: 0; padding: 0 8px 12px; touch-action: pan-y; }
+    .lb-img img { max-width: 100%; max-height: 100%; object-fit: contain; border-radius: 6px; user-select: none; -webkit-user-drag: none; }
+    .ic { width: 44px; height: 44px; border-radius: 50%; border: 0; background: rgba(255,255,255,.12); color: #fff; font-size: 22px; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; }
+    .lb-nav { position: absolute; top: 50%; transform: translateY(-50%); }
+    .lb-prev { left: 12px; } .lb-next { right: 12px; }
+    @media (max-width: 700px) { .lb-nav { display: none; } .brand img { height: 72px; } header.hero { padding-top: 24px; } .contact { padding: 24px 18px; } }
+    .loading { color: var(--muted); padding: 40px 0; text-align: center; }
+  </style>
+</head>
+<body>
+  <header class="hero">
+    <div class="wrap">
+      <div class="brand">
+        <img src="logo.png" alt="Interior Dezign Studio logo" />
+        <div>
+          <h1 id="studio-name">Interior Dezign Studio</h1>
+          <div class="rule"></div>
+          <p id="tagline">Homes and workspaces designed and built end-to-end in Pune.</p>
+        </div>
+      </div>
+      <div id="for"></div>
+      <div class="ctas" id="ctas"></div>
+      <div class="stats" id="stats"></div>
+    </div>
+  </header>
+
+  <div class="bar" id="bar" hidden><div class="wrap"><div class="chips" id="chips" role="tablist" aria-label="Filter"></div></div></div>
+
+  <main class="wrap">
+    <div id="content"><div class="loading">Loading our work…</div></div>
+    <div class="contact">
+      <div>
+        <h3>Like what you see?</h3>
+        <p id="contact-line">Let’s talk about your home.</p>
+      </div>
+      <div class="ctas" id="ctas2" style="margin-top:0;"></div>
+    </div>
+  </main>
+  <footer><span id="foot"></span></footer>
+
+  <div class="lb" id="lb" role="dialog" aria-modal="true" aria-label="Photo">
+    <div class="lb-top"><div class="t" id="lb-t"></div><button class="ic" id="lb-x" aria-label="Close">✕</button></div>
+    <div class="lb-img" id="lb-area"><img id="lb-img" alt="" /></div>
+    <button class="ic lb-nav lb-prev" id="lb-prev" aria-label="Previous">‹</button>
+    <button class="ic lb-nav lb-next" id="lb-next" aria-label="Next">›</button>
+  </div>
+
+  <script>
+    (function () {
+      var ICON = {
+        wa: '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2Zm0 18.2a8.2 8.2 0 0 1-4.2-1.2l-.3-.2-3 .8.8-2.9-.2-.3A8.2 8.2 0 1 1 12 20.2Zm4.5-6.1c-.2-.1-1.5-.7-1.7-.8-.2-.1-.4-.1-.6.1l-.8 1c-.1.2-.3.2-.5.1a6.7 6.7 0 0 1-3.3-2.9c-.2-.4.2-.4.7-1.3.1-.2 0-.3 0-.4l-.8-1.8c-.2-.5-.4-.4-.6-.4h-.5a1 1 0 0 0-.7.3 3 3 0 0 0-.9 2.2 5.2 5.2 0 0 0 1.1 2.7 11.8 11.8 0 0 0 4.5 4c1.7.7 2.3.8 3.2.6a2.7 2.7 0 0 0 1.8-1.2 2.2 2.2 0 0 0 .2-1.3c-.1-.1-.3-.2-.5-.3Z"/></svg>',
+        call: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1.9.4 1.8.7 2.7a2 2 0 0 1-.5 2.1L8 9.8a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.4c.9.3 1.8.6 2.7.7a2 2 0 0 1 1.7 2Z"/></svg>',
+        ig: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="2" width="20" height="20" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="1" fill="currentColor"/></svg>'
+      };
+      function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+      var params = new URLSearchParams(location.search);
+      var forName = (params.get('for') || '').trim().slice(0, 60);
+      var startCat = params.get('c') || '';
+
+      function videoEmbed(url) {
+        var u = String(url || '');
+        var m = u.match(/instagram\.com\/(?:[\w.]+\/)?(p|reel|reels|tv)\/([\w-]+)/i);
+        if (m) return { kind: 'ig', src: 'https://www.instagram.com/' + (m[1].toLowerCase() === 'tv' ? 'tv' : 'p') + '/' + m[2] + '/embed/' };
+        m = u.match(/(?:youtube\.com\/(?:watch\?(?:.*&)?v=|embed\/|shorts\/)|youtu\.be\/)([\w-]{6,})/i);
+        if (m) return { kind: 'yt', short: /shorts\//i.test(u), src: 'https://www.youtube-nocookie.com/embed/' + m[1] + '?rel=0' };
+        return null;
+      }
+
+      fetch('data.json?t=' + Date.now(), { cache: 'no-store' }).then(function (r) { return r.json(); }).then(render).catch(function () {
+        document.getElementById('content').innerHTML = '<div class="empty">Could not load the gallery. Please refresh the page.</div>';
+      });
+
+      var photos = [], current = 'all', lbList = [], lbIdx = 0;
+
+      function ctaHtml(st, msg) {
+        var out = '';
+        var wa = String(st.whatsapp || st.phone || '').replace(/\D/g, '');
+        if (wa.length === 10) wa = '91' + wa;
+        if (wa) out += '<a class="btn wa" href="https://wa.me/' + wa + '?text=' + encodeURIComponent(msg) + '" target="_blank" rel="noopener">' + ICON.wa + 'WhatsApp us</a>';
+        if (st.phone) out += '<a class="btn" href="tel:' + esc(String(st.phone).replace(/[^\d+]/g, '')) + '">' + ICON.call + 'Call ' + esc(st.phone) + '</a>';
+        if (st.instagram) out += '<a class="btn" href="' + esc(igUrl(st.instagram)) + '" target="_blank" rel="noopener">' + ICON.ig + 'Instagram</a>';
+        return out;
+      }
+      function igUrl(v) { v = String(v || '').trim(); if (/^https?:\/\//i.test(v)) return v; return 'https://www.instagram.com/' + v.replace(/^@/, '') + '/'; }
+
+      function render(data) {
+        var st = data.studio || {};
+        var items = Array.isArray(data.items) ? data.items : [];
+        if (st.name) { document.getElementById('studio-name').textContent = st.name; document.title = 'Our Work — ' + st.name; }
+        if (st.tagline) document.getElementById('tagline').textContent = st.tagline;
+        if (forName) document.getElementById('for').innerHTML = '<span class="for">Specially shared with ' + esc(forName) + '</span>';
+        var msg = 'Hi ' + (st.name || '') + ', I saw your work and would like to discuss interiors for my home.';
+        document.getElementById('ctas').innerHTML = ctaHtml(st, msg);
+        document.getElementById('ctas2').innerHTML = ctaHtml(st, msg);
+        document.getElementById('foot').textContent = [st.name, st.address].filter(Boolean).join(' · ');
+
+        photos = items.filter(function (x) { return x.type === 'photo' && x.file; });
+        var vids = items.filter(function (x) { return x.type === 'video' && videoEmbed(x.url); });
+        var projects = {};
+        items.forEach(function (x) { if (x.project) projects[x.project] = 1; });
+        var nProj = Object.keys(projects).length;
+        function stat(n, w) { return n ? '<span><b>' + n + '</b>' + w + (n === 1 ? '' : 's') + '</span>' : ''; }
+        document.getElementById('stats').innerHTML = stat(nProj, 'project') + stat(photos.length, 'photo') + stat(vids.length, 'video');
+
+        // categories (photos and videos)
+        var cats = [], count = {};
+        items.forEach(function (x) { var c = x.category || 'Other'; if (!count[c]) { count[c] = 0; cats.push(c); } count[c]++; });
+        var chips = [['all', 'All', items.length]];
+        cats.forEach(function (c) { chips.push([c, c, count[c]]); });
+        if (vids.length && photos.length) chips.push(['__videos', 'Videos', vids.length]);
+        if (chips.length > 2) {
+          document.getElementById('bar').hidden = false;
+          document.getElementById('chips').innerHTML = chips.map(function (c) { return '<button class="chip" role="tab" data-c="' + esc(c[0]) + '">' + esc(c[1]) + '<small>' + c[2] + '</small></button>'; }).join('');
+        }
+        if (startCat && chips.some(function (c) { return c[0] === startCat; })) current = startCat;
+        window.__all = { photos: photos, vids: vids };
+        draw();
+      }
+
+      function draw() {
+        var a = window.__all; if (!a) return;
+        document.querySelectorAll('.chip').forEach(function (b) { b.classList.toggle('on', b.getAttribute('data-c') === current); b.setAttribute('aria-selected', b.getAttribute('data-c') === current); });
+        var showPh = current === '__videos' ? [] : a.photos.filter(function (x) { return current === 'all' || (x.category || 'Other') === current; });
+        var showV = a.vids.filter(function (x) { return current === 'all' || current === '__videos' || (x.category || 'Other') === current; });
+        lbList = showPh;
+        var html = '';
+        if (showPh.length) {
+          html += '<section class="section">' + (showV.length ? '<h2>Photos</h2>' : '') + '<div class="grid">' + showPh.map(function (x, i) {
+            var ratio = x.w && x.h ? ' width="' + x.w + '" height="' + x.h + '"' : '';
+            var cap = x.title || x.project ? '<span class="cap">' + esc(x.title || x.project) + (x.title && x.project ? '<small>' + esc(x.project) + '</small>' : '') + '</span>' : '';
+            return '<button class="ph" data-i="' + i + '" aria-label="Open photo ' + (i + 1) + '"><img src="' + esc(x.thumb || x.file) + '" alt="' + esc(x.title || x.category || 'Interior photo') + '" loading="lazy"' + ratio + ' />' + cap + '</button>';
+          }).join('') + '</div></section>';
+        }
+        if (showV.length) {
+          html += '<section class="section"><h2>Videos</h2><div class="vids">' + showV.map(function (x) {
+            var e = videoEmbed(x.url);
+            return '<div class="vid ' + e.kind + (e.short ? ' short' : '') + '"><iframe src="' + esc(e.src) + '" loading="lazy" allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowfullscreen title="' + esc(x.title || 'Video') + '"></iframe>' + (x.title || x.project ? '<div class="vcap">' + esc(x.title || x.project) + (x.title && x.project ? ' <small>· ' + esc(x.project) + '</small>' : '') + '</div>' : '') + '</div>';
+          }).join('') + '</div></section>';
+        }
+        if (!html) html = '<div class="empty">New photos of our work are coming soon.</div>';
+        document.getElementById('content').innerHTML = html;
+      }
+
+      document.addEventListener('click', function (e) {
+        var c = e.target.closest('.chip');
+        if (c) { current = c.getAttribute('data-c'); draw(); var bar = document.getElementById('bar'); window.scrollTo({ top: bar.offsetTop - 0, behavior: 'smooth' }); return; }
+        var p = e.target.closest('.ph');
+        if (p) { openLb(+p.getAttribute('data-i')); return; }
+      });
+
+      // lightbox
+      var lb = document.getElementById('lb'), lbImg = document.getElementById('lb-img');
+      function showLb() {
+        var x = lbList[lbIdx]; if (!x) return;
+        lbImg.src = x.file; lbImg.alt = x.title || 'Interior photo';
+        document.getElementById('lb-t').innerHTML = esc(x.title || x.category || '') + '<small>' + esc([x.project, (lbIdx + 1) + ' / ' + lbList.length].filter(Boolean).join(' · ')) + '</small>';
+        var n = lbList[lbIdx + 1]; if (n) { var im = new Image(); im.src = n.file; }
+      }
+      function openLb(i) { lbIdx = i; showLb(); lb.classList.add('open'); document.body.style.overflow = 'hidden'; }
+      function closeLb() { lb.classList.remove('open'); document.body.style.overflow = ''; lbImg.removeAttribute('src'); }
+      function step(d) { if (!lbList.length) return; lbIdx = (lbIdx + d + lbList.length) % lbList.length; showLb(); }
+      document.getElementById('lb-x').onclick = closeLb;
+      document.getElementById('lb-prev').onclick = function () { step(-1); };
+      document.getElementById('lb-next').onclick = function () { step(1); };
+      document.getElementById('lb-area').addEventListener('click', function (e) { if (e.target.id === 'lb-area') closeLb(); });
+      document.addEventListener('keydown', function (e) {
+        if (!lb.classList.contains('open')) return;
+        if (e.key === 'Escape') closeLb(); else if (e.key === 'ArrowLeft') step(-1); else if (e.key === 'ArrowRight') step(1);
+      });
+      var sx = null;
+      lb.addEventListener('touchstart', function (e) { sx = e.touches[0].clientX; }, { passive: true });
+      lb.addEventListener('touchend', function (e) { if (sx == null) return; var dx = e.changedTouches[0].clientX - sx; if (Math.abs(dx) > 45) step(dx < 0 ? 1 : -1); sx = null; });
+    })();
+  </script>
+</body>
+</html>

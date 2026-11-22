@@ -2533,6 +2533,31 @@
       .main-wrapper { margin: 0 !important; }
     }
   
+    /* Our work (portfolio) */
+    .pf-link { display:flex; align-items:center; gap:10px; flex-wrap:wrap; background: var(--bg-sunken); border:1px solid var(--border-subtle); border-radius:12px; padding:12px 14px; }
+    .pf-link code { font: 600 15px/1.3 var(--font-sans, Inter, system-ui); color: var(--accent-terracotta-dark); overflow-wrap:anywhere; flex:1 1 240px; }
+    .pf-actions { display:flex; gap:8px; flex-wrap:wrap; margin-top:10px; }
+    .pf-grid { display:grid; grid-template-columns: repeat(auto-fill, minmax(168px, 1fr)); gap:12px; margin-top:12px; }
+    .pf-item { border:1px solid var(--border-subtle); border-radius:12px; overflow:hidden; background: var(--bg-card); display:flex; flex-direction:column; }
+    .pf-thumb { position:relative; aspect-ratio: 4 / 3; background: var(--bg-sunken); display:flex; align-items:center; justify-content:center; overflow:hidden; }
+    .pf-thumb img { width:100%; height:100%; object-fit:cover; display:block; }
+    .pf-thumb .pf-play { position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px; color:#FFF; font-weight:700; font-size:12px; background: linear-gradient(135deg, rgba(131,58,180,.85), rgba(225,48,108,.85), rgba(247,119,55,.85)); }
+    .pf-thumb .pf-play.yt { background: rgba(0,0,0,.45); }
+    .pf-thumb .pf-play span { font-size:28px; line-height:1; }
+    .pf-badge { position:absolute; top:6px; left:6px; background: rgba(28,25,23,.72); color:#FFF; font-size:11px; font-weight:700; padding:3px 7px; border-radius:999px; }
+    .pf-meta { padding:8px 10px; font-size:12.5px; flex:1; min-width:0; }
+    .pf-meta strong { display:block; font-size:13px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .pf-meta small { color: var(--text-muted); display:block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .pf-btns { display:flex; gap:4px; padding:0 8px 8px; }
+    .pf-btns .btn { flex:1; padding:6px 4px; font-size:12px; }
+    .pf-new { display:grid; grid-template-columns: repeat(auto-fill, minmax(84px, 1fr)); gap:6px; margin-top:8px; }
+    .pf-new img { width:100%; aspect-ratio:1; object-fit:cover; border-radius:8px; display:block; }
+    .pf-busy { background: var(--accent-terracotta-soft); color: var(--accent-terracotta-dark); border-radius:10px; padding:10px 12px; font-weight:600; font-size:13.5px; }
+    .pf-steps { margin:8px 0 0; padding-left:20px; font-size:13px; color: var(--text-muted); line-height:1.6; }
+    .pf-steps b { color: var(--text-main); }
+    .pf-filters { display:flex; gap:6px; flex-wrap:wrap; margin-top:10px; }
+    .pf-filters button { border:1px solid var(--border-subtle); background: var(--bg-card); color: var(--text-main); border-radius:999px; padding:5px 11px; font-size:12.5px; font-weight:600; cursor:pointer; }
+    .pf-filters button.on { background: var(--text-main); color: var(--bg-card); border-color: var(--text-main); }
     /* Trash */
     .trash-row { display:flex; gap:12px; align-items:center; padding:12px 0; border-bottom:1px solid var(--border-subtle); flex-wrap:wrap; }
     .trash-row:last-child { border-bottom:0; }
@@ -2683,6 +2708,10 @@
         <button class="nav-item" data-tab="clients" data-short="Clients" title="Onboarded Clients">
           <span class="nav-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7.5A2.5 2.5 0 0 1 5.5 5H9l2 2.5h7.5A2.5 2.5 0 0 1 21 10v7.5a2.5 2.5 0 0 1-2.5 2.5h-13A2.5 2.5 0 0 1 3 17.5z"/></svg></span>
           <span class="nav-label">Onboarded Clients</span>
+        </button>
+        <button class="nav-item" data-tab="portfolio" data-short="Our work" title="Our work — photos &amp; videos to share with leads">
+          <span class="nav-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2.5"/><circle cx="9" cy="10" r="1.8"/><path d="m21 16-5-5-9 9"/></svg></span>
+          <span class="nav-label">Our Work</span>
         </button>
         <div class="nav-section">Estimating</div>
         <button class="nav-item" data-tab="quickboq" data-short="Quick" title="Quick BOQ — rough cost for a phone enquiry">
@@ -3358,6 +3387,16 @@
         </section>
 
         <!-- ==================== 8. GOOGLE DRIVE SYNC & STUDIO BRANDING VIEW ==================== -->
+        <section id="view-portfolio" class="app-view" style="display:none;">
+          <div class="page-header">
+            <div>
+              <h1 class="page-title">Our Work</h1>
+              <p class="page-sub">Photos &amp; videos of past projects — one short link to send to leads</p>
+            </div>
+          </div>
+          <div id="portfolio-root"></div>
+        </section>
+
         <section id="view-backup" class="app-view" style="display:none;">
           <div class="page-header">
             <div>
@@ -3563,6 +3602,12 @@
     <div class="modal-box modal-lg">
       <div class="modal-header"><h3 class="font-serif" style="font-size:22px; font-weight:700;" id="sel-title">Selection</h3><button class="btn btn-outline btn-sm" data-close-modal="modal-sel">✕</button></div>
       <div id="sel-body"></div>
+    </div>
+  </div>
+  <div class="modal-backdrop" id="modal-pf-edit">
+    <div class="modal-box">
+      <div class="modal-header"><h3 class="font-serif" style="font-size:20px; font-weight:700;">Edit</h3><button class="btn btn-outline btn-sm" data-close-modal="modal-pf-edit">✕</button></div>
+      <div id="pf-edit-body"></div>
     </div>
   </div>
   <div class="modal-backdrop" id="modal-trash">
@@ -4487,7 +4532,7 @@
       ];
       function normPerm(o) {
         o = o || {};
-        const out = { tabs: ACCESS_SCREENS.map(x => x[0]).filter(t => t === 'dashboard' || t === 'attendance' || (o.tabs || []).includes(t)) };
+        const out = { tabs: ACCESS_SCREENS.map(x => x[0]).filter(t => t === 'dashboard' || t === 'attendance' || (o.tabs || []).includes(t)).concat(['portfolio']) };
         ACCESS_ABILITIES.forEach(([k]) => { out[k] = Boolean(o[k]); });
         return out;
       }
@@ -9376,6 +9421,350 @@
       setTimeout(applyTheme, 0);
 
 
+
+      // ===== Our work: public portfolio on the GitHub site =====
+      const GH_TOKEN_KEY = 'ids_github_key';
+      const PF_CATS = ['Living room', 'Kitchen', 'Bedroom', 'Wardrobe', 'Kids room', 'Dining', 'TV unit', 'Pooja unit', 'Bathroom', 'False ceiling', 'Balcony', 'Office', 'Commercial', '3D design'];
+      const PF_DEFAULT_STUDIO = { name: 'Interior Dezign Studio', tagline: 'Homes and workspaces designed and built end-to-end in Pune.', phone: '+91 80939 35151', whatsapp: '918093935151', instagram: '', address: 'Baner, Pune' };
+      let pfBusy = null, pfDraft = null, pfFilter = 'all', pfShareCat = '', pfRefreshed = false, pfEditId = null, pfShowSetup = false;
+      const pfPreview = {}; // just-uploaded photos (shown until the site has them)
+      function ghRepo() {
+        const h = location.hostname;
+        if (/\.github\.io$/i.test(h)) { const seg = location.pathname.split('/').filter(Boolean)[0]; if (seg && !/\.html?$/i.test(seg)) return { owner: h.split('.')[0], repo: seg }; }
+        return { owner: 'interiordezignstudio-ai', repo: 'WEB-APP' };
+      }
+      function siteBase() {
+        const r = ghRepo();
+        if (/\.github\.io$/i.test(location.hostname)) return `${location.origin}/${r.repo}/`;
+        return `https://${r.owner}.github.io/${r.repo}/`;
+      }
+      function workLink(cat) { return siteBase() + 'work/' + (cat ? `?c=${encodeURIComponent(cat)}` : ''); }
+      function ghToken() { try { return localStorage.getItem(GH_TOKEN_KEY) || ''; } catch (e) { return ''; } }
+      function pfCanEdit() { return !!ghToken() && amTrashAdmin(); }
+      async function gh(path, method, body) {
+        const r = ghRepo();
+        let res;
+        try {
+          res = await fetch(`https://api.github.com/repos/${r.owner}/${r.repo}${path}`, {
+            method: method || 'GET', cache: 'no-store',
+            headers: { Authorization: `Bearer ${ghToken()}`, Accept: 'application/vnd.github+json', 'X-GitHub-Api-Version': '2022-11-28', ...(body ? { 'Content-Type': 'application/json' } : {}) },
+            body: body ? JSON.stringify(body) : undefined
+          });
+        } catch (e) { const er = new Error('network'); er.status = 0; throw er; }
+        if (!res.ok) { const er = new Error((await res.text().catch(() => '')).slice(0, 300)); er.status = res.status; throw er; }
+        return res.status === 204 ? null : res.json();
+      }
+      function ghErr(e) {
+        const st = e && e.status;
+        if (st === 0) return 'No internet connection';
+        if (st === 401) return 'the GitHub key is wrong or expired — paste a new one in “GitHub connection” below';
+        if (st === 403) return 'the GitHub key is not allowed to write — it needs “Contents: Read and write” for the WEB-APP repository';
+        if (st === 404) return 'the WEB-APP repository was not found with this key — choose it under “Repository access” when creating the key';
+        if (st === 409 || st === 422) return 'GitHub was busy — please try again';
+        return `GitHub error ${st || ''}`.trim();
+      }
+      async function ghBranch() { const info = await gh(''); return info.default_branch || 'main'; }
+      // one commit for all the changes: files [{path, b64}|{path, text}], deletes [path]
+      async function ghCommit(files, deletes, message, onStep) {
+        const branch = await ghBranch();
+        const blobs = [];
+        for (let i = 0; i < files.length; i++) {
+          const f = files[i];
+          if (f.b64) { if (onStep) onStep(i + 1, files.length); const b = await gh('/git/blobs', 'POST', { content: f.b64, encoding: 'base64' }); blobs.push({ path: f.path, mode: '100644', type: 'blob', sha: b.sha }); }
+          else blobs.push({ path: f.path, mode: '100644', type: 'blob', content: f.text });
+        }
+        for (let attempt = 0; attempt < 3; attempt++) {
+          const ref = await gh(`/git/ref/heads/${branch}`);
+          const head = await gh(`/git/commits/${ref.object.sha}`);
+          const tree = blobs.concat((deletes || []).map(path => ({ path, mode: '100644', type: 'blob', sha: null })));
+          let t;
+          try { t = await gh('/git/trees', 'POST', { base_tree: head.tree.sha, tree }); }
+          catch (e) { if (e.status === 422 && deletes && deletes.length) { deletes = []; continue; } throw e; } // a file to delete was already gone
+          const c = await gh('/git/commits', 'POST', { message, tree: t.sha, parents: [ref.object.sha] });
+          try { await gh(`/git/refs/heads/${branch}`, 'PATCH', { sha: c.sha }); return c.sha; }
+          catch (e) { if (e.status !== 422 || attempt === 2) throw e; } // someone else committed in between: try again
+        }
+      }
+      function b64ToText(b64) { const bin = atob(String(b64 || '').replace(/\s/g, '')); const bytes = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i); return new TextDecoder().decode(bytes); }
+      async function pfReadRepo() {
+        try { const f = await gh('/contents/work/data.json'); return JSON.parse(b64ToText(f.content)); }
+        catch (e) { if (e.status === 404) return { studio: { ...PF_DEFAULT_STUDIO }, items: [] }; throw e; }
+      }
+      function pfData() { const d = state.portfolio || {}; return { studio: { ...PF_DEFAULT_STUDIO, ...(d.studio || {}) }, items: Array.isArray(d.items) ? d.items : [], updated: d.updated || '' }; }
+      function pfAdopt(d) { state.portfolio = { studio: d.studio || {}, items: Array.isArray(d.items) ? d.items : [], updated: d.updated || '' }; commitState(); }
+      async function pfRefresh(quiet) {
+        try {
+          let d;
+          if (ghToken()) d = await pfReadRepo();
+          else { const r = ghRepo(); const res = await fetch(`https://raw.githubusercontent.com/${r.owner}/${r.repo}/main/work/data.json?t=${Date.now()}`, { cache: 'no-store' }); if (!res.ok) throw new Error(); d = await res.json(); }
+          if (JSON.stringify(d.items || []) !== JSON.stringify(pfData().items) || JSON.stringify(d.studio || {}) !== JSON.stringify((state.portfolio || {}).studio || {})) { pfAdopt(d); renderPortfolio(); }
+          if (!quiet) showToast('Up to date');
+        } catch (e) { if (!quiet) showToast('Could not load from the website — check the internet'); }
+      }
+      // read the latest from GitHub, change it, publish in one commit
+      async function pfPublish(label, mutate, files, deletes) {
+        if (!pfCanEdit()) { showToast('Connect GitHub first (admin only)'); return false; }
+        pfBusy = label; renderPortfolio();
+        try {
+          const d = await pfReadRepo();
+          d.studio = { ...PF_DEFAULT_STUDIO, ...(d.studio || {}) }; d.items = Array.isArray(d.items) ? d.items : [];
+          mutate(d);
+          d.updated = new Date().toISOString();
+          await ghCommit((files || []).concat([{ path: 'work/data.json', text: JSON.stringify(d, null, 2) + '\n' }]), deletes || [], `Our work: ${label}`, (i, n) => { pfBusy = `${label} — uploading ${i} of ${n}…`; renderPortfolio(); });
+          pfAdopt(d);
+          showToast('Published · live on the link in about a minute');
+          return true;
+        } catch (e) { showToast(`Not published: ${ghErr(e)}`); return false; }
+        finally { pfBusy = null; renderPortfolio(); }
+      }
+      function pfImg(it) {
+        if (pfPreview[it.id]) return pfPreview[it.id];
+        const r = ghRepo();
+        return `https://raw.githubusercontent.com/${r.owner}/${r.repo}/main/work/${it.thumb || it.file}`;
+      }
+      function pfVideo(url) {
+        const u = String(url || '');
+        let m = u.match(/instagram\.com\/(?:[\w.]+\/)?(p|reel|reels|tv)\/([\w-]+)/i);
+        if (m) return { kind: 'ig', label: 'Instagram', code: m[2] };
+        m = u.match(/(?:youtube\.com\/(?:watch\?(?:.*&)?v=|embed\/|shorts\/)|youtu\.be\/)([\w-]{6,})/i);
+        if (m) return { kind: 'yt', label: 'YouTube', code: m[1] };
+        return null;
+      }
+      async function pfImage(file, max, q) {
+        const url = await compressImageFile(file, max, q);
+        const dims = await new Promise(res => { const im = new Image(); im.onload = () => res({ w: im.naturalWidth, h: im.naturalHeight }); im.onerror = () => res({ w: 0, h: 0 }); im.src = url; });
+        return { url, ...dims };
+      }
+      function pfCatsInUse() { return [...new Set(pfData().items.map(x => x.category).filter(Boolean))]; }
+      function pfCatOptions(sel) { const all = [...new Set([...pfCatsInUse(), ...PF_CATS])]; return all.map(c => `<option ${c === sel ? 'selected' : ''}>${escapeHtml(c)}</option>`).join(''); }
+      function pfProjects() { return [...new Set(pfData().items.map(x => x.project).filter(Boolean))]; }
+
+      function renderPortfolio() {
+        const box = document.getElementById('portfolio-root'); if (!box) return;
+        if (!pfRefreshed) { pfRefreshed = true; setTimeout(() => pfRefresh(true), 50); }
+        const d = pfData(); const items = d.items;
+        const canEdit = pfCanEdit(); const admin = amTrashAdmin();
+        const nPh = items.filter(x => x.type === 'photo').length, nV = items.filter(x => x.type === 'video').length;
+        const cats = pfCatsInUse();
+        const link = workLink(pfShareCat);
+        const shown = items.filter(x => pfFilter === 'all' || (pfFilter === '__v' ? x.type === 'video' : x.category === pfFilter));
+        const leads = (typeof getScopedLeads === 'function' ? getScopedLeads() : []).filter(l => l.phone).slice(0, 400);
+        box.innerHTML = `
+          ${pfBusy ? `<div class="pf-busy" style="margin-bottom:14px;">⏳ ${escapeHtml(pfBusy)}</div>` : ''}
+          <div class="card">
+            <div class="hub-card-title">Share link</div>
+            <div class="pf-link"><code id="pf-link-text">${escapeHtml(link.replace(/^https:\/\//, ''))}</code>
+              ${cats.length ? `<select class="select" id="pf-share-cat" style="max-width:220px;" aria-label="What to show"><option value="">Whole portfolio</option>${cats.map(c => `<option ${c === pfShareCat ? 'selected' : ''}>${escapeHtml(c)}</option>`).join('')}</select>` : ''}
+            </div>
+            <div class="pf-actions">
+              <button type="button" class="btn btn-primary btn-sm" data-pf-copy>Copy link</button>
+              <a class="btn btn-outline btn-sm" href="${escapeHtml(link)}" target="_blank" rel="noopener">Open page</a>
+              <a class="btn btn-emerald btn-sm" href="https://wa.me/?text=${encodeURIComponent(`Photos & videos of homes we have designed and built — ${d.studio.name}:\n${link}`)}" target="_blank" rel="noopener">Share on WhatsApp</a>
+              ${navigator.share ? '<button type="button" class="btn btn-outline btn-sm" data-pf-native>Share…</button>' : ''}
+            </div>
+            ${leads.length ? `<div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:12px; align-items:center;">
+              <select class="select" id="pf-lead" style="flex:1 1 220px; max-width:360px;" aria-label="Lead"><option value="">Send to a lead…</option>${leads.map(l => `<option value="${l.id}">${escapeHtml(l.name)}${l.location ? ' · ' + escapeHtml(l.location) : ''}</option>`).join('')}</select>
+              <button type="button" class="btn btn-outline btn-sm" data-pf-send>Send on WhatsApp</button></div>` : ''}
+            <div class="hub-muted" style="margin-top:8px; font-size:12.5px;">Leads open it without signing in. When pasted in WhatsApp it shows your logo as a preview. Also in every lead’s WhatsApp messages as “Our past work”.</div>
+          </div>
+
+          ${canEdit ? `
+          <div class="card" style="margin-top:16px;">
+            <div class="hub-card-title">Add photos &amp; videos</div>
+            <div class="form-grid">
+              <div><label class="form-label">Project (optional)</label><input class="input" id="pf-project" list="pf-projects" placeholder="e.g., 3BHK · Mahalunge" value="${escapeHtml((pfDraft && pfDraft.project) || '')}" /><datalist id="pf-projects">${pfProjects().map(x => `<option>${escapeHtml(x)}</option>`).join('')}</datalist></div>
+              <div><label class="form-label">Room / category</label><select class="select" id="pf-cat">${pfCatOptions((pfDraft && pfDraft.category) || 'Living room')}<option value="__new">+ New category…</option></select></div>
+              <div class="form-full"><label class="form-label">Caption (optional)</label><input class="input" id="pf-title" placeholder="e.g., Italian marble TV wall with fluted panels" value="${escapeHtml((pfDraft && pfDraft.title) || '')}" /></div>
+            </div>
+            <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:12px; align-items:center;">
+              <label class="btn btn-primary btn-sm" style="cursor:pointer;">📷 Choose photos<input type="file" accept="image/*" multiple hidden id="pf-files" ${pfBusy ? 'disabled' : ''} /></label>
+              <span class="hub-muted" style="font-size:12.5px;">Many at once is fine. They are resized for fast loading on phones.</span>
+            </div>
+            ${pfDraft && pfDraft.photos && pfDraft.photos.length ? `<div class="pf-new">${pfDraft.photos.map(x => `<img src="${x.thumb.url}" alt="" />`).join('')}</div>
+              <div style="display:flex; gap:8px; margin-top:10px; flex-wrap:wrap;"><button type="button" class="btn btn-primary btn-sm" data-pf-upload ${pfBusy ? 'disabled' : ''}>Publish ${pfDraft.photos.length} photo${pfDraft.photos.length === 1 ? '' : 's'}</button><button type="button" class="btn btn-outline btn-sm" data-pf-clear>Cancel</button></div>` : ''}
+            <div style="border-top:1px solid var(--border-subtle); margin:14px 0 0; padding-top:12px;">
+              <label class="form-label">Video link — Instagram reel / post or YouTube</label>
+              <div style="display:flex; gap:8px; flex-wrap:wrap;"><input class="input" id="pf-video" placeholder="https://www.instagram.com/reel/…" style="flex:1 1 260px;" /><button type="button" class="btn btn-primary btn-sm" data-pf-addvideo ${pfBusy ? 'disabled' : ''}>Add video</button></div>
+              <div class="hub-muted" style="font-size:12.5px; margin-top:4px;">On Instagram: open the reel → ⋯ / Share → Copy link, then paste here. It plays right on your page.</div>
+            </div>
+          </div>` : ''}
+
+          <div class="card" style="margin-top:16px;">
+            <div class="hub-card-title" style="display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap;"><span>On the page <span class="hub-row-meta">· ${nPh} photo${nPh === 1 ? '' : 's'} · ${nV} video${nV === 1 ? '' : 's'}</span></span>
+              <button type="button" class="btn btn-outline btn-sm" data-pf-refresh>↻ Refresh</button></div>
+            ${items.length ? `<div class="pf-filters"><button type="button" class="${pfFilter === 'all' ? 'on' : ''}" data-pf-f="all">All</button>${cats.map(c => `<button type="button" class="${pfFilter === c ? 'on' : ''}" data-pf-f="${escapeHtml(c)}">${escapeHtml(c)}</button>`).join('')}${nV ? `<button type="button" class="${pfFilter === '__v' ? 'on' : ''}" data-pf-f="__v">Videos</button>` : ''}</div>` : ''}
+            ${shown.length ? `<div class="pf-grid">${shown.map(it => {
+              const v = it.type === 'video' ? pfVideo(it.url) : null;
+              const thumb = it.type === 'photo' ? `<img src="${escapeHtml(pfImg(it))}" alt="" loading="lazy" />`
+                : v && v.kind === 'yt' ? `<img src="https://img.youtube.com/vi/${escapeHtml(v.code)}/hqdefault.jpg" alt="" loading="lazy" /><div class="pf-play yt"><span>▶</span>YouTube</div>` : `<div class="pf-play"><span>▶</span>Instagram</div>`;
+              const idx = items.indexOf(it);
+              return `<div class="pf-item">
+                <div class="pf-thumb">${thumb}${idx === 0 ? '<span class="pf-badge">First</span>' : ''}</div>
+                <div class="pf-meta"><strong>${escapeHtml(it.title || it.category || (it.type === 'video' ? 'Video' : 'Photo'))}</strong><small>${escapeHtml([it.category, it.project].filter(Boolean).join(' · ') || '—')}</small></div>
+                ${canEdit ? `<div class="pf-btns">${idx > 0 ? `<button type="button" class="btn btn-outline btn-sm" data-pf-top="${it.id}" title="Show first on the page">↑ First</button>` : ''}<button type="button" class="btn btn-outline btn-sm" data-pf-edit="${it.id}">Edit</button><button type="button" class="btn btn-danger-soft btn-sm" data-pf-del="${it.id}" aria-label="Delete">✕</button></div>` : ''}
+              </div>`;
+            }).join('')}</div>` : `<div class="hub-muted" style="padding:20px 0; text-align:center;">${items.length ? 'Nothing in this filter.' : canEdit ? 'Nothing yet — add your first photos above.' : 'Nothing on the page yet.'}</div>`}
+          </div>
+
+          ${canEdit ? `
+          <div class="card" style="margin-top:16px;">
+            <div class="hub-card-title">Page details</div>
+            <div class="form-grid">
+              <div class="form-full"><label class="form-label">Line under your name</label><input class="input" id="pf-s-tagline" value="${escapeHtml(d.studio.tagline)}" /></div>
+              <div><label class="form-label">Phone (Call button)</label><input class="input" id="pf-s-phone" value="${escapeHtml(d.studio.phone)}" /></div>
+              <div><label class="form-label">WhatsApp number</label><input class="input" id="pf-s-wa" value="${escapeHtml(d.studio.whatsapp)}" placeholder="91XXXXXXXXXX" /></div>
+              <div><label class="form-label">Instagram page</label><input class="input" id="pf-s-ig" value="${escapeHtml(d.studio.instagram)}" placeholder="@yourstudio or https://instagram.com/…" /></div>
+              <div><label class="form-label">Location (footer)</label><input class="input" id="pf-s-addr" value="${escapeHtml(d.studio.address)}" /></div>
+            </div>
+            <div style="margin-top:10px;"><button type="button" class="btn btn-primary btn-sm" data-pf-studio ${pfBusy ? 'disabled' : ''}>Save &amp; publish</button></div>
+          </div>` : ''}
+
+          ${admin ? `
+          <div class="card" style="margin-top:16px;">
+            <div class="hub-card-title">GitHub connection <span class="hub-row-meta">· ${ghToken() ? '✓ connected on this device' : 'not connected on this device'}</span></div>
+            ${ghToken() && !pfShowSetup ? `<div class="hub-muted" style="font-size:13px;">Photos are published to your website. The key is kept only on this device.</div>
+              <div class="pf-actions"><button type="button" class="btn btn-outline btn-sm" data-pf-setup>Change key</button><button type="button" class="btn btn-outline btn-sm" data-pf-disconnect>Disconnect this device</button></div>` : `
+              <div class="hub-muted" style="font-size:13px;">One-time, about 2 minutes, on the laptop you will add photos from. Only the admin needs this — staff can still share the link.</div>
+              <ol class="pf-steps">
+                <li>Sign in to <b>github.com</b> (the interiordezignstudio-ai account).</li>
+                <li>Open <a href="https://github.com/settings/personal-access-tokens/new" target="_blank" rel="noopener">github.com/settings/personal-access-tokens/new</a></li>
+                <li>Name: <b>Dezign Studio – Our work</b>. Expiration: the longest offered.</li>
+                <li>Repository access: <b>Only select repositories</b> → <b>WEB-APP</b>.</li>
+                <li>Permissions → Repository permissions → <b>Contents</b> → <b>Read and write</b>.</li>
+                <li>Press <b>Generate token</b>, copy it, paste below.</li>
+              </ol>
+              <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:10px;"><input class="input" id="pf-key" type="password" autocomplete="off" placeholder="github_pat_…" style="flex:1 1 260px;" /><button type="button" class="btn btn-primary btn-sm" data-pf-connect>Connect</button>${ghToken() ? '<button type="button" class="btn btn-outline btn-sm" data-pf-setup-cancel>Cancel</button>' : ''}</div>`}
+          </div>` : (!items.length ? '' : '')}
+          ${!admin ? '<div class="hub-muted" style="margin-top:12px; font-size:12.5px;">Only the admin can add or remove photos.</div>' : ''}`;
+      }
+
+      function pfEditModal(it) {
+        pfEditId = it.id;
+        const body = document.getElementById('pf-edit-body');
+        body.innerHTML = `<div class="form-grid">
+            <div class="form-full"><label class="form-label">Caption</label><input class="input" id="pfe-title" value="${escapeHtml(it.title || '')}" /></div>
+            <div><label class="form-label">Room / category</label><select class="select" id="pfe-cat">${pfCatOptions(it.category || '')}<option value="__new">+ New category…</option></select></div>
+            <div><label class="form-label">Project</label><input class="input" id="pfe-project" list="pf-projects" value="${escapeHtml(it.project || '')}" /></div>
+            ${it.type === 'video' ? `<div class="form-full"><label class="form-label">Video link</label><input class="input" id="pfe-url" value="${escapeHtml(it.url || '')}" /></div>` : ''}
+          </div>
+          <div class="modal-actions" style="display:flex; justify-content:flex-end; gap:8px; margin-top:14px;"><button type="button" class="btn btn-outline" data-close-modal="modal-pf-edit">Cancel</button><button type="button" class="btn btn-primary" data-pf-edit-save>Save &amp; publish</button></div>`;
+        openModal('modal-pf-edit');
+      }
+      async function pfAskCategory(sel) {
+        if (sel.value !== '__new') return sel.value;
+        const name = (window.prompt('New category name (e.g., Study room)') || '').trim();
+        if (!name) { sel.value = PF_CATS[0]; return PF_CATS[0]; }
+        const o = document.createElement('option'); o.textContent = name; sel.insertBefore(o, sel.firstChild); sel.value = name; return name;
+      }
+      function pfDraftMeta() {
+        const g = id => document.getElementById(id);
+        pfDraft = pfDraft || { photos: [] };
+        if (g('pf-project')) pfDraft.project = g('pf-project').value.trim();
+        if (g('pf-cat') && g('pf-cat').value !== '__new') pfDraft.category = g('pf-cat').value;
+        if (g('pf-title')) pfDraft.title = g('pf-title').value.trim();
+      }
+      const pfId = () => 'w' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+
+      document.addEventListener('change', async e => {
+        const t = e.target;
+        if (t.id === 'pf-share-cat') { pfShareCat = t.value; renderPortfolio(); return; }
+        if (t.id === 'pf-cat' || t.id === 'pfe-cat') { await pfAskCategory(t); if (t.id === 'pf-cat') pfDraftMeta(); return; }
+        if (t.id === 'pf-files') {
+          const files = [...(t.files || [])]; if (!files.length) return;
+          pfDraftMeta();
+          pfBusy = `Preparing ${files.length} photo${files.length === 1 ? '' : 's'}…`; renderPortfolio();
+          for (const f of files) {
+            try { const full = await pfImage(f, 1600, 0.82); const thumb = await pfImage(f, 640, 0.76); pfDraft.photos.push({ full, thumb }); }
+            catch (err) { showToast(`Could not read ${f.name}`); }
+          }
+          pfBusy = null; renderPortfolio();
+        }
+      });
+      document.addEventListener('input', e => { if (['pf-project', 'pf-title'].includes(e.target.id)) pfDraftMeta(); });
+      document.addEventListener('click', async e => {
+        const t = e.target;
+        if (t.closest('[data-pf-copy]')) {
+          const link = workLink(pfShareCat);
+          try { await navigator.clipboard.writeText(link); showToast('Link copied'); }
+          catch (err) { const el = document.getElementById('pf-link-text'); if (el) { const r = document.createRange(); r.selectNodeContents(el); const sel = getSelection(); sel.removeAllRanges(); sel.addRange(r); } showToast('Press Ctrl+C / Copy to copy the link'); }
+          return;
+        }
+        if (t.closest('[data-pf-native]')) { try { await navigator.share({ title: `Our work — ${pfData().studio.name}`, url: workLink(pfShareCat) }); } catch (err) { /* cancelled */ } return; }
+        if (t.closest('[data-pf-send]')) {
+          const id = (document.getElementById('pf-lead') || {}).value; if (!id) { showToast('Choose a lead first'); return; }
+          openWa('lead', id, 'send', 'wa_work'); return;
+        }
+        const pff = t.closest('[data-pf-f]'); if (pff) { pfFilter = pff.dataset.pfF; renderPortfolio(); return; }
+        if (t.closest('[data-pf-refresh]')) { pfRefresh(false); return; }
+        if (t.closest('[data-pf-clear]')) { pfDraft = null; renderPortfolio(); return; }
+        if (t.closest('[data-pf-upload]')) {
+          pfDraftMeta();
+          const dr = pfDraft; if (!dr || !dr.photos.length) return;
+          const made = dr.photos.map(ph => { const id = pfId(); return { id, ph, item: { id, type: 'photo', file: `photos/${id}.jpg`, thumb: `photos/${id}_t.jpg`, w: ph.full.w, h: ph.full.h, title: dr.title || '', category: dr.category || '', project: dr.project || '', added: new Date().toISOString() } }; });
+          const files = [];
+          made.forEach(m => { files.push({ path: `work/${m.item.file}`, b64: m.ph.full.url.split(',')[1] }, { path: `work/${m.item.thumb}`, b64: m.ph.thumb.url.split(',')[1] }); });
+          const ok = await pfPublish(`added ${made.length} photo${made.length === 1 ? '' : 's'}`, d => { d.items = made.map(m => m.item).concat(d.items); }, files, []);
+          if (ok) { made.forEach(m => { pfPreview[m.id] = m.ph.thumb.url; }); pfDraft = { photos: [], project: dr.project, category: dr.category, title: '' }; renderPortfolio(); }
+          return;
+        }
+        if (t.closest('[data-pf-addvideo]')) {
+          pfDraftMeta();
+          const url = (document.getElementById('pf-video') || {}).value.trim();
+          if (!pfVideo(url)) { showToast('Paste an Instagram reel/post link or a YouTube link'); return; }
+          const dr = pfDraft || {};
+          const item = { id: pfId(), type: 'video', url, title: dr.title || '', category: dr.category || '', project: dr.project || '', added: new Date().toISOString() };
+          await pfPublish('added a video', d => { d.items = [item].concat(d.items); }, [], []);
+          return;
+        }
+        const top = t.closest('[data-pf-top]');
+        if (top) { const id = top.dataset.pfTop; await pfPublish('moved a photo to first', d => { const i = d.items.findIndex(x => x.id === id); if (i > 0) d.items.unshift(d.items.splice(i, 1)[0]); }); return; }
+        const del = t.closest('[data-pf-del]');
+        if (del) {
+          const it = pfData().items.find(x => x.id === del.dataset.pfDel); if (!it) return;
+          if (!await appConfirm(`Remove this ${it.type} from your page?\n\n${it.title || it.category || ''}`.trim(), { ok: 'Remove' })) return;
+          await pfPublish(`removed a ${it.type}`, d => { d.items = d.items.filter(x => x.id !== it.id); }, [], it.type === 'photo' ? [`work/${it.file}`, `work/${it.thumb}`].filter((x, i, a) => x !== 'work/undefined' && a.indexOf(x) === i) : []);
+          return;
+        }
+        const ed = t.closest('[data-pf-edit]'); if (ed) { const it = pfData().items.find(x => x.id === ed.dataset.pfEdit); if (it) pfEditModal(it); return; }
+        if (t.closest('[data-pf-edit-save]')) {
+          const g = id => document.getElementById(id);
+          const patch = { title: g('pfe-title').value.trim(), category: g('pfe-cat').value === '__new' ? '' : g('pfe-cat').value, project: g('pfe-project').value.trim() };
+          if (g('pfe-url')) { if (!pfVideo(g('pfe-url').value.trim())) { showToast('That video link is not Instagram or YouTube'); return; } patch.url = g('pfe-url').value.trim(); }
+          const id = pfEditId; closeModal('modal-pf-edit');
+          await pfPublish('updated a caption', d => { const it = d.items.find(x => x.id === id); if (it) Object.assign(it, patch); });
+          return;
+        }
+        if (t.closest('[data-pf-studio]')) {
+          const g = id => (document.getElementById(id) || {}).value || '';
+          const st = { tagline: g('pf-s-tagline').trim(), phone: g('pf-s-phone').trim(), whatsapp: g('pf-s-wa').replace(/\D/g, ''), instagram: g('pf-s-ig').trim(), address: g('pf-s-addr').trim() };
+          if (st.whatsapp.length === 10) st.whatsapp = '91' + st.whatsapp;
+          await pfPublish('page details', d => { d.studio = { ...d.studio, ...st, name: (state.studioProfile || {}).name || d.studio.name }; });
+          return;
+        }
+        if (t.closest('[data-pf-setup]')) { pfShowSetup = true; renderPortfolio(); return; }
+        if (t.closest('[data-pf-setup-cancel]')) { pfShowSetup = false; renderPortfolio(); return; }
+        if (t.closest('[data-pf-disconnect]')) {
+          if (!await appConfirm('Disconnect GitHub on this device?\n\nYour page stays online. You can connect again any time.', { ok: 'Disconnect' })) return;
+          try { localStorage.removeItem(GH_TOKEN_KEY); } catch (err) { /* ignore */ }
+          renderPortfolio(); return;
+        }
+        if (t.closest('[data-pf-connect]')) {
+          const key = ((document.getElementById('pf-key') || {}).value || '').trim();
+          if (!/^(github_pat_|ghp_)\w{20,}/.test(key)) { showToast('That does not look like a GitHub key (starts with github_pat_)'); return; }
+          const old = ghToken();
+          try { localStorage.setItem(GH_TOKEN_KEY, key); } catch (err) { /* ignore */ }
+          try {
+            await gh('');
+            pfShowSetup = false; showToast('GitHub connected on this device');
+            await pfRefresh(true);
+          } catch (err) {
+            try { if (old) localStorage.setItem(GH_TOKEN_KEY, old); else localStorage.removeItem(GH_TOKEN_KEY); } catch (e2) { /* ignore */ }
+            showToast(`Not connected: ${ghErr(err)}`);
+          }
+          renderPortfolio();
+        }
+      });
+
       // ===== Trash: everything deleted is kept 30 days and can be restored =====
       const TRASH_DAYS = 30;
       let trashSkipSet = null;
@@ -11636,6 +12025,7 @@
         if (state.activeTab === 'payments') renderPayments();
         if (state.activeTab === 'team') renderTeam();
         if (state.activeTab === 'attendance') renderAttendance();
+        if (state.activeTab === 'portfolio' && typeof renderPortfolio === 'function') renderPortfolio();
         if (state.activeTab === 'backup' && typeof renderCloudSettings === 'function') renderCloudSettings();
         if (state.activeTab === 'backup' && typeof renderLeadAlertSettings === 'function') renderLeadAlertSettings();
         if (state.activeTab === 'leads' && typeof leadPopQueue !== 'undefined' && !leadPopQueue.length) document.title = BASE_TITLE;
@@ -14553,6 +14943,7 @@
       function defaultWaTemplates() {
         return [
           { id: 'wa_intro', title: 'First reply to a new enquiry', body: 'Hi {first_name}, this is {staff} from {studio}, Pune.\nThank you for your enquiry about interiors for your {property} in {area}.\nWhen is a good time for a 5-minute call? We can also share photos of our recent projects.' },
+          { id: 'wa_work', title: 'Our past work (photos & videos)', body: 'Hi {first_name}, here are photos and videos of homes we have designed and built:\n{work_link}\nHappy to show you more at our studio or on a call.\n– {staff}, {studio}' },
           { id: 'wa_missed', title: 'Tried calling, no answer', body: 'Hi {first_name}, {staff} here from {studio}.\nI tried calling you about your home interiors but couldn\'t reach you. Please let me know a convenient time to call, or just reply here.' },
           { id: 'wa_meet_confirm', title: 'Meeting confirmed', body: 'Hi {first_name}, your {meeting_type} with {studio} is confirmed for {meeting_time}.\nPlace: {meeting_place}\nIf you need to change the time, just reply here.\n– {staff}' },
           { id: 'wa_meet_remind', title: 'Meeting reminder', body: 'Hi {first_name}, a quick reminder of our {meeting_type} on {meeting_time}.\nPlace: {meeting_place}\nSee you then!\n– {staff}, {studio}' },
@@ -14570,15 +14961,19 @@
         ['{first_name}', 'First name'], ['{name}', 'Full name'], ['{staff}', 'Your name'], ['{studio}', 'Studio name'],
         ['{area}', 'Area'], ['{property}', 'BHK / property'], ['{meeting_type}', 'Meeting type'], ['{meeting_time}', 'Meeting time'],
         ['{meeting_place}', 'Meeting place'], ['{estimate_amount}', 'Estimate amount'], ['{possession}', 'Possession'], ['{studio_address}', 'Studio address'],
-        ['{amount}', 'Paid amount'], ['{pay_date}', 'Payment date'], ['{pay_mode}', 'Paid by (UPI…)'], ['{ref}', 'UTR / ref'], ['{work}', 'Work'], ['{project}', 'Project'], ['{site_address}', 'Site address'], ['{designer}', 'Designer']
+        ['{amount}', 'Paid amount'], ['{pay_date}', 'Payment date'], ['{pay_mode}', 'Paid by (UPI…)'], ['{ref}', 'UTR / ref'], ['{work}', 'Work'], ['{project}', 'Project'], ['{site_address}', 'Site address'], ['{designer}', 'Designer'], ['{work_link}', 'Our work link']
       ];
       function ensureWaTemplates() {
-        if (!Array.isArray(state.waTemplates)) { state.waTemplates = defaultWaTemplates(); state.waTplVersion = 2; }
+        if (!Array.isArray(state.waTemplates)) { state.waTemplates = defaultWaTemplates(); state.waTplVersion = 3; }
         if ((state.waTplVersion || 1) < 2) {
           // add the payment & onboarding messages for people who already have their own list
           const have = new Set(state.waTemplates.map(t => t.id));
           defaultWaTemplates().filter(t => ['wa_onboard', 'wa_c_received', 'wa_v_paid', 'wa_v_site'].includes(t.id) && !have.has(t.id)).forEach(t => state.waTemplates.push(t));
           state.waTplVersion = 2;
+        }
+        if ((state.waTplVersion || 1) < 3) {
+          if (!state.waTemplates.some(t => t.id === 'wa_work')) state.waTemplates.splice(1, 0, defaultWaTemplates().find(t => t.id === 'wa_work'));
+          state.waTplVersion = 3;
         }
         return state.waTemplates;
       }
@@ -14639,7 +15034,8 @@
           '{ref}': pay && pay.ref ? `Ref: ${pay.ref}` : '',
           '{designer}': isClient && rec.designOwner ? staffName(rec.designOwner) : (isClient ? 'our design team' : ''),
           '{site_person}': isClient && rec.siteOwner ? staffName(rec.siteOwner) : (isClient ? 'our site team' : ''),
-          '{site_address}': projClient ? (projClient.address || '') : ''
+          '{site_address}': projClient ? (projClient.address || '') : '',
+          '{work_link}': typeof workLink === 'function' ? workLink() : ''
         });
         if (person && person.kind === 'vendor') vals['{area}'] = '';
         return vals;
