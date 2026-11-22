@@ -2716,6 +2716,11 @@
           <span class="nav-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 18.5a4.5 4.5 0 0 1-.6-8.96A6 6 0 0 1 18 8.5a4 4 0 0 1-.5 7.97"/><path d="M12 12v8"/><path d="m8.8 15 3.2-3.2 3.2 3.2"/></svg></span>
           <span class="nav-label">Sync &amp; Backup</span>
         </button>
+        <button class="nav-item" data-open-trash data-short="Trash" title="Trash — deleted items, kept 30 days">
+          <span class="nav-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg></span>
+          <span class="nav-label">Trash</span>
+          <span class="nav-badge" id="trash-nav-badge" hidden>0</span>
+        </button>
       </nav>
 
       <div class="sidebar-footer">
@@ -2781,7 +2786,6 @@
               </div>
               <div class="pop-title">Appearance</div>
               <div class="pop-theme" role="group" aria-label="Light or dark mode"><button type="button" data-theme-set="light">☀️ Light</button><button type="button" data-theme-set="dark">🌙 Dark</button><button type="button" data-theme-set="auto">Auto</button></div>
-              <button type="button" role="menuitem" class="pop-item" data-open-trash>🗑️&nbsp; Trash <span class="pop-muted" style="margin-left:auto;">kept 30 days</span></button>
               <div class="pop-title">Switch team member</div>
               <div id="account-staff-list"></div>
               <div class="pop-sep"></div>
@@ -3371,11 +3375,7 @@
               <h3 style="font-size:16px; font-weight:700;">Alerts &amp; notifications</h3>
               <div id="lead-alert-settings"></div>
             </div>
-            <div class="card" style="display:flex; flex-direction:column; gap:10px;">
-              <h3 style="font-size:16px; font-weight:700;">Trash</h3>
-              <div class="hub-muted" style="font-size:13px;">Anything deleted (leads, clients, payments, bills, POs, selections, tasks, vendors…) is kept here for 30 days and can be restored.</div>
-              <div><button type="button" class="btn btn-outline btn-sm" data-open-trash>Open Trash</button></div>
-            </div>
+
           </div>
 
           </div>
@@ -5195,7 +5195,8 @@
           state.activeTab = 'dashboard';
         }
 
-        document.querySelectorAll('#desktop-nav .nav-item').forEach(btn => {
+        if (typeof updateTrashBadge === 'function') updateTrashBadge();
+        document.querySelectorAll('#desktop-nav .nav-item[data-tab]').forEach(btn => {
           const tab = btn.dataset.tab;
           btn.classList.toggle('hidden-role', !perms.tabs.includes(tab));
           btn.classList.toggle('active', tab === state.activeTab);
@@ -9433,7 +9434,7 @@
         const where = names.length ? names.slice(0, 4).join(', ') + (names.length > 4 ? ` +${names.length - 4} more` : '') : main.t === 'nest' && main.pname ? `in ${main.pname}` : '';
         state.trash = (state.trash || []).filter(e => !trashExpired(e));
         state.trash.unshift({ id: uid('tr'), at: new Date().toISOString(), by: state.activeStaffEmail || '', label, icon, extra: Math.max(0, extra), where, parts });
-        commitState();
+        commitState(); updateTrashBadge();
         return true;
       }
       function trashExpired(e) { return Date.now() - new Date(e.at).getTime() > TRASH_DAYS * 86400000; }
@@ -9469,7 +9470,12 @@
         commitState(); renderAll(); renderTrash();
         showToast(missed ? `Restored ${e.label} — ${missed} item${missed === 1 ? '' : 's'} could not go back because ${missed === 1 ? 'its' : 'their'} client/record is deleted (restore that first)` : `Restored ${e.label}`);
       }
+      function updateTrashBadge() {
+        const b = document.getElementById('trash-nav-badge'); if (!b) return;
+        const n = visibleTrash().length; b.textContent = n; b.hidden = !n;
+      }
       function renderTrash() {
+        updateTrashBadge();
         const box = document.getElementById('trash-body'); if (!box) return;
         const list = visibleTrash();
         const admin = amTrashAdmin();
@@ -9488,7 +9494,7 @@
       }
       document.addEventListener('click', async e => {
         const t = e.target;
-        if (t.closest('[data-open-trash]')) { if (typeof closeAllMenus === 'function') closeAllMenus(); purgeTrash(); renderTrash(); openModal('modal-trash'); return; }
+        if (t.closest('[data-open-trash]')) { if (typeof closeAllMenus === 'function') closeAllMenus(); document.body.classList.remove('nav-open'); purgeTrash(); renderTrash(); openModal('modal-trash'); return; }
         const r = t.closest('[data-trash-restore]'); if (r) { restoreTrash(r.dataset.trashRestore); return; }
         const pg = t.closest('[data-trash-purge]');
         if (pg) {
