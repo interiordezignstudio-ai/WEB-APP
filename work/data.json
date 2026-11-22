@@ -10,6 +10,36 @@
     "facebook": "",
     "behance": ""
   },
-  "items": [],
-  "updated": "2026-11-22T18:54:02.247Z"
+  "items": [
+    {
+      "id": "wmws87m75hp9f",
+      "type": "photo",
+      "tier": "A",
+      "file": "photos/wmws87m75hp9f.jpg",
+      "thumb": "photos/wmws87m75hp9f_t.jpg",
+      "w": 1600,
+      "h": 927,
+      "title": "",
+      "category": "",
+      "added": "2026-11-22T19:24:50.081Z"
+    }
+  ],
+  "updated": "2026-11-22T19:24:50.666Z",
+  "tiers": {
+    "A": {
+      "name": "Essential",
+      "title": "Option A: Essential Laminate",
+      "scope": "Essential 1mm Matte Laminate & BWP Marine Ply Package"
+    },
+    "B": {
+      "name": "Premium",
+      "title": "Option B: Premium PU & Acrylic",
+      "scope": "Premium High-Gloss Acrylic Kitchen & Matte PU Finish Package"
+    },
+    "C": {
+      "name": "Luxury",
+      "title": "Option C: Luxury Veneer & Custom",
+      "scope": "Bespoke Natural Veneer, Brass Inlay & Architectural Lighting Package"
+    }
+  }
 }
