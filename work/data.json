@@ -9,18 +9,6 @@
   },
   "items": [
     {
-      "id": "wmws6x9eod28g",
-      "type": "photo",
-      "file": "photos/wmws6x9eod28g.jpg",
-      "thumb": "photos/wmws6x9eod28g_t.jpg",
-      "w": 400,
-      "h": 400,
-      "title": "",
-      "category": "Kitchen",
-      "project": "Mahunalge",
-      "added": "2026-11-22T18:48:47.328Z"
-    },
-    {
       "id": "wmws6wzx6il0p",
       "type": "video",
       "url": "https://www.instagram.com/reel/DaNePfPi_tQ/?avpt=eHFwb3ZpNWlwb3ds",
@@ -30,5 +18,5 @@
       "added": "2026-11-22T18:48:35.034Z"
     }
   ],
-  "updated": "2026-11-22T18:50:59.551Z"
+  "updated": "2026-11-22T18:53:45.029Z"
 }
