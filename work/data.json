@@ -9,18 +9,6 @@
   },
   "items": [
     {
-      "id": "wmws6x9eo3gub",
-      "type": "photo",
-      "file": "photos/wmws6x9eo3gub.jpg",
-      "thumb": "photos/wmws6x9eo3gub_t.jpg",
-      "w": 1600,
-      "h": 927,
-      "title": "",
-      "category": "Kitchen",
-      "project": "Mahunalge",
-      "added": "2026-11-22T18:48:47.328Z"
-    },
-    {
       "id": "wmws6x9eod28g",
       "type": "photo",
       "file": "photos/wmws6x9eod28g.jpg",
@@ -42,5 +30,5 @@
       "added": "2026-11-22T18:48:35.034Z"
     }
   ],
-  "updated": "2026-11-22T18:50:56.649Z"
+  "updated": "2026-11-22T18:50:59.551Z"
 }
