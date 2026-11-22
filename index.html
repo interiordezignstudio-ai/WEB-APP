@@ -474,7 +474,11 @@
     .sel-photo-big img { width: 100%; height: 100%; object-fit: cover; }
     .sel-amt { background: var(--bg-sunken); font-weight: 700; }
     .po-filters { grid-template-columns: repeat(4, minmax(0, 1fr)) 1.4fr; }
-    .po-row { grid-template-columns: 1.6fr 2fr 0.7fr 0.8fr 0.9fr 0.9fr 36px; }
+    .sb-row.po-row { grid-template-columns: 50px 1.6fr 2fr 0.7fr 0.8fr 0.9fr 0.9fr 36px; }
+    .po-ph { display:flex; align-items:center; justify-content:center; }
+    .po-ph .sb-thumb { width:46px; height:46px; }
+    .po-ph-add { width:46px; height:46px; border:1.5px dashed var(--border-strong); border-radius:8px; cursor:pointer; font-size:18px; color: var(--text-muted); background: var(--bg-sunken); }
+    .po-ph-add:hover { border-color: var(--accent-terracotta); }
     .gantt-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; margin: 6px 0 4px; }
     .gantt { min-width: 640px; }
     .gantt-row { display: flex; align-items: center; gap: 10px; padding: 5px 0; border-bottom: 1px solid #EFEBE6; }
@@ -513,11 +517,13 @@
       .sel-filters .input, .po-filters .input { grid-column: span 2; }
       .sel-modal-grid { grid-template-columns: 1fr; }
       .sel-photo-edit { max-width: 320px; }
-      .po-row { grid-template-columns: repeat(6, minmax(0, 1fr)); }
-      .po-row > label:nth-child(1), .po-row > label:nth-child(2) { grid-column: span 6; }
-      .po-row > label:nth-child(3), .po-row > label:nth-child(4), .po-row > label:nth-child(5) { grid-column: span 2; }
-      .po-row > .sb-amt { grid-column: span 4; }
-      .po-row > .sb-x { grid-column: span 2; }
+      .sb-row.po-row { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+      .sb-row.po-row > .po-ph { grid-column: span 1; justify-content:flex-start; }
+      .sb-row.po-row > label:nth-child(2) { grid-column: span 5; }
+      .sb-row.po-row > label:nth-child(3) { grid-column: span 6; }
+      .sb-row.po-row > label:nth-child(4), .sb-row.po-row > label:nth-child(5), .sb-row.po-row > label:nth-child(6) { grid-column: span 2; }
+      .sb-row.po-row > .sb-amt { grid-column: span 4; }
+      .sb-row.po-row > .sb-x { grid-column: span 2; }
       .sel-grid { grid-template-columns: 1fr 1fr; gap: 10px; }
       .gantt-label { width: 150px; }
     }
@@ -16264,7 +16270,7 @@
           const sels = (fromSel || []).map(sid => state.selections.find(s2 => s2.id === sid)).filter(Boolean);
           const vend = sels.map(s2 => s2.vendorId).find(Boolean) || '';
           d = { clientId, poNo: nextPoNo(), vendorId: vend, date: getDateOffset(0), deliveryDate: getDateOffset(7), category: (sels[0] && sels[0].category) || 'Other', address: c.address || '', gstRate: 18, terms: PO_TERMS, note: '', status: 'Draft',
-            items: sels.length ? sels.map(s2 => ({ id: uid('pi'), selId: s2.id, name: s2.name + (s2.brand ? ` (${s2.brand}${s2.code ? ' ' + s2.code : ''})` : ''), desc: [s2.room, s2.description].filter(Boolean).join(' — '), qty: s2.qty || 1, unit: s2.unit || 'nos', rate: s2.rate || '' })) : [{ id: uid('pi'), name: '', desc: '', qty: 1, unit: 'nos', rate: '' }] };
+            items: sels.length ? sels.map(s2 => ({ id: uid('pi'), selId: s2.id, name: s2.name + (s2.brand ? ` (${s2.brand}${s2.code ? ' ' + s2.code : ''})` : ''), desc: [s2.room, s2.description].filter(Boolean).join(' — '), qty: s2.qty || 1, unit: s2.unit || 'nos', rate: s2.rate || '', photo: s2.photo || '' })) : [{ id: uid('pi'), name: '', desc: '', qty: 1, unit: 'nos', rate: '' }] };
         }
         poCtx = { id: p2 ? p2.id : null, d };
         renderPOModal(); openModal('modal-po');
@@ -16284,8 +16290,10 @@
             <div class="form-full"><label class="form-label">Deliver to</label><input class="input" id="po-address" value="${escapeHtml(d.address || '')}" /></div>
           </div>
           <div class="sb-items po-items">
-            <div class="sb-row po-row sb-row-head"><span>Item</span><span>Description</span><span>Qty</span><span>Unit</span><span>Rate ₹</span><span>Amount</span><span></span></div>
+            <div class="sb-row po-row sb-row-head"><span>Photo</span><span>Item</span><span>Description</span><span>Qty</span><span>Unit</span><span>Rate ₹</span><span>Amount</span><span></span></div>
             ${d.items.map(it => `<div class="sb-row po-row">
+              ${it.photo ? `<span class="po-ph"><span class="sb-thumb"><img src="${escapeHtml(it.photo)}" alt="" data-poi-view="${it.id}" title="View photo" /><button type="button" data-poi-phdel="${it.id}" aria-label="Remove photo">✕</button></span></span>`
+                : `<label class="po-ph po-ph-add" title="Add photo">📷<input type="file" accept="image/*" hidden data-poi-photo="${it.id}" /></label>`}
               <label><span class="sb-l">Item</span><input class="input" data-poi="${it.id}" data-k="name" value="${escapeHtml(it.name)}" placeholder="Item name" /></label>
               <label><span class="sb-l">Description</span><input class="input" data-poi="${it.id}" data-k="desc" value="${escapeHtml(it.desc || '')}" placeholder="Size, colour, code…" /></label>
               <label><span class="sb-l">Qty</span><input class="input" type="number" inputmode="decimal" min="0" step="0.01" data-poi="${it.id}" data-k="qty" value="${escapeHtml(it.qty)}" /></label>
@@ -16347,7 +16355,8 @@
       }
       function poSpec(p2) {
         const c = clientById(p2.clientId) || {}; const v = vendorById(p2.vendorId) || {}; const t = poTotals(p2);
-        const rows = (p2.items || []).map((it, i) => ({ cells: [String(i + 1), { main: it.name, sub: it.desc || '' }, String(it.qty), it.unit || '', formatINR(it.rate), formatINR((Number(it.qty) || 0) * (Number(it.rate) || 0))] }));
+        const hasPh = (p2.items || []).some(it => it.photo);
+        const rows = (p2.items || []).map((it, i) => ({ cells: [String(i + 1)].concat(hasPh ? [it.photo || ''] : [], [{ main: it.name, sub: it.desc || '' }, String(it.qty), it.unit || '', formatINR(it.rate), formatINR((Number(it.qty) || 0) * (Number(it.rate) || 0))]) }));
         const tot = [['Sub-total', formatINR(t.sub)]];
         if (t.gst) tot.push([`GST @ ${p2.gstRate}%`, formatINR(t.gst)]);
         tot.push(['PO total', formatINR(t.total), { bold: true, fill: '#F8E9DF', color: '#A44A22' }]);
@@ -16357,7 +16366,7 @@
           info: { leftLabel: 'To (vendor)', leftName: v.name || '', leftSub: [v.trade, v.phone].filter(Boolean).join(' · '), rightLabel: 'PO details', rightLines: [`PO No: ${p2.poNo} • ${fmtDay(p2.date)}`, p2.deliveryDate ? `Deliver by: ${fmtDay(p2.deliveryDate)}` : '', `Project: ${c.name || ''}`].filter(Boolean) },
           blocks: [
             { type: 'text', text: `Deliver to: ${p2.address || c.address || ''}${p2.category ? '   •   Category: ' + p2.category : ''}` },
-            { type: 'table', cols: [{ label: '#', w: 8 }, { label: 'Item & description', w: 86 }, { label: 'Qty', w: 16, align: 'right' }, { label: 'Unit', w: 16 }, { label: 'Rate', w: 28, align: 'right' }, { label: 'Amount', w: 32, align: 'right' }], rows },
+            { type: 'table', cols: [{ label: '#', w: 8 }].concat(hasPh ? [{ label: 'Photo', w: 24, type: 'img' }] : [], [{ label: 'Item & description', w: hasPh ? 62 : 86 }, { label: 'Qty', w: 16, align: 'right' }, { label: 'Unit', w: 16 }, { label: 'Rate', w: 28, align: 'right' }, { label: 'Amount', w: 32, align: 'right' }]), rows, imgH: 20 },
             { type: 'totals', rows: tot },
             p2.terms ? { type: 'heading', text: 'Terms' } : null, p2.terms ? { type: 'text', text: p2.terms } : null,
             p2.note ? { type: 'text', text: `Note: ${p2.note}` } : null
@@ -16365,6 +16374,25 @@
           signatures: ['Vendor acceptance', `For ${(state.studioProfile || {}).name || 'Studio'} (authorised signatory)`]
         };
       }
+
+      // ===== PO item photos =====
+      document.addEventListener('change', async e => {
+        const inp = e.target.closest && e.target.closest('[data-poi-photo]'); if (!inp || !poCtx) return;
+        const f = inp.files && inp.files[0]; if (!f) return;
+        try {
+          const url = await compressImageFile(f, 700, 0.72);
+          poCapture();
+          const it = poCtx.d.items.find(x => x.id === inp.dataset.poiPhoto); if (it) it.photo = url;
+          renderPOModal();
+        } catch (err) { showToast('Could not read that photo'); }
+      });
+      document.addEventListener('click', e => {
+        if (!poCtx) return;
+        const v = e.target.closest('[data-poi-view]');
+        if (v) { const list = poCtx.d.items.filter(x => x.photo); openPhotoViewer(list.map(x => x.photo), list.findIndex(x => x.id === v.dataset.poiView)); return; }
+        const dl = e.target.closest('[data-poi-phdel]');
+        if (dl) { poCapture(); const it = poCtx.d.items.find(x => x.id === dl.dataset.poiPhdel); if (it) it.photo = ''; renderPOModal(); }
+      });
       function poWaText(p2) {
         const c = clientById(p2.clientId) || {}; const v = vendorById(p2.vendorId) || {}; const t = poTotals(p2);
         return `Namaste ${firstNameOf(v.name || '')}, purchase order ${p2.poNo} for ${c.name || 'our site'}:\n${(p2.items || []).map(it => `• ${it.name}${it.desc ? ' — ' + it.desc : ''}: ${it.qty} ${it.unit} × ${formatINR(it.rate)} = ${formatINR((Number(it.qty) || 0) * (Number(it.rate) || 0))}`).join('\n')}\nTotal: ${formatINR(t.total)}${t.gst ? ` (incl. GST ${p2.gstRate}%)` : ''}${p2.deliveryDate ? `\nDeliver by ${fmtDay(p2.deliveryDate)}` : ''} at ${p2.address || c.address || 'site'}.\nPlease confirm.\n– ${firstNameOf((getCurrentStaff() || {}).name || '')}, ${(state.studioProfile || {}).name || ''}`;
@@ -16731,7 +16759,7 @@
         if (t.id === 'sel-photo-url' && selCtx) { const u = safeHttpUrl(t.value.trim()); selCapture(); if (u) selCtx.d.photo = u; renderSelectionModal(); return; }
         if (t.id === 'po-addsel' && poCtx) { const s2 = state.selections.find(x => x.id === t.value); if (!s2) return; poCapture();
           poCtx.d.items = poCtx.d.items.filter(it => String(it.name || '').trim() || Number(it.rate));
-          poCtx.d.items.push({ id: uid('pi'), selId: s2.id, name: s2.name + (s2.brand ? ` (${s2.brand}${s2.code ? ' ' + s2.code : ''})` : ''), desc: [s2.room, s2.description].filter(Boolean).join(' — '), qty: s2.qty || 1, unit: s2.unit || 'nos', rate: s2.rate || '' });
+          poCtx.d.items.push({ id: uid('pi'), selId: s2.id, name: s2.name + (s2.brand ? ` (${s2.brand}${s2.code ? ' ' + s2.code : ''})` : ''), desc: [s2.room, s2.description].filter(Boolean).join(' — '), qty: s2.qty || 1, unit: s2.unit || 'nos', rate: s2.rate || '', photo: s2.photo || '' });
           if (!poCtx.d.vendorId && s2.vendorId) poCtx.d.vendorId = s2.vendorId;
           renderPOModal(); return; }
         if (poCtx && t.closest && t.closest('#modal-po') && (t.dataset.poi || t.id === 'po-gst')) poLive();
