@@ -9425,7 +9425,7 @@
       // ===== Our work: public portfolio on the GitHub site =====
       const GH_TOKEN_KEY = 'ids_github_key';
       const PF_CATS = ['Living room', 'Kitchen', 'Bedroom', 'Wardrobe', 'Kids room', 'Dining', 'TV unit', 'Pooja unit', 'Bathroom', 'False ceiling', 'Balcony', 'Office', 'Commercial', '3D design'];
-      const PF_DEFAULT_STUDIO = { name: 'Interior Dezign Studio', tagline: 'Homes and workspaces designed and built end-to-end in Pune.', phone: '+91 80939 35151', whatsapp: '918093935151', instagram: '', address: 'Baner, Pune' };
+      const PF_DEFAULT_STUDIO = { name: 'Interior Dezign Studio', tagline: 'Homes and workspaces designed and built end-to-end in Pune.', phone: '+91 80939 35151', whatsapp: '918093935151', instagram: '', address: 'Baner, Pune', email: 'interiordezignstudio@gmail.com', facebook: '', behance: '' };
       let pfBusy = null, pfDraft = null, pfFilter = 'all', pfShareCat = '', pfRefreshed = false, pfEditId = null, pfShowSetup = false;
       const pfPreview = {}; // just-uploaded photos (shown until the site has them)
       function ghRepo() {
@@ -9615,6 +9615,9 @@
               <div><label class="form-label">WhatsApp number</label><input class="input" id="pf-s-wa" value="${escapeHtml(d.studio.whatsapp)}" placeholder="91XXXXXXXXXX" /></div>
               <div><label class="form-label">Instagram page</label><input class="input" id="pf-s-ig" value="${escapeHtml(d.studio.instagram)}" placeholder="@yourstudio or https://instagram.com/…" /></div>
               <div><label class="form-label">Location (footer)</label><input class="input" id="pf-s-addr" value="${escapeHtml(d.studio.address)}" /></div>
+              <div><label class="form-label">Email (footer)</label><input class="input" id="pf-s-email" type="email" value="${escapeHtml(d.studio.email)}" /></div>
+              <div><label class="form-label">Facebook page</label><input class="input" id="pf-s-fb" value="${escapeHtml(d.studio.facebook)}" placeholder="https://facebook.com/…" /></div>
+              <div><label class="form-label">Behance</label><input class="input" id="pf-s-be" value="${escapeHtml(d.studio.behance)}" placeholder="https://behance.net/…" /></div>
             </div>
             <div style="margin-top:10px;"><button type="button" class="btn btn-primary btn-sm" data-pf-studio ${pfBusy ? 'disabled' : ''}>Save &amp; publish</button></div>
           </div>` : ''}
@@ -9736,7 +9739,7 @@
         }
         if (t.closest('[data-pf-studio]')) {
           const g = id => (document.getElementById(id) || {}).value || '';
-          const st = { tagline: g('pf-s-tagline').trim(), phone: g('pf-s-phone').trim(), whatsapp: g('pf-s-wa').replace(/\D/g, ''), instagram: g('pf-s-ig').trim(), address: g('pf-s-addr').trim() };
+          const st = { tagline: g('pf-s-tagline').trim(), phone: g('pf-s-phone').trim(), whatsapp: g('pf-s-wa').replace(/\D/g, ''), instagram: g('pf-s-ig').trim(), address: g('pf-s-addr').trim(), email: g('pf-s-email').trim(), facebook: g('pf-s-fb').trim(), behance: g('pf-s-be').trim() };
           if (st.whatsapp.length === 10) st.whatsapp = '91' + st.whatsapp;
           await pfPublish('page details', d => { d.studio = { ...d.studio, ...st, name: (state.studioProfile || {}).name || d.studio.name }; });
           return;
