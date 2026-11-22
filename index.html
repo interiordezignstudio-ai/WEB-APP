@@ -6349,8 +6349,8 @@
         const allIns = moneyList({ dir: 'in', clientId: c.id });
         const allOuts = moneyList({ dir: 'out', clientId: c.id });
         const hq = (hf.q || '').toLowerCase();
-        const ins = hf.v || hf.cat || hf.dir === 'out' ? [] : allIns.filter(m => !hq || paySearchText(m).includes(hq));
-        const outs = hf.dir === 'in' ? [] : allOuts.filter(m => payMatchesVendorCat(m, hf.v || '', hf.cat || '') && (!hq || paySearchText(m).includes(hq)));
+        const ins = hf.v || hf.cat || hf.dir === 'out' ? [] : allIns.filter(m => payDirMatch(m, hf.dir || '') && (!hq || paySearchText(m).includes(hq)));
+        const outs = payDirIsIn(hf.dir) ? [] : allOuts.filter(m => payMatchesVendorCat(m, hf.v || '', hf.cat || '') && (!hq || paySearchText(m).includes(hq)));
         const projVendors = [...new Set(allOuts.map(m => m.vendorId).filter(Boolean))].map(vendorById).filter(Boolean).sort((a, b) => a.name.localeCompare(b.name));
         const projCats = [...new Set(allOuts.map(m => m.category).filter(Boolean))].sort();
         const projTypes = [...new Set(projVendors.map(v => v.type).filter(Boolean))].sort();
@@ -6358,7 +6358,7 @@
         const hOn = hf.v || hf.cat || hf.q || hf.dir;
         const hubFilters = perms.canEditBilling && (allIns.length + allOuts.length) > 1 ? `
             <div class="pay-filters hub-pay-filters">
-              <select class="select" data-hubpay-f="dir" aria-label="In or out"><option value="">Money in &amp; out</option><option value="in" ${hf.dir === 'in' ? 'selected' : ''}>Received only</option><option value="out" ${hf.dir === 'out' ? 'selected' : ''}>Paid out only</option></select>
+              <select class="select" data-hubpay-f="dir" aria-label="In or out">${payDirOptions(hf.dir || '')}</select>
               <select class="select" data-hubpay-f="v" aria-label="Vendor or labour"><option value="">All vendors &amp; labour</option>${projVendors.map(v => `<option value="${v.id}" ${hf.v === v.id ? 'selected' : ''}>${escapeHtml(v.name)}${v.trade ? ' · ' + escapeHtml(v.trade) : ''}</option>`).join('')}</select>
               <select class="select" data-hubpay-f="cat" aria-label="Category or trade"><option value="">All categories &amp; trades</option>
                 ${projCats.length ? `<optgroup label="Payment category">${projCats.map(x => `<option value="cat:${escapeHtml(x)}" ${hf.cat === 'cat:' + x ? 'selected' : ''}>${escapeHtml(x)}</option>`).join('')}</optgroup>` : ''}
@@ -6382,8 +6382,8 @@
             </div>
             ${hubFilters}
             <div class="pay-cols${hf.dir || hf.v || hf.cat ? ' pay-cols-one' : ''}">
-              ${hf.v || hf.cat || hf.dir === 'out' ? '' : `<div><div class="ld-h">Received from client${hq ? ` <span class="hub-muted">(${ins.length})</span>` : ''}</div>${ins.length ? ins.map(m => payRow(m, perms, null)).join('') : `<div class="hub-muted">${allIns.length ? 'No match.' : 'Nothing received yet.'}</div>`}</div>`}
-              ${perms.canEditBilling && hf.dir !== 'in' ? `<div><div class="ld-h">Paid to vendors &amp; labour${hOn ? ` <span class="hub-muted">(${outs.length} · ${formatINR(moneySum(outs))})</span>` : ''}</div>${outs.length ? outs.map(m => payRow(m, perms, null)).join('') : `<div class="hub-muted">${allOuts.length ? 'No match.' : 'No payments made for this project yet.'}</div>`}</div>` : ''}
+              ${hf.v || hf.cat || hf.dir === 'out' ? '' : `<div><div class="ld-h">Received from client${hq || payDirIsIn(hf.dir) ? ` <span class="hub-muted">(${ins.length} · ${formatINR(moneySum(ins))})</span>` : ''}</div>${ins.length ? ins.map(m => payRow(m, perms, null)).join('') : `<div class="hub-muted">${allIns.length ? 'No match.' : 'Nothing received yet.'}</div>`}</div>`}
+              ${perms.canEditBilling && !payDirIsIn(hf.dir) ? `<div><div class="ld-h">Paid to vendors &amp; labour${hOn ? ` <span class="hub-muted">(${outs.length} · ${formatINR(moneySum(outs))})</span>` : ''}</div>${outs.length ? outs.map(m => payRow(m, perms, null)).join('') : `<div class="hub-muted">${allOuts.length ? 'No match.' : 'No payments made for this project yet.'}</div>`}</div>` : ''}
             </div>
           </div>`;
         return `
@@ -14202,6 +14202,23 @@
       const TOKEN_READY_STAGES = ['Closed Won', 'Negotiation', 'Estimate Sent', 'Meeting Done'];
       const PAY_MODES = ['UPI', 'Bank transfer', 'Cash', 'Cheque', 'Card'];
       const FEE_KINDS = ['Design fee', 'Project management fee'];
+      // "Money in & out" filter values: '', 'in', 'out', 'fees', 'fee:design', 'fee:pm', 'nofees'
+      function payDirMatch(m, f) {
+        if (!f) return true;
+        if (f === 'in' || f === 'out') return m.dir === f;
+        if (m.dir !== 'in') return false;
+        if (f === 'fees') return FEE_KINDS.includes(m.kind);
+        if (f === 'fee:design') return m.kind === 'Design fee';
+        if (f === 'fee:pm') return m.kind === 'Project management fee';
+        if (f === 'nofees') return !FEE_KINDS.includes(m.kind);
+        return true;
+      }
+      const payDirIsIn = f => Boolean(f) && f !== 'out';
+      function payDirOptions(cur) {
+        const o = (v, l) => `<option value="${v}" ${cur === v ? 'selected' : ''}>${l}</option>`;
+        return o('', 'Money in &amp; out') + o('in', 'Received only') + o('out', 'Paid out only') +
+          `<optgroup label="Received from clients">${o('fees', 'Design &amp; PM fees')}${o('fee:design', 'Design fee only')}${o('fee:pm', 'Project management fee only')}${o('nofees', 'Without fees (milestones &amp; other)')}</optgroup>`;
+      }
       const IN_KINDS = ['Token', 'Advance', 'Milestone', 'Design fee', 'Project management fee', 'Site bill', 'Final payment', 'Other'];
       const OUT_CATS = ['Labour', 'Material', 'Contractor', 'Transport', 'Site expense', 'Design / consultant', 'Other'];
       const VENDOR_TYPES = ['Labour', 'Contractor', 'Vendor / supplier'];
@@ -14353,7 +14370,7 @@
         let body = '';
         if (view === 'ledger') {
           const vF = state.payVendor || ''; const catF = state.payCat || '';
-          const rows = scoped.filter(m => (!dirF || m.dir === dirF) && payMatchesVendorCat(m, vF, catF) && (!q || paySearchText(m).includes(q)));
+          const rows = scoped.filter(m => payDirMatch(m, dirF) && (payDirIsIn(dirF) || payMatchesVendorCat(m, vF, catF)) && (!q || paySearchText(m).includes(q)));
           const usedTrades = [...new Set((state.vendors || []).map(v => v.trade).filter(Boolean))].sort();
           const vendorOpts = (state.vendors || []).slice().sort((a, b) => a.name.localeCompare(b.name)).map(v => `<option value="${v.id}" ${vF === v.id ? 'selected' : ''}>${escapeHtml(v.name)}${v.trade ? ' · ' + escapeHtml(v.trade) : ''}</option>`).join('');
           const catOpts = `<optgroup label="Payment category">${OUT_CATS.map(c => `<option value="cat:${escapeHtml(c)}" ${catF === 'cat:' + c ? 'selected' : ''}>${escapeHtml(c)}</option>`).join('')}</optgroup>` +
@@ -14363,7 +14380,7 @@
           body = `
             <div class="pay-filters">
               <select class="select" id="pay-project" aria-label="Project"><option value="">All projects</option>${clientsOpts}<option value="_none" ${proj === '_none' ? 'selected' : ''}>Office / general</option></select>
-              <select class="select" id="pay-dir" aria-label="Type"><option value="">Money in &amp; out</option><option value="in" ${dirF === 'in' ? 'selected' : ''}>Received only</option><option value="out" ${dirF === 'out' ? 'selected' : ''}>Paid out only</option></select>
+              <select class="select" id="pay-dir" aria-label="Type">${payDirOptions(dirF)}</select>
               <select class="select" id="pay-vendor-f" aria-label="Vendor or labour"><option value="">All vendors &amp; labour</option>${vendorOpts}</select>
               <select class="select" id="pay-cat-f" aria-label="Category or trade"><option value="">All categories &amp; trades</option>${catOpts}</select>
               <input class="input" id="pay-search" placeholder="Search vendor, labour, trade, work, UTR…" value="${escapeHtml(state.paySearch || '')}" />
@@ -14737,7 +14754,7 @@
       function downloadPaymentsCsv() {
         const rng = payPeriodRange();
         const proj = state.payProject || ''; const dirF = state.payDir || ''; const q = (state.paySearch || '').toLowerCase();
-        const rows = moneyList({ from: rng.from, to: rng.to }).filter(m => (!proj || (proj === '_none' ? !m.clientId : m.clientId === proj)) && (!dirF || m.dir === dirF) && payMatchesVendorCat(m, state.payVendor || '', state.payCat || '') && (!q || paySearchText(m).includes(q)));
+        const rows = moneyList({ from: rng.from, to: rng.to }).filter(m => (!proj || (proj === '_none' ? !m.clientId : m.clientId === proj)) && payDirMatch(m, dirF) && (payDirIsIn(dirF) || payMatchesVendorCat(m, state.payVendor || '', state.payCat || '')) && (!q || paySearchText(m).includes(q)));
         const head = ['Date', 'Type', 'Party', 'Trade', 'Project', 'For / work', 'Category', 'Mode', 'Reference', 'Amount (Rs)', 'Recorded by', 'Note'];
         const lines = rows.slice().reverse().map(m => [m.date, m.dir === 'in' ? 'Received' : 'Paid out', partyName(m), (vendorById(m.vendorId) || {}).trade || '', (clientById(m.clientId) || {}).name || (m.dir === 'out' ? 'Office / general' : ''), moneyTitle(m), m.dir === 'in' ? (m.kind || '') : (m.category || ''), m.mode || '', m.ref || '', m.dir === 'in' ? m.amount : -m.amount, staffName(m.by), m.note || '']);
         const csv = [head, ...lines].map(r => r.map(x => `"${String(x == null ? '' : x).replace(/"/g, '""')}"`).join(',')).join('\n');
