@@ -2356,6 +2356,13 @@
       .att-row > span:first-child, .att-row .att-workcell { grid-column:1 / -1; }
       .ad-work-row { grid-template-columns:1fr 1fr; } .ad-work-row .input[data-k="text"] { grid-column:1 / -1; }
     }
+    .pay-photos { display:flex; gap:6px; flex-wrap:wrap; align-items:center; }
+    .pay-photos .sb-thumb { width:56px; height:56px; }
+    .pay-row-photos { display:flex; gap:5px; flex-wrap:wrap; margin-top:5px; }
+    .pay-row-photos img { width:40px; height:40px; object-fit:cover; border-radius:6px; border:1px solid var(--border-subtle); cursor:zoom-in; }
+    .phv-img { background:#1C1917; border-radius:10px; display:grid; place-items:center; min-height:200px; max-height:70vh; overflow:auto; }
+    .phv-img img { max-width:100%; max-height:70vh; display:block; }
+    .phv-bar { display:flex; justify-content:space-between; align-items:center; gap:8px; margin-top:10px; font-size:13px; }
     .vlist { display:flex; flex-direction:column; max-height:55vh; overflow:auto; border:1px solid var(--border-subtle); border-radius:12px; }
     .vlist-row { display:flex; justify-content:space-between; align-items:center; gap:10px; padding:9px 12px; border-bottom:1px solid var(--border-subtle); }
     .vlist-row:last-child { border-bottom:0; }
@@ -3408,6 +3415,12 @@
     <div class="modal-box modal-lg">
       <div class="modal-header"><h3 class="font-serif" style="font-size:22px; font-weight:700;" id="sel-title">Selection</h3><button class="btn btn-outline btn-sm" data-close-modal="modal-sel">✕</button></div>
       <div id="sel-body"></div>
+    </div>
+  </div>
+  <div class="modal-backdrop" id="modal-photoview">
+    <div class="modal-box modal-lg">
+      <div class="modal-header"><h3 class="font-serif" style="font-size:20px; font-weight:700;">Photo</h3><button class="btn btn-outline btn-sm" data-close-modal="modal-photoview">✕</button></div>
+      <div id="photoview-body"></div>
     </div>
   </div>
   <div class="modal-backdrop" id="modal-vlist">
@@ -9053,6 +9066,41 @@
         renderVendorList(); const el = document.getElementById('vlist-q'); if (el) { el.focus(); el.setSelectionRange(pos, pos); }
       });
 
+
+      // ===== Payment photos / receipts =====
+      function openPhotoViewer(list, idx) {
+        const box = document.getElementById('photoview-body'); if (!box || !list || !list.length) return;
+        window.__phv = { list, idx: Math.max(0, Math.min(idx || 0, list.length - 1)) };
+        const draw = () => {
+          const { list: l, idx: i } = window.__phv;
+          box.innerHTML = `<div class="phv-img"><img src="${escapeHtml(l[i])}" alt="Photo ${i + 1}" /></div>
+            <div class="phv-bar">
+              <span>${l.length > 1 ? `<button type="button" class="btn btn-outline btn-sm" data-phv="-1" ${i === 0 ? 'disabled' : ''}>‹ Prev</button> ${i + 1} / ${l.length} <button type="button" class="btn btn-outline btn-sm" data-phv="1" ${i === l.length - 1 ? 'disabled' : ''}>Next ›</button>` : ''}</span>
+              <a class="btn btn-outline btn-sm" href="${escapeHtml(l[i])}" download="receipt-${i + 1}.jpg">Download</a>
+            </div>`;
+        };
+        window.__phvDraw = draw; draw(); openModal('modal-photoview');
+      }
+      document.addEventListener('click', e => {
+        const t = e.target;
+        const pv = t.closest('[data-photo-view]');
+        if (pv) { const [id, i] = pv.dataset.photoView.split('|'); const m = (state.money || []).find(x => x.id === id); if (m && m.photos) openPhotoViewer(m.photos, Number(i)); return; }
+        const nav = t.closest('[data-phv]'); if (nav && window.__phv) { window.__phv.idx = Math.max(0, Math.min(window.__phv.list.length - 1, window.__phv.idx + Number(nav.dataset.phv))); window.__phvDraw(); return; }
+        if (!payCtx || !t.closest('#modal-pay')) return;
+        const v = t.closest('[data-payph-view]'); if (v) { openPhotoViewer(payCtx.d.photos || [], Number(v.dataset.payphView)); return; }
+        const d = t.closest('[data-payph-del]'); if (d) { payCapture(); (payCtx.d.photos || []).splice(Number(d.dataset.payphDel), 1); renderPayModal(); }
+      });
+      document.addEventListener('change', async e => {
+        if (e.target.id !== 'pay-photo-file' || !payCtx) return;
+        const files = [...(e.target.files || [])]; if (!files.length) return;
+        payCapture();
+        if (!Array.isArray(payCtx.d.photos)) payCtx.d.photos = [];
+        let bad = 0;
+        for (const f of files) { try { payCtx.d.photos.push(await compressImageFile(f, 1000, 0.72)); } catch (err) { bad++; } }
+        renderPayModal();
+        showToast(`${files.length - bad} photo${files.length - bad === 1 ? '' : 's'} added${bad ? ` · ${bad} could not be read` : ''}`);
+      });
+
       // ===== Delete an onboarded client (and everything that belongs to them) =====
       function clientLinkedRecords(c) {
         const own = x => x && x.clientId === c.id;
@@ -14654,6 +14702,7 @@
             <div class="pay-title">${escapeHtml(m.dir === 'in' ? partyName(m) : partyName(m))} <span class="pay-what">· ${escapeHtml(moneyTitle(m))}</span></div>
             <div class="hub-row-meta">${escapeHtml(meta)}${m.waSentAt ? ' · ✓ WhatsApp sent' : ''}</div>
             ${m.note && !m.auto ? `<div class="pay-note">${escapeHtml(m.note)}</div>` : ''}
+            ${(m.photos || []).length ? `<div class="pay-row-photos">${m.photos.map((ph, i) => `<img src="${escapeHtml(ph)}" alt="Receipt ${i + 1}" loading="lazy" data-photo-view="${m.id}|${i}" />`).join('')}</div>` : ''}
           </div>
           <div class="pay-amt ${m.dir === 'in' ? 'pay-in' : 'pay-out'} tabular">${m.dir === 'in' ? '+' : '−'}${formatINR(m.amount)}</div>
           <div class="pay-acts">
@@ -14743,6 +14792,10 @@
             <div><label class="form-label">Paid by</label><select class="select" id="pay-mode">${PAY_MODES.map(k => `<option ${d.mode === k ? 'selected' : ''}>${k}</option>`).join('')}</select></div>
             <div><label class="form-label">UTR / cheque no.</label><input class="input" id="pay-ref" value="${escapeHtml(d.ref || '')}" placeholder="optional" /></div>
             <div class="form-full"><label class="form-label">Note</label><input class="input" id="pay-note" value="${escapeHtml(d.auto ? '' : (d.note || ''))}" placeholder="optional" /></div>
+            <div class="form-full"><label class="form-label">Photos / receipts</label>
+              <div class="pay-photos">${(d.photos || []).map((ph, i) => `<span class="sb-thumb"><img src="${escapeHtml(ph)}" alt="Photo ${i + 1}" data-payph-view="${i}" /><button type="button" data-payph-del="${i}" aria-label="Remove photo">✕</button></span>`).join('')}<label class="sb-photo-btn">📷 ${(d.photos || []).length ? 'Add more' : 'Add photo / receipt'}<input type="file" accept="image/*" multiple id="pay-photo-file" hidden /></label></div>
+              <div class="hub-muted" style="font-size:12px; margin-top:4px;">UPI screenshot, bank slip, bill or cash receipt.</div>
+            </div>
           </div>
           ${payCtx.id ? '' : `<label class="pay-check" style="margin-top:10px;"><input type="checkbox" id="pay-sendwa" ${d.sendWa === false ? '' : 'checked'} /> ${isIn ? (d.kind === 'Token' ? 'Then send the onboarding email &amp; WhatsApp' : 'Then send a thank-you WhatsApp to the client') : 'Then send a WhatsApp to them with the amount'}</label>`}
           <div class="modal-actions-row"><button type="button" class="btn btn-outline" data-close-modal="modal-pay">Cancel</button><button type="button" class="btn btn-primary" data-pay-save>${payCtx.id ? 'Save changes' : 'Save payment'}</button></div>`;
@@ -14774,6 +14827,7 @@
         }
         const entry = payCtx.id ? state.money.find(x => x.id === payCtx.id) : { id: uid('mn'), createdAt: new Date().toISOString(), by: state.activeStaffEmail };
         Object.assign(entry, { dir: d.dir, date: d.date, amount, mode: d.mode, ref: (d.ref || '').trim(), clientId: d.clientId || '', note: (d.note || '').trim() });
+        if (Array.isArray(d.photos) && d.photos.length) entry.photos = d.photos.slice(); else delete entry.photos;
         if (entry.auto) { entry.auto = false; }
         if (isIn) {
           entry.kind = d.kind || 'Advance'; entry.invoiceId = d.invoiceId || entry.invoiceId || ''; delete entry.vendorId;
