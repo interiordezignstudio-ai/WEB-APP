@@ -2749,6 +2749,10 @@
           <span class="nav-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2.5" y="5.5" width="19" height="13" rx="2.5"/><path d="M2.5 10h19"/><path d="M6.5 14.5h4"/><path d="M15.5 14.5h2"/></svg></span>
           <span class="nav-label">Payments</span>
         </button>
+        <button class="nav-item" data-quickpay id="nav-quickpay" data-short="Quick ₹" title="Quick payment — pick client, then received or paid out">
+          <span class="nav-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13 2 4 14h7l-1 8 9-12h-7l1-8Z"/></svg></span>
+          <span class="nav-label">Quick payment</span>
+        </button>
         <div class="nav-section">Studio</div>
         <button class="nav-item" data-tab="attendance" data-short="Attend" title="Attendance & daily work">
           <span class="nav-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3.5" y="4.5" width="17" height="16" rx="2.5"/><path d="M8 2.8v3.4"/><path d="M16 2.8v3.4"/><path d="M3.5 9.5h17"/><path d="m9 15 2 2 4-4"/></svg></span>
@@ -2810,6 +2814,7 @@
               <button type="button" role="menuitem" class="pop-item" data-quick-new-estimate data-qn="estimate"><span class="pop-dot" style="background:#7C3618;"></span>Estimate (BOQ)</button>
               <button type="button" role="menuitem" class="pop-item" data-action="open-new-task" data-qn="task"><span class="pop-dot" style="background:#0F7457;"></span>Task</button>
               <button type="button" role="menuitem" class="pop-item" data-action="open-new-bill" data-qn="bill"><span class="pop-dot" style="background:#B4233F;"></span>GST bill</button>
+              <button type="button" role="menuitem" class="pop-item" data-quickpay data-qn="bill"><span class="pop-dot" style="background:#C9612F;"></span>⚡ Quick payment</button>
               <button type="button" role="menuitem" class="pop-item" data-pay-new="in" data-qn="bill"><span class="pop-dot" style="background:#0F7457;"></span>Payment received</button>
               <button type="button" role="menuitem" class="pop-item" data-pay-new="out" data-qn="bill"><span class="pop-dot" style="background:#7C3618;"></span>Payment made (vendor / labour)</button>
             </div>
@@ -5265,6 +5270,7 @@
         }
 
         if (typeof updateTrashBadge === 'function') updateTrashBadge();
+        { const qn = document.getElementById('nav-quickpay'); if (qn) qn.classList.toggle('hidden-role', !perms.canEditBilling); }
         document.querySelectorAll('#desktop-nav .nav-item[data-tab]').forEach(btn => {
           const tab = btn.dataset.tab;
           btn.classList.toggle('hidden-role', !perms.tabs.includes(tab));
@@ -9455,6 +9461,8 @@
       }
       function openQuickPay(opts = {}) {
         if (!getCurrentPermissions().canEditBilling) { showToast('Only Admin / Accounts can record payments'); return; }
+        if (typeof closeAllMenus === 'function') closeAllMenus();
+        document.body.classList.remove('nav-open');
         qpCtx = { step: 'client', clientId: null, dir: opts.dir === 'in' || opts.dir === 'out' ? opts.dir : '', amount: Number(opts.amount) || 0, q: '' };
         renderQuickPay(); openModal('modal-quickpay');
         setTimeout(() => { const i = document.getElementById('qp-q'); if (i && !isTouchDevice()) i.focus(); }, 60);
