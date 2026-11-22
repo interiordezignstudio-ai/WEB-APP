@@ -2358,6 +2358,7 @@
     }
     .fee-row { display:grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto; gap:8px 10px; align-items:end; padding:10px 0; border-bottom:1px solid var(--border-subtle); }
     .fee-row .fee-main { grid-column: 1 / -1; }
+    .fee-token { padding-left:14px; border-left:3px solid #F3D2AE; background:#FFFBF7; }
     .fee-row:last-of-type { border-bottom:0; }
     .fee-main small { display:block; font-size:12px; color:var(--text-muted); margin-top:2px; }
     .fee-agreed { margin:0; display:flex; flex-direction:column; gap:2px; font-size:10.5px; font-weight:700; text-transform:uppercase; letter-spacing:0.05em; color:var(--text-light); }
@@ -5811,8 +5812,10 @@
         const agreedD = f.design !== undefined && f.design !== '' ? Number(f.design) || 0 : estD;
         const agreedP = f.pm !== undefined && f.pm !== '' ? Number(f.pm) || 0 : estP;
         const ins = c ? moneyList({ dir: 'in', clientId: c.id }) : [];
-        const recD = moneySum(ins.filter(m => m.kind === 'Design fee')), recP = moneySum(ins.filter(m => m.kind === 'Project management fee'));
-        return { estD, estP, inEstimate: estD + estP, agreedD, agreedP, recD, recP, balD: Math.max(0, agreedD - recD), balP: Math.max(0, agreedP - recP), separate: feesSeparate(c) };
+        const token = c ? msTokenOf(c) : 0;
+        const recTok = token ? moneySum(ins.filter(m => m.kind === 'Token')) : 0;
+        const recD = moneySum(ins.filter(m => m.kind === 'Design fee')) + recTok, recP = moneySum(ins.filter(m => m.kind === 'Project management fee'));
+        return { estD, estP, inEstimate: estD + estP, agreedD, agreedP, recD, recP, token, recTok, balTok: Math.max(0, token - recTok), balD: Math.max(0, agreedD - recD), balP: Math.max(0, agreedP - recP), separate: feesSeparate(c) };
       }
       // amount the payment milestones are worked out on
       function msBase(c, fin) {
@@ -5829,12 +5832,7 @@
       }
       function msList(c) {
         const list = msRaw(c).map(m => ({ id: m.id, name: m.name, pctNum: Number(m.pct) || 0, pct: (Number(m.pct) || 0) / 100, label: `${fmtPct(m.pct)}% ${m.name}` }));
-        const tok = msTokenOf(c);
-        if (tok > 0 && list.length) {
-          list[list.length - 1].lessToken = tok;
-          list.unshift({ id: 'token', name: TOKEN_LABEL, token: true, fixed: tok, pct: 0, pctNum: 0, label: TOKEN_LABEL });
-        }
-        return list;
+        return list; // the token is part of the design fee (see clientFees), not a milestone
       }
       function msFind(list, label) {
         if (!label) return -1;
@@ -6341,7 +6339,7 @@
               </div>` : ''}
             </div>`;
         }).join('');
-        const loose = moneyList({ dir: 'in', clientId: c.id }).filter(p2 => milestoneIndexOf(p2) < 0 && !FEE_KINDS.includes(p2.kind));
+        const loose = moneyList({ dir: 'in', clientId: c.id }).filter(p2 => milestoneIndexOf(p2) < 0 && !isFeePay(p2));
 
         // per-project filters (kept separately for each client)
         if (!state.hubPayF || typeof state.hubPayF !== 'object') state.hubPayF = {};
@@ -8775,7 +8773,7 @@
           <div class="hub-muted" style="margin:-4px 0 10px;">${escapeHtml(c ? c.name : '')}${base ? ` · ${fin && base !== fin.estimateValue ? 'estimate without design &amp; PM fees' : 'estimate'} ${formatINR(base)}` : ''}${msEdit.own ? '' : ' · now using the studio default'}</div>
           <div class="mse-token">
             <label><span>Token / booking amount (₹)</span><input class="input tabular" type="number" inputmode="numeric" min="0" step="1000" id="mse-token" value="${escapeHtml(msEdit.token)}" placeholder="0 = no token" /></label>
-            <span class="hub-muted">A fixed amount to book the project, paid first. It is taken off the <strong>last milestone</strong>.</span>
+            <span class="hub-muted">A fixed amount to book the project, paid first. It is counted in the <strong>design fee</strong> — not taken off any milestone.</span>
           </div>
           <div class="mse-row mse-head"><span>#</span><span>Milestone</span><span>%</span><span>Amount</span><span></span></div>
           ${msEdit.rows.map((r, i) => `<div class="mse-row">
@@ -8811,8 +8809,14 @@
         return `
           <div class="card">
             <div class="hub-card-title">Design &amp; project management fees</div>
-            <div class="hub-muted" style="margin:-6px 0 10px;">Recorded separately from the payment milestones.</div>
+            <div class="hub-muted" style="margin:-6px 0 10px;">Recorded separately from the payment milestones. The token is counted in the design fee.</div>
             ${row('design', 'Design fee', F.agreedD, F.estD, F.recD, F.balD, 'Design fee')}
+            <div class="fee-row fee-token">
+              <div class="fee-main"><strong>↳ Token / booking amount</strong><small>Part of the design fee${F.recTok ? ` · received ${formatINR(F.recTok)}` : ''}</small></div>
+              <label class="fee-agreed"><span>Token ₹</span><input class="input tabular" type="number" min="0" step="1000" data-fee-token="${c.id}" value="${F.token || ''}" placeholder="0 = no token" ${perms.canEditBilling ? '' : 'disabled'} /></label>
+              <div class="fee-bal"><small>Balance</small><strong class="tabular ${F.token && !F.balTok ? 'pay-in' : ''}">${F.token ? (F.balTok ? formatINR(F.balTok) : 'Paid ✓') : '—'}</strong></div>
+              ${perms.canEditBilling && F.token ? `<button type="button" class="btn btn-outline btn-sm" data-fee-pay="Token" data-client="${c.id}" data-amount="${F.balTok || ''}">+ Record</button>` : '<span></span>'}
+            </div>
             ${row('pm', 'Project management fee', F.agreedP, F.estP, F.recP, F.balP, 'Project management fee')}
             ${F.inEstimate ? `<label class="pay-check" style="margin-top:10px;"><input type="checkbox" data-fee-separate="${c.id}" ${F.separate ? 'checked' : ''} ${perms.canEditBilling ? '' : 'disabled'} /> Collect these fees separately — milestones are worked out on the estimate without the fees (${formatINR(F.inEstimate)})</label>` : ''}
           </div>`;
@@ -8820,6 +8824,7 @@
       document.addEventListener('change', e => {
         const t = e.target;
         if (t.dataset && t.dataset.feeAgreed) { if (!getCurrentPermissions().canEditBilling) return; const c = clientById(t.dataset.client); if (!c) return; c.fees = c.fees || {}; c.fees[t.dataset.feeAgreed] = t.value === '' ? '' : Number(t.value) || 0; commitState(); renderClients(); showToast('Agreed fee saved'); return; }
+        if (t.dataset && t.dataset.feeToken) { if (!getCurrentPermissions().canEditBilling) return; const c = clientById(t.dataset.feeToken); if (!c) return; c.tokenAmount = Math.max(0, Number(t.value) || 0); commitState(); renderClients(); showToast(c.tokenAmount ? `Token ${formatINR(c.tokenAmount)} — counted in the design fee` : 'No token for this client'); return; }
         if (t.dataset && t.dataset.feeSeparate) { if (!getCurrentPermissions().canEditBilling) return; const c = clientById(t.dataset.feeSeparate); if (!c) return; c.feesSeparate = t.checked; commitState(); renderClients(); showToast(t.checked ? 'Fees collected separately — milestones updated' : 'Milestones now include the fees'); }
       });
       document.addEventListener('click', e => {
@@ -8829,9 +8834,7 @@
       });
       function msRowAmt(base, r, i) {
         if (!base) return '—';
-        const tok = Number(msEdit.token) || 0;
-        const amt = Math.round(base * (Number(r.pct) || 0) / 100);
-        return i === msEdit.rows.length - 1 && tok ? `${formatINR(Math.max(0, amt - tok))}<small>${formatINR(amt)} − token</small>` : formatINR(amt);
+        return formatINR(Math.round(base * (Number(r.pct) || 0) / 100));
       }
       function msLiveUpdate() {
         msCapture();
@@ -8867,7 +8870,7 @@
         const clean = rows.map(r => ({ id: r.id, name: r.name, pct: r.pct }));
         const token = Math.max(0, Number(msEdit.token) || 0);
         const fin0 = { estimateValue: msBase(c) };
-        if (token && fin0.estimateValue && token > Math.round(fin0.estimateValue * rows[rows.length - 1].pct / 100) && !await appConfirm(`The token ${formatINR(token)} is more than the last milestone (${formatINR(Math.round(fin0.estimateValue * rows[rows.length - 1].pct / 100))}).\n\nThe last milestone will show ₹0. Save anyway?`, { ok: 'Save', danger: false })) return;
+        void fin0;
         relabelClientMilestones(c, rows.map(r => [r.oldLabel, `${fmtPct(r.pct)}% ${r.name}`]));
         if (asDefault) {
           // clients still on the old default keep it
@@ -14202,22 +14205,26 @@
       const TOKEN_READY_STAGES = ['Closed Won', 'Negotiation', 'Estimate Sent', 'Meeting Done'];
       const PAY_MODES = ['UPI', 'Bank transfer', 'Cash', 'Cheque', 'Card'];
       const FEE_KINDS = ['Design fee', 'Project management fee'];
+      // A Token payment counts in the design fee when the client has a token amount set
+      function tokenIsDesignFee(clientId) { const c = clientById(clientId); return Boolean(c) && msTokenOf(c) > 0; }
+      const isDesignFeePay = m => m.kind === 'Design fee' || (m.kind === 'Token' && tokenIsDesignFee(m.clientId));
+      const isFeePay = m => m && m.dir === 'in' && (FEE_KINDS.includes(m.kind) || isDesignFeePay(m));
       // "Money in & out" filter values: '', 'in', 'out', 'fees', 'fee:design', 'fee:pm', 'nofees'
       function payDirMatch(m, f) {
         if (!f) return true;
         if (f === 'in' || f === 'out') return m.dir === f;
         if (m.dir !== 'in') return false;
-        if (f === 'fees') return FEE_KINDS.includes(m.kind);
-        if (f === 'fee:design') return m.kind === 'Design fee';
+        if (f === 'fees') return isFeePay(m);
+        if (f === 'fee:design') return isDesignFeePay(m);
         if (f === 'fee:pm') return m.kind === 'Project management fee';
-        if (f === 'nofees') return !FEE_KINDS.includes(m.kind);
+        if (f === 'nofees') return !isFeePay(m);
         return true;
       }
       const payDirIsIn = f => Boolean(f) && f !== 'out';
       function payDirOptions(cur) {
         const o = (v, l) => `<option value="${v}" ${cur === v ? 'selected' : ''}>${l}</option>`;
         return o('', 'Money in &amp; out') + o('in', 'Received only') + o('out', 'Paid out only') +
-          `<optgroup label="Received from clients">${o('fees', 'Design &amp; PM fees')}${o('fee:design', 'Design fee only')}${o('fee:pm', 'Project management fee only')}${o('nofees', 'Without fees (milestones &amp; other)')}</optgroup>`;
+          `<optgroup label="Received from clients">${o('fees', 'Design &amp; PM fees')}${o('fee:design', 'Design fee only (incl. token)')}${o('fee:pm', 'Project management fee only')}${o('nofees', 'Without fees (milestones &amp; other)')}</optgroup>`;
       }
       const IN_KINDS = ['Token', 'Advance', 'Milestone', 'Design fee', 'Project management fee', 'Site bill', 'Final payment', 'Other'];
       const OUT_CATS = ['Labour', 'Material', 'Contractor', 'Transport', 'Site expense', 'Design / consultant', 'Other'];
@@ -14285,9 +14292,8 @@
         if (m.dir !== 'in') return -1;
         let label = m.milestone || '';
         if (!label && m.invoiceId) { const inv = (state.invoices || []).find(i => i.id === m.invoiceId); label = inv ? inv.milestone || '' : ''; }
-        if (FEE_KINDS.includes(m.kind)) return -1;
+        if (isFeePay(m)) return -1;
         const list = msList(clientById(m.clientId));
-        if (m.kind === 'Token') { const ti = list.findIndex(x => x.token); if (ti >= 0) return ti; }
         return label ? msFind(list, label) : -1;
       }
       function milestoneStatus(c, fin, idx) {
@@ -14305,7 +14311,7 @@
         if (!ms.expected) { openPay('in', { clientId: c.id, milestone: idx, kind: 'Milestone' }); return; }
         if (!await appConfirm(`Mark "${lab}" as paid?\n\n${formatINR(ms.balance)} received today will be recorded${ms.received ? ` (on top of ${formatINR(ms.received)} already received)` : ''}. You can edit the date and mode afterwards.`)) return;
         ensureMoney();
-        const entry = { id: uid('mn'), dir: 'in', date: getDateOffset(0), amount: ms.balance, clientId: c.id, kind: (msList(c)[idx] || {}).token || (idx === 0 && !msList(c).some(x => x.token) && !moneyList({ dir: 'in', clientId: c.id }).length) ? 'Token' : 'Milestone', milestone: lab, mode: 'Bank transfer', ref: '', note: ms.received ? 'Balance of milestone' : 'Marked paid', by: state.activeStaffEmail, createdAt: new Date().toISOString() };
+        const entry = { id: uid('mn'), dir: 'in', date: getDateOffset(0), amount: ms.balance, clientId: c.id, kind: idx === 0 && !msTokenOf(c) && !moneyList({ dir: 'in', clientId: c.id }).length ? 'Token' : 'Milestone', milestone: lab, mode: 'Bank transfer', ref: '', note: ms.received ? 'Balance of milestone' : 'Marked paid', by: state.activeStaffEmail, createdAt: new Date().toISOString() };
         state.money.push(entry);
         commitState(); renderAll();
         showToast(`${lab.replace(/^\d+%\s*/, '')} marked paid · ${formatINR(ms.balance)}`);
@@ -14528,14 +14534,14 @@
         if (!m && dir === 'in') {
           const msl = msList(clientById(payCtx.d.clientId));
           if (opts.milestone !== undefined) { payCtx.d.milestone = (msl[opts.milestone] || {}).label || ''; if (!opts.kind) payCtx.d.kind = 'Milestone'; }
-          else if (payCtx.d.kind === 'Token') payCtx.d.milestone = ((msl.find(x => x.token) || msl[0]) || {}).label || '';
+          else if (payCtx.d.kind === 'Token') payCtx.d.milestone = tokenIsDesignFee(payCtx.d.clientId) ? '' : ((msl[0]) || {}).label || '';
           else if (payCtx.d.kind === 'Advance') payCtx.d.milestone = ((msl.find(x => !x.token)) || {}).label || '';
         }
         if (m && m.dir === 'in' && !m.milestone && m.invoiceId) { const inv = (state.invoices || []).find(i => i.id === m.invoiceId); if (inv && inv.milestone) payCtx.d.milestone = inv.milestone; }
         if (!m && (opts.siteBillId || opts.poId)) { if (opts.siteBillId) payCtx.d.siteBillId = opts.siteBillId; if (opts.poId) payCtx.d.poId = opts.poId; if (opts.amount) payCtx.d.amount = opts.amount; if (opts.note) payCtx.d.note = opts.note; if (opts.work) payCtx.d.work = opts.work; }
         if (!m && dir === 'out' && payCtx.d.vendorId) { const v = vendorById(payCtx.d.vendorId); if (v) payCtx.d.category = v.type === 'Vendor / supplier' ? 'Material' : v.type === 'Contractor' ? 'Contractor' : 'Labour'; }
         if (!m && opts.category) payCtx.d.category = opts.category;
-        if (!m && dir === 'in' && FEE_KINDS.includes(payCtx.d.kind) && opts.amount) payCtx.d.amount = opts.amount;
+        if (!m && dir === 'in' && (FEE_KINDS.includes(payCtx.d.kind) || payCtx.d.kind === 'Token') && opts.amount) payCtx.d.amount = opts.amount;
         renderPayModal();
         openModal('modal-pay');
       }
@@ -14548,9 +14554,9 @@
       }
       function renderPayModal() {
         renderPayModalBase();
-        if (!payCtx || payCtx.d.dir !== 'in' || !FEE_KINDS.includes(payCtx.d.kind)) return;
+        if (!payCtx || payCtx.d.dir !== 'in' || !isFeePay({ dir: 'in', kind: payCtx.d.kind, clientId: payCtx.d.clientId })) return;
         const ms = document.getElementById('pay-ms');
-        if (ms) { ms.value = ''; payCtx.d.milestone = ''; const row = ms.closest('.form-full'); if (row) { row.style.display = 'none'; row.insertAdjacentHTML('afterend', `<div class="form-full hub-muted" style="font-size:12.5px;">${escapeHtml(payCtx.d.kind)} is recorded separately — it is not counted against the payment milestones.</div>`); } }
+        if (ms) { ms.value = ''; payCtx.d.milestone = ''; const row = ms.closest('.form-full'); if (row) { row.style.display = 'none'; row.insertAdjacentHTML('afterend', `<div class="form-full hub-muted" style="font-size:12.5px;">${payCtx.d.kind === 'Token' ? 'The token is counted in the design fee' : escapeHtml(payCtx.d.kind) + ' is recorded separately'} — it is not counted against the payment milestones.</div>`); } }
       }
       function renderPayModalBase() {
         const box = document.getElementById('pay-body'); if (!box || !payCtx) return;
@@ -14631,7 +14637,7 @@
         if (isIn) {
           entry.kind = d.kind || 'Advance'; entry.invoiceId = d.invoiceId || entry.invoiceId || ''; delete entry.vendorId;
           const inv = entry.invoiceId && (state.invoices || []).find(i => i.id === entry.invoiceId);
-          entry.milestone = FEE_KINDS.includes(entry.kind) ? '' : (d.milestone || (inv && inv.milestone) || '');
+          entry.milestone = isFeePay({ dir: 'in', kind: entry.kind, clientId: entry.clientId }) ? '' : (d.milestone || (inv && inv.milestone) || '');
         }
         else { entry.vendorId = vendorId; entry.work = (d.work || '').trim(); entry.category = d.category || 'Labour'; delete entry.kind; delete entry.invoiceId; }
         if (d.siteBillId) entry.siteBillId = d.siteBillId;
