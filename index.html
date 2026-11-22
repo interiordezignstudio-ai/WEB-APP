@@ -2356,6 +2356,12 @@
       .att-row > span:first-child, .att-row .att-workcell { grid-column:1 / -1; }
       .ad-work-row { grid-template-columns:1fr 1fr; } .ad-work-row .input[data-k="text"] { grid-column:1 / -1; }
     }
+    .vlist { display:flex; flex-direction:column; max-height:55vh; overflow:auto; border:1px solid var(--border-subtle); border-radius:12px; }
+    .vlist-row { display:flex; justify-content:space-between; align-items:center; gap:10px; padding:9px 12px; border-bottom:1px solid var(--border-subtle); }
+    .vlist-row:last-child { border-bottom:0; }
+    .vlist-row.on { background:#F3FAF6; }
+    .vlist-row small { display:block; font-size:12px; color:var(--text-muted); }
+    .vlist-acts { display:flex; gap:6px; flex:none; }
     .trade-list { display:flex; flex-direction:column; gap:6px; max-height:52vh; overflow:auto; }
     .trade-row { display:grid; grid-template-columns: minmax(0, 1fr) 80px 36px; gap:8px; align-items:center; }
     .trade-row .input { padding:8px; font-size:14px; }
@@ -3402,6 +3408,12 @@
     <div class="modal-box modal-lg">
       <div class="modal-header"><h3 class="font-serif" style="font-size:22px; font-weight:700;" id="sel-title">Selection</h3><button class="btn btn-outline btn-sm" data-close-modal="modal-sel">✕</button></div>
       <div id="sel-body"></div>
+    </div>
+  </div>
+  <div class="modal-backdrop" id="modal-vlist">
+    <div class="modal-box">
+      <div class="modal-header"><h3 class="font-serif" style="font-size:20px; font-weight:700;">Vendors &amp; labour</h3><button class="btn btn-outline btn-sm" data-close-modal="modal-vlist">✕</button></div>
+      <div id="vlist-body"></div>
     </div>
   </div>
   <div class="modal-backdrop" id="modal-trades">
@@ -8988,6 +9000,58 @@
         if (t.closest('[data-trade-save]')) saveTrades();
       });
       document.addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.dataset && e.target.dataset.tradeRow) { e.preventDefault(); document.querySelector('[data-trade-add]')?.click(); } });
+
+
+      // ===== Vendor / labour list from the Payment made window =====
+      const payOpen = () => Boolean(payCtx) && document.getElementById('modal-pay') && document.getElementById('modal-pay').classList.contains('open');
+      function afterVendorChange(newId) {
+        if (payOpen() && payCtx.d.dir === 'out') {
+          payCapture();
+          if (newId) payCtx.d.vendorId = newId;
+          if (payCtx.d.vendorId && payCtx.d.vendorId !== '__new' && !vendorById(payCtx.d.vendorId)) payCtx.d.vendorId = '';
+          const v = vendorById(payCtx.d.vendorId);
+          if (newId && v) payCtx.d.category = v.type === 'Vendor / supplier' ? 'Material' : v.type === 'Contractor' ? 'Contractor' : 'Labour';
+          renderPayModal();
+          // a new vendor added during a payment: go straight back to the payment with them selected
+          if (newId && document.getElementById('modal-vlist').classList.contains('open')) { closeModal('modal-vlist'); return; }
+        }
+        if (document.getElementById('modal-vlist') && document.getElementById('modal-vlist').classList.contains('open')) renderVendorList();
+      }
+      function renderVendorList() {
+        const box = document.getElementById('vlist-body'); if (!box) return;
+        const q = String(window.__vlistQ || '').toLowerCase();
+        const vs = (state.vendors || []).slice().sort((a, b) => String(a.name).localeCompare(String(b.name)));
+        const shown = vs.filter(v => !q || [v.name, v.trade, v.type, v.phone].join(' ').toLowerCase().includes(q));
+        const can = getCurrentPermissions().canEditBilling;
+        box.innerHTML = `
+          <div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:10px;">
+            <input class="input" id="vlist-q" value="${escapeHtml(window.__vlistQ || '')}" placeholder="Search name, trade, phone…" style="flex:1 1 200px;" />
+            ${can ? '<button type="button" class="btn btn-primary" data-vlist-add>+ Add vendor / labour</button>' : ''}
+          </div>
+          <div class="vlist">${shown.map(v => { const n = moneyList({ vendorId: v.id }).length; const sel = payOpen() && payCtx.d.vendorId === v.id; return `
+            <div class="vlist-row${sel ? ' on' : ''}">
+              <div style="min-width:0;"><strong>${escapeHtml(v.name)}</strong>${sel ? ' <span class="badge badge-emerald" style="font-size:10px;">selected</span>' : ''}<small>${escapeHtml([v.type, v.trade, v.phone].filter(Boolean).join(' · '))}${n ? ` · ${n} payment${n === 1 ? '' : 's'}` : ''}</small></div>
+              <span class="vlist-acts">
+                ${payOpen() && payCtx.d.dir === 'out' && !sel ? `<button type="button" class="btn btn-outline btn-sm" data-vlist-pick="${v.id}">Select</button>` : ''}
+                ${can ? `<button type="button" class="btn btn-outline btn-sm" data-vlist-edit="${v.id}">Edit</button><button type="button" class="btn btn-outline btn-sm pay-del" data-vendor-del="${v.id}" aria-label="Delete ${escapeHtml(v.name)}">✕</button>` : ''}
+              </span>
+            </div>`; }).join('') || `<div class="hub-muted" style="padding:14px 0;">${vs.length ? 'No match.' : 'No vendors or labour yet.'}</div>`}</div>
+          <div class="hub-muted" style="font-size:12px; margin-top:8px;">Deleting someone keeps their old payments in your records.</div>`;
+      }
+      document.addEventListener('click', e => {
+        const t = e.target;
+        const pe = t.closest('[data-payv-edit]'); if (pe) { e.preventDefault(); openVendor(pe.dataset.payvEdit); vendorCtx.fromPay = true; return; }
+        if (t.closest('[data-vlist-open]')) { e.preventDefault(); window.__vlistQ = ''; renderVendorList(); openModal('modal-vlist'); return; }
+        if (!t.closest('#modal-vlist')) return;
+        if (t.closest('[data-vlist-add]')) { openVendor(null); vendorCtx.fromPay = payOpen(); return; }
+        const ed = t.closest('[data-vlist-edit]'); if (ed) { openVendor(ed.dataset.vlistEdit); vendorCtx.fromPay = payOpen(); return; }
+        const pk = t.closest('[data-vlist-pick]'); if (pk && payOpen()) { closeModal('modal-vlist'); afterVendorChange(pk.dataset.vlistPick); }
+      });
+      document.addEventListener('input', e => {
+        if (e.target.id !== 'vlist-q') return;
+        window.__vlistQ = e.target.value; const pos = e.target.selectionStart;
+        renderVendorList(); const el = document.getElementById('vlist-q'); if (el) { el.focus(); el.setSelectionRange(pos, pos); }
+      });
 
       // ===== Delete an onboarded client (and everything that belongs to them) =====
       function clientLinkedRecords(c) {
@@ -14665,7 +14729,7 @@
               ${openBills.length ? `<div class="form-full"><label class="form-label">Against bill (optional)</label><select class="select" id="pay-invoice"><option value="">— not against a bill —</option>${openBills.map(i => `<option value="${i.id}" ${d.invoiceId === i.id ? 'selected' : ''}>${escapeHtml(i.invoiceNo)} · ${escapeHtml(i.milestone || '')} · ${formatINR(getInvoiceGross(i))}</option>`).join('')}</select>
                 <label class="pay-check"><input type="checkbox" id="pay-markpaid" ${d.markPaid === false ? '' : 'checked'} /> Mark that bill as paid</label></div>` : ''}
             ` : `
-              <div class="form-full"><label class="form-label">Paid to *</label><select class="select" id="pay-vendor"><option value="">— choose vendor / labour —</option>${vendors.map(v => `<option value="${v.id}" ${d.vendorId === v.id ? 'selected' : ''}>${escapeHtml(v.name)}${v.trade ? ' · ' + escapeHtml(v.trade) : ''}</option>`).join('')}<option value="__new" ${newV ? 'selected' : ''}>+ Add new vendor / labour…</option></select></div>
+              <div class="form-full"><label class="form-label">Paid to * ${d.vendorId && d.vendorId !== '__new' && vendorById(d.vendorId) ? `<button type="button" class="wa-linkbtn trade-edit-link" data-payv-edit="${escapeHtml(d.vendorId)}">Edit</button>` : ''}<button type="button" class="wa-linkbtn trade-edit-link" data-vlist-open>Manage list</button></label><select class="select" id="pay-vendor"><option value="">— choose vendor / labour —</option>${vendors.map(v => `<option value="${v.id}" ${d.vendorId === v.id ? 'selected' : ''}>${escapeHtml(v.name)}${v.trade ? ' · ' + escapeHtml(v.trade) : ''}</option>`).join('')}<option value="__new" ${newV ? 'selected' : ''}>+ Add new vendor / labour…</option></select></div>
               ${newV ? `<div class="form-full pay-newv"><div class="form-grid">
                 <div><label class="form-label">Name *</label><input class="input" id="pv-name" value="${escapeHtml(d.nvName || '')}" placeholder="e.g. Ramesh Mistry" /></div>
                 <div><label class="form-label">Phone</label><input class="input" id="pv-phone" type="tel" inputmode="tel" value="${escapeHtml(d.nvPhone || '')}" placeholder="98XXXXXXXX" /></div>
@@ -14768,12 +14832,14 @@
         if (!g('vd-name')) { showToast('Enter a name'); return; }
         ensureMoney();
         let v = vendorCtx && vendorCtx.id ? vendorById(vendorCtx.id) : null;
+        const isNewVendor = !v; const fromPay = Boolean(vendorCtx && vendorCtx.fromPay);
         if (!v) { v = { id: uid('v'), createdAt: new Date().toISOString() }; state.vendors.push(v); }
         Object.assign(v, { name: g('vd-name'), phone: g('vd-phone'), type: g('vd-type') || 'Labour', trade: g('vd-trade'), work: g('vd-work'), bank: g('vd-bank') });
         rememberTrade(v.trade);
         commitState(); closeModal('modal-vendor'); vendorCtx = null;
-        state.payView = 'vendors';
+        if (!fromPay) state.payView = 'vendors';
         renderAll(); showToast(`${v.name} saved`);
+        afterVendorChange(fromPay && isNewVendor ? v.id : null);
       }
 
       // ---------- onboarding email + WhatsApp ----------
@@ -14913,6 +14979,7 @@
           state.money.filter(m => m.vendorId === v.id).forEach(m => { m.payee = v.name; });
           state.vendors = state.vendors.filter(x => x !== v);
           commitState(); closeModal('modal-vendor'); renderAll(); showToast(`${v.name} deleted`);
+          afterVendorChange(null);
           return;
         }
         const vh = t.closest('[data-vendor-hist]'); if (vh) { const id = vh.dataset.vendorHist; if (openVendorHistory.has(id)) openVendorHistory.delete(id); else openVendorHistory.add(id); renderPayments(); return; }
