@@ -18,6 +18,9 @@
   <meta name="mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="default" />
   <meta name="apple-mobile-web-app-title" content="Dezign OS" />
+  <link rel="manifest" href="manifest.json" />
+  <link rel="icon" href="icon-192.png" />
+  <link rel="apple-touch-icon" href="icon-192.png" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
@@ -2527,6 +2530,20 @@
       .main-wrapper { margin: 0 !important; }
     }
   
+    /* Trash */
+    .trash-row { display:flex; gap:12px; align-items:center; padding:12px 0; border-bottom:1px solid var(--border-subtle); flex-wrap:wrap; }
+    .trash-row:last-child { border-bottom:0; }
+    .trash-ico { width:36px; height:36px; border-radius:10px; background: var(--bg-sunken); display:flex; align-items:center; justify-content:center; font-size:17px; flex:0 0 36px; }
+    .trash-main { flex:1 1 220px; min-width:0; }
+    .trash-main strong { display:block; font-size:14px; overflow-wrap:anywhere; }
+    .trash-main small { display:block; color: var(--text-muted); font-size:12px; margin-top:2px; }
+    .trash-acts { display:flex; gap:6px; flex-wrap:wrap; }
+    .trash-left { font-weight:700; }
+    .trash-left.soon { color: var(--accent-rose); }
+    .notif-status { font-size:12.5px; padding:9px 11px; border-radius:10px; background: var(--bg-sunken); color: var(--text-muted); line-height:1.45; }
+    .notif-status.ok { background: var(--accent-emerald-soft); color: var(--accent-emerald); }
+    .notif-status.warn { background: var(--accent-rose-soft); color: var(--accent-rose); }
+    .notif-status b { color: inherit; }
     /* ============ DARK MODE ============ */
     html[data-theme="dark"] {
       color-scheme: dark;
@@ -2764,6 +2781,7 @@
               </div>
               <div class="pop-title">Appearance</div>
               <div class="pop-theme" role="group" aria-label="Light or dark mode"><button type="button" data-theme-set="light">☀️ Light</button><button type="button" data-theme-set="dark">🌙 Dark</button><button type="button" data-theme-set="auto">Auto</button></div>
+              <button type="button" role="menuitem" class="pop-item" data-open-trash>🗑️&nbsp; Trash <span class="pop-muted" style="margin-left:auto;">kept 30 days</span></button>
               <div class="pop-title">Switch team member</div>
               <div id="account-staff-list"></div>
               <div class="pop-sep"></div>
@@ -3350,8 +3368,13 @@
               <div id="meta-settings"></div>
             </div>
             <div class="card" style="display:flex; flex-direction:column; gap:10px;">
-              <h3 style="font-size:16px; font-weight:700;">New lead alerts</h3>
+              <h3 style="font-size:16px; font-weight:700;">Alerts &amp; notifications</h3>
               <div id="lead-alert-settings"></div>
+            </div>
+            <div class="card" style="display:flex; flex-direction:column; gap:10px;">
+              <h3 style="font-size:16px; font-weight:700;">Trash</h3>
+              <div class="hub-muted" style="font-size:13px;">Anything deleted (leads, clients, payments, bills, POs, selections, tasks, vendors…) is kept here for 30 days and can be restored.</div>
+              <div><button type="button" class="btn btn-outline btn-sm" data-open-trash>Open Trash</button></div>
             </div>
           </div>
 
@@ -3537,6 +3560,12 @@
     <div class="modal-box modal-lg">
       <div class="modal-header"><h3 class="font-serif" style="font-size:22px; font-weight:700;" id="sel-title">Selection</h3><button class="btn btn-outline btn-sm" data-close-modal="modal-sel">✕</button></div>
       <div id="sel-body"></div>
+    </div>
+  </div>
+  <div class="modal-backdrop" id="modal-trash">
+    <div class="modal-box modal-lg">
+      <div class="modal-header"><h3 class="font-serif" style="font-size:22px; font-weight:700;">Trash</h3><button class="btn btn-outline btn-sm" data-close-modal="modal-trash">✕</button></div>
+      <div id="trash-body"></div>
     </div>
   </div>
   <div class="modal-backdrop" id="modal-photoview">
@@ -6574,7 +6603,8 @@
             <form id="hub-task-form" class="hub-inline-form" data-client="${c.id}">
               <input type="text" name="title" class="input" required placeholder="e.g., Share 3D kitchen renders" style="flex:2 1 220px;" />
               <select name="assigneeEmail" class="select" style="flex:1 1 170px;">${buildStaffOptionsHtml(c.designOwner || state.activeStaffEmail)}</select>
-              <input type="date" name="dueDate" class="input" value="${getDateOffset(1)}" style="flex:0 1 160px;" />
+              <input type="date" name="dueDate" class="input" value="${getDateOffset(1)}" style="flex:0 1 160px;" aria-label="Due date" />
+              <input type="time" name="dueTime" class="input" style="flex:0 1 120px;" aria-label="Remind at (time)" title="Remind at (optional — 10:00 AM if empty)" />
               <button type="submit" class="btn btn-primary">Add task</button>
             </form>
           </div>
@@ -6588,6 +6618,7 @@
                     <input type="text" name="title" class="input" required value="${escapeHtml(t.title)}" style="flex:2 1 220px;" aria-label="Task" />
                     <select name="assigneeEmail" class="select" style="flex:1 1 170px;" aria-label="Assigned to">${buildStaffOptionsHtml(t.assigneeEmail)}</select>
                     <input type="date" name="dueDate" class="input" value="${escapeHtml(t.dueDate || '')}" style="flex:0 1 160px;" aria-label="Due date" />
+                    <input type="time" name="dueTime" class="input" value="${escapeHtml(t.dueTime || '')}" style="flex:0 1 120px;" aria-label="Remind at (time)" title="Remind at (optional — 10:00 AM if empty)" />
                     <button type="submit" class="btn btn-primary btn-sm">Save</button>
                     <button type="button" class="btn btn-outline btn-sm" data-hub-task-cancel>Cancel</button>
                   </form>
@@ -6597,7 +6628,7 @@
                   <input type="checkbox" data-hub-task-toggle="${t.id}" ${t.done ? 'checked' : ''} aria-label="Mark done" />
                   <div style="flex:1; min-width:0;">
                     <div class="hub-task-title">${escapeHtml(t.title)}</div>
-                    <div class="hub-row-meta" style="${late ? 'color:var(--accent-rose); font-weight:600;' : ''}">${late ? 'Overdue · ' : 'Due '}${escapeHtml(t.dueDate || '—')}</div>
+                    <div class="hub-row-meta" style="${late ? 'color:var(--accent-rose); font-weight:600;' : ''}">${late ? 'Overdue · ' : 'Due '}${escapeHtml(t.dueDate || '—')}${t.dueTime ? ` · ⏰ ${escapeHtml(t.dueTime)}` : ''}</div>
                   </div>
                   <select class="input-inline" data-hub-task-assign="${t.id}" aria-label="Assigned to">${buildStaffOptionsHtml(t.assigneeEmail)}</select>
                   <button type="button" class="btn btn-outline btn-sm" data-hub-task-edit="${t.id}">Edit</button>
@@ -7005,6 +7036,7 @@
             title,
             assigneeEmail: fd.get('assigneeEmail') || state.activeStaffEmail,
             dueDate: fd.get('dueDate') || getDateOffset(1),
+            dueTime: fd.get('dueTime') || '',
             done: false,
             clientId: f.dataset.client
           });
@@ -7019,7 +7051,7 @@
           const task = state.tasks.find(x => x.id === f.dataset.task);
           const title = String(fd.get('title') || '').trim();
           if (!task || !title) return true;
-          Object.assign(task, { title, assigneeEmail: fd.get('assigneeEmail') || task.assigneeEmail, dueDate: fd.get('dueDate') || task.dueDate });
+          Object.assign(task, { title, assigneeEmail: fd.get('assigneeEmail') || task.assigneeEmail, dueDate: fd.get('dueDate') || task.dueDate, dueTime: fd.get('dueTime') || '' });
           hubTaskEditId = null;
           commitState();
           renderClients();
@@ -9339,6 +9371,139 @@
       if (window.matchMedia) { try { matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => { if (themePref() === 'auto') applyTheme(); }); } catch (e) { /* old browsers */ } }
       setTimeout(applyTheme, 0);
 
+
+      // ===== Trash: everything deleted is kept 30 days and can be restored =====
+      const TRASH_DAYS = 30;
+      let trashSkipSet = null;
+      const trashSkip = k => { if (!trashSkipSet) trashSkipSet = new Set(['trash', 'cloudMeta', ...LOCAL_UI_KEYS]); return trashSkipSet.has(k); };
+      const TRASH_KIND = { leads: ['Lead', '👤'], clients: ['Client', '🏠'], money: ['Payment', '₹'], selections: ['Selection', '🪑'], pos: ['Purchase order', '📦'], siteBills: ['Site bill', '🧾'], invoices: ['GST bill', '🧾'], tasks: ['Task', '✓'], vendors: ['Vendor', '🔧'], catalog: ['Catalog item', '📋'], staff: ['Team member', '👥'], roles: ['Role', '👥'], salaryRuns: ['Salary record', '💼'], attendance: ['Attendance', '🕘'], links: ['Link', '🔗'], linkSets: ['Link bundle', '🔗'], notes: ['Note', '📝'], phases: ['Timeline phase', '📅'], checklist: ['Checklist item', '☑'], siteVendors: ['Vendor on site', '🔧'], trades: ['Trade', '🔧'], waTemplates: ['Message', '💬'], meetings: ['Meeting', '📅'], activities: ['Call / discussion', '📞'] };
+      const isIdList = v => Array.isArray(v) && v.length > 0 && v.every(x => x && typeof x === 'object' && !Array.isArray(x) && x.id);
+      function trashKindOf(key) { return TRASH_KIND[key] || [key.replace(/([A-Z])/g, ' $1').replace(/^./, c => c.toUpperCase()).replace(/s$/, ''), '🗂️']; }
+      function trashItemName(key, it) {
+        if (!it) return '';
+        if (key === 'money') return `${formatINR(it.amount)} — ${partyName(it) || moneyTitle(it) || ''}`.trim();
+        return it.name || it.title || it.poNo || it.billNo || it.invoiceNo || it.label || it.text || it.url || it.email || (it.note ? String(it.note).slice(0, 60) : '') || '';
+      }
+      // compare the data before and after a delete and keep what disappeared
+      function recordTrash(beforeJson) {
+        const b = JSON.parse(beforeJson);
+        const parts = [];
+        Object.keys(b).forEach(key => {
+          if (trashSkip(key)) return;
+          const bv = b[key], av = state[key];
+          if (key === 'boqs' && bv && typeof bv === 'object') {
+            Object.keys(bv).forEach(mk => { if (!av || !av[mk]) parts.push({ t: 'map', key, mk, value: bv[mk] }); });
+            return;
+          }
+          if (!isIdList(bv)) return;
+          const aList = Array.isArray(av) ? av : [];
+          const aMap = new Map(aList.map(x => [x && x.id, x]));
+          bv.forEach((it, idx) => {
+            const now = aMap.get(it.id);
+            if (!now) { parts.push({ t: 'arr', key, idx, item: it }); return; }
+            // lists inside a record (notes, links, phases…)
+            Object.keys(it).forEach(f => {
+              if (!isIdList(it[f])) return;
+              const inner = new Set((Array.isArray(now[f]) ? now[f] : []).map(x => x && x.id));
+              it[f].forEach((sub, j) => { if (!inner.has(sub.id)) parts.push({ t: 'nest', key, pid: it.id, pname: trashItemName(key, it), field: f, idx: j, item: sub }); });
+            });
+          });
+        });
+        if (!parts.some(x => x.t !== 'relink')) return false;
+        // links to removed records (e.g. a lead pointing at a deleted client) are put back on restore
+        const goneIds = new Set(parts.filter(x => x.t === 'arr' || x.t === 'map').map(x => x.t === 'arr' ? x.item.id : x.mk));
+        Object.keys(b).forEach(key => {
+          if (trashSkip(key) || !isIdList(b[key]) || !Array.isArray(state[key])) return;
+          const aMap = new Map(state[key].map(x => [x && x.id, x]));
+          b[key].forEach(it => {
+            const now = aMap.get(it.id); if (!now) return;
+            Object.keys(it).forEach(f => { if (typeof it[f] === 'string' && goneIds.has(it[f]) && now[f] !== it[f]) parts.push({ t: 'relink', key, id: it.id, field: f, value: it[f] }); });
+          });
+        });
+        const main = parts.find(x => x.t === 'arr' && x.key === 'clients') || parts.find(x => x.t === 'arr') || parts.find(x => x.t === 'nest') || parts[0];
+        const counted = parts.filter(x => x.t === 'arr' || x.t === 'nest');
+        const sameKind = counted.filter(x => x.key === main.key && x.t === main.t && (x.t !== 'nest' || x.field === main.field));
+        const kindKey = main.t === 'nest' ? main.field : main.key;
+        const [kName, icon] = main.t === 'map' ? ['Estimate', '📐'] : trashKindOf(kindKey);
+        const all = sameKind.length > 1 && sameKind.length === counted.length;
+        const label = all ? `${sameKind.length} ${kName.toLowerCase()}${/s$/.test(kName) ? '' : 's'}`
+          : `${kName}: ${main.t === 'map' ? ((clientById(main.mk) || {}).name || 'estimate') : (trashItemName(kindKey, main.item) || '(no name)')}`;
+        const extra = (all ? 0 : counted.length - (main.t === 'map' ? 0 : 1)) + parts.filter(x => x.t === 'map').length - (main.t === 'map' ? 1 : 0);
+        const names = all ? sameKind.map(x => trashItemName(kindKey, x.item)).filter(Boolean) : [];
+        const where = names.length ? names.slice(0, 4).join(', ') + (names.length > 4 ? ` +${names.length - 4} more` : '') : main.t === 'nest' && main.pname ? `in ${main.pname}` : '';
+        state.trash = (state.trash || []).filter(e => !trashExpired(e));
+        state.trash.unshift({ id: uid('tr'), at: new Date().toISOString(), by: state.activeStaffEmail || '', label, icon, extra: Math.max(0, extra), where, parts });
+        commitState();
+        return true;
+      }
+      function trashExpired(e) { return Date.now() - new Date(e.at).getTime() > TRASH_DAYS * 86400000; }
+      function trashDaysLeft(e) { return Math.max(0, Math.ceil(TRASH_DAYS - (Date.now() - new Date(e.at).getTime()) / 86400000)); }
+      function purgeTrash() {
+        if (!Array.isArray(state.trash)) return;
+        const keep = state.trash.filter(e => !trashExpired(e));
+        if (keep.length !== state.trash.length) { state.trash = keep; commitState(); }
+      }
+      function amTrashAdmin() { const me = getCurrentStaff(); return me && (me.role === 'Principal / Admin' || isTeamManager(me)); }
+      function visibleTrash() {
+        const me = getCurrentStaff() || {};
+        return (state.trash || []).filter(e => !trashExpired(e) && (amTrashAdmin() || e.by === me.email));
+      }
+      function restoreTrash(id) {
+        const e = (state.trash || []).find(x => x.id === id); if (!e) return;
+        let back = 0, missed = 0;
+        e.parts.filter(p => p.t === 'arr').forEach(p => {
+          if (!Array.isArray(state[p.key])) state[p.key] = [];
+          const arr = state[p.key]; if (arr.some(x => x.id === p.item.id)) return;
+          arr.splice(Math.min(p.idx, arr.length), 0, p.item); back++;
+        });
+        e.parts.filter(p => p.t === 'map').forEach(p => { state[p.key] = state[p.key] || {}; if (!state[p.key][p.mk]) { state[p.key][p.mk] = p.value; back++; } });
+        e.parts.filter(p => p.t === 'nest').forEach(p => {
+          const parent = (state[p.key] || []).find(x => x.id === p.pid);
+          if (!parent) { missed++; return; }
+          if (!Array.isArray(parent[p.field])) parent[p.field] = [];
+          if (parent[p.field].some(x => x.id === p.item.id)) return;
+          parent[p.field].splice(Math.min(p.idx, parent[p.field].length), 0, p.item); back++;
+        });
+        e.parts.filter(p => p.t === 'relink').forEach(p => { const o = (state[p.key] || []).find(x => x.id === p.id); if (o && !o[p.field]) o[p.field] = p.value; });
+        state.trash = state.trash.filter(x => x.id !== id);
+        commitState(); renderAll(); renderTrash();
+        showToast(missed ? `Restored ${e.label} — ${missed} item${missed === 1 ? '' : 's'} could not go back because ${missed === 1 ? 'its' : 'their'} client/record is deleted (restore that first)` : `Restored ${e.label}`);
+      }
+      function renderTrash() {
+        const box = document.getElementById('trash-body'); if (!box) return;
+        const list = visibleTrash();
+        const admin = amTrashAdmin();
+        box.innerHTML = `
+          <div class="hub-muted" style="font-size:13px; margin-bottom:8px;">Deleted items stay here for ${TRASH_DAYS} days, then they are removed for good. Restoring puts them back on every device after sync.${admin ? '' : ' You see the items you deleted.'}</div>
+          ${list.length ? list.map(e => {
+            const left = trashDaysLeft(e);
+            return `<div class="trash-row">
+              <span class="trash-ico">${e.icon || '🗂️'}</span>
+              <div class="trash-main"><strong>${escapeHtml(e.label)}${e.extra ? ` <span class="hub-muted" style="font-weight:500;">+ ${e.extra} linked item${e.extra === 1 ? '' : 's'}</span>` : ''}</strong>
+                <small>${e.where ? escapeHtml(e.where) + ' · ' : ''}Deleted ${escapeHtml(fmtDay(e.at.slice(0, 10)))} ${escapeHtml(new Date(e.at).toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit' }))}${e.by ? ' by ' + escapeHtml(staffFirst(e.by) || e.by) : ''} · <span class="trash-left${left <= 3 ? ' soon' : ''}">${left} day${left === 1 ? '' : 's'} left</span></small></div>
+              <div class="trash-acts"><button type="button" class="btn btn-primary btn-sm" data-trash-restore="${e.id}">Restore</button>${admin ? `<button type="button" class="btn btn-outline btn-sm" data-trash-purge="${e.id}">Delete forever</button>` : ''}</div>
+            </div>`;
+          }).join('') : '<div class="hub-muted" style="padding:24px 0; text-align:center;">Trash is empty.</div>'}
+          ${admin && list.length ? `<div style="display:flex; justify-content:flex-end; margin-top:12px;"><button type="button" class="btn btn-outline btn-sm" data-trash-empty>Empty trash</button></div>` : ''}`;
+      }
+      document.addEventListener('click', async e => {
+        const t = e.target;
+        if (t.closest('[data-open-trash]')) { if (typeof closeAllMenus === 'function') closeAllMenus(); purgeTrash(); renderTrash(); openModal('modal-trash'); return; }
+        const r = t.closest('[data-trash-restore]'); if (r) { restoreTrash(r.dataset.trashRestore); return; }
+        const pg = t.closest('[data-trash-purge]');
+        if (pg) {
+          const en = (state.trash || []).find(x => x.id === pg.dataset.trashPurge); if (!en) return;
+          if (!await appConfirm(`Delete “${en.label}” forever?\n\nIt cannot be restored after this.`, { ok: 'Delete forever' })) return;
+          state.trash = state.trash.filter(x => x.id !== en.id); commitState(); renderTrash(); showToast('Deleted forever'); return;
+        }
+        if (t.closest('[data-trash-empty]')) {
+          const n = visibleTrash().length;
+          if (!await appConfirm(`Empty the trash?\n\n${n} item${n === 1 ? '' : 's'} will be deleted forever.`, { ok: 'Empty trash' })) return;
+          state.trash = []; commitState(); renderTrash(); showToast('Trash emptied');
+        }
+      });
+      setTimeout(() => { try { purgeTrash(); } catch (err) { /* ignore */ } }, 3000);
+
       // ===== Delete an onboarded client (and everything that belongs to them) =====
       function clientLinkedRecords(c) {
         const own = x => x && x.clientId === c.id;
@@ -9362,7 +9527,7 @@
           [L.boqIds.length, 'estimate'], [L.invoices.length, 'GST bill'], [L.money.length, 'payment'], [L.selections.length, 'selection'],
           [L.pos.length, 'purchase order'], [L.siteBills.length, 'site bill'], [L.tasks.length, 'task']
         ].filter(([n]) => n).map(([n, w]) => `${n} ${w}${n === 1 ? '' : 's'}`);
-        const msg = `Delete client “${c.name}”?\n\n${parts.length ? `This also deletes their ${parts.join(', ')}, plus notes and links.` : 'This deletes the client with their notes and links.'} You can press Undo right after.`;
+        const msg = `Delete client “${c.name}”?\n\n${parts.length ? `This also deletes their ${parts.join(', ')}, plus notes and links.` : 'This deletes the client with their notes and links.'} It stays in Trash for 30 days.`;
         if (!await appConfirm(msg, { ok: 'Delete client' })) return;
         const gone = new Set([...L.invoices, ...L.money, ...L.selections, ...L.pos, ...L.siteBills, ...L.tasks]);
         ['invoices', 'money', 'selections', 'pos', 'siteBills', 'tasks'].forEach(k => { if (Array.isArray(state[k])) state[k] = state[k].filter(x => !gone.has(x)); });
@@ -12899,28 +13064,65 @@
         } catch (e) { /* sound not available */ }
       }
 
-      function showSystemLeadNotification(leads) {
+      // true when the person is not looking at the app (another tab / window / app, or the screen is off)
+      function appInBackground() { return document.visibilityState !== 'visible' || !document.hasFocus(); }
+      function isAppleMobile() { return /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1); }
+      function isInstalledApp() { return (window.matchMedia && matchMedia('(display-mode: standalone)').matches) || window.navigator.standalone === true; }
+      async function getSwReg() {
+        if (swRegistration) return swRegistration;
+        try { if ('serviceWorker' in navigator && navigator.serviceWorker.getRegistration) swRegistration = await navigator.serviceWorker.getRegistration() || null; } catch (e) { /* ignore */ }
+        return swRegistration;
+      }
+      // Shows a notification on this device. Returns true when it was shown.
+      async function sysNotify(title, body, tag, data) {
+        if (!('Notification' in window) || Notification.permission !== 'granted') return false;
+        const opts = { body: body || '', tag: tag || 'ids', renotify: true, icon: 'icon-192.png', badge: 'icon-192.png', data: data || {} };
+        try { const reg = await getSwReg(); if (reg && reg.showNotification) { await reg.showNotification(title, opts); return true; } } catch (e) { /* try the plain way */ }
         try {
-          if (!('Notification' in window) || Notification.permission !== 'granted') return;
-          if (document.visibilityState === 'visible' && document.hasFocus()) return; // the in-app pop-up is enough
-          const first = leads[0];
-          const title = leads.length === 1 ? `New lead: ${first.name}` : `${leads.length} new leads`;
-          const body = leads.length === 1 ? [leadLine(first), first.phone].filter(Boolean).join(' · ') : leads.slice(0, 4).map(l => l.name).join(', ');
-          const opts = { body, tag: 'ids-new-lead', renotify: true, data: { tab: 'leads' } };
-          if (swRegistration && swRegistration.showNotification) { swRegistration.showNotification(title, opts); return; }
           const n = new Notification(title, opts);
-          n.onclick = () => { window.focus(); switchTab('leads'); closeLeadPop(); n.close(); };
-        } catch (e) { /* notifications not supported here */ }
+          n.onclick = () => { window.focus(); openFromNotification(opts.data); n.close(); };
+          return true;
+        } catch (e) { return false; }
+      }
+      function openFromNotification(d) {
+        d = d || {};
+        try {
+          if (d.taskId) { const t = (state.tasks || []).find(x => x.id === d.taskId); if (t) { openTaskInHub(t); return; } }
+          if (d.leadId && typeof openLeadDetail === 'function' && findLead(d.leadId)) { switchTab('leads'); openLeadDetail(d.leadId); return; }
+          if (d.tab) { switchTab(d.tab); if (d.tab === 'leads') closeLeadPop(); }
+        } catch (e) { /* ignore */ }
+      }
+      function openTaskInHub(t) {
+        state.activeClientId = t.clientId; state.hubOpen = true; state.hubTab = 'tasks';
+        switchTab('clients'); renderClients();
+      }
+      function showSystemLeadNotification(leads) {
+        if (!appInBackground()) return; // the in-app pop-up is enough
+        const first = leads[0];
+        const title = leads.length === 1 ? `New lead: ${first.name}` : `${leads.length} new leads`;
+        const body = leads.length === 1 ? [leadLine(first), first.phone].filter(Boolean).join(' · ') : leads.slice(0, 4).map(l => l.name).join(', ');
+        sysNotify(title, body, 'ids-new-lead', leads.length === 1 ? { tab: 'leads', leadId: first.id } : { tab: 'leads' });
       }
 
       async function enableSystemNotifications() {
-        if (!('Notification' in window)) { showToast('This browser does not support notifications. On iPhone/iPad, add the app to the Home Screen first.'); return false; }
+        if (!('Notification' in window)) { showToast(isAppleMobile() && !isInstalledApp() ? 'On iPhone/iPad: Share → Add to Home Screen, open the app from that icon, then turn this on' : 'This browser does not support notifications'); return false; }
         let perm = Notification.permission;
         if (perm === 'default') perm = await Notification.requestPermission();
         if (perm !== 'granted') { showToast('Notifications are blocked — allow them for this site in the browser settings'); return false; }
         return true;
       }
 
+      function notifStatus() {
+        const supported = 'Notification' in window;
+        const perm = supported ? Notification.permission : 'unsupported';
+        const pr = leadAlertPrefs();
+        if (!/^https:$/.test(location.protocol) && !/^localhost$|^127\./.test(location.hostname)) return { cls: 'warn', html: '<b>Open the app from its web address (https://…github.io/…)</b> — notifications do not work from a downloaded file.' };
+        if (!supported && isAppleMobile()) return { cls: 'warn', html: '<b>iPhone / iPad:</b> open the app in Safari → tap Share → <b>Add to Home Screen</b>. Then open it from the new icon and turn this on. (Needs iOS 16.4 or newer.)' };
+        if (!supported) return { cls: 'warn', html: 'This browser cannot show notifications. Use Chrome, Edge or Safari.' };
+        if (perm === 'denied') return { cls: 'warn', html: `<b>Blocked on this device.</b> ${isAppleMobile() ? 'Open iPhone/iPad Settings → Notifications → Dezign OS → Allow Notifications.' : 'Click the 🔒 icon next to the web address → Notifications → Allow, then reload.'}` };
+        if (perm === 'granted' && pr.system) return { cls: 'ok', html: `<b>On for this device.</b> Alerts come while the app is open — also in the background on a laptop (keep the tab open). ${isTouchDevice() ? 'On a phone/iPad, keep the app open in the background (don’t swipe it away).' : ''}` };
+        return { cls: '', html: 'Off for this device. Tick the box above — each phone, iPad and laptop is turned on separately.' };
+      }
       function renderLeadAlertSettings() {
         const box = document.getElementById('lead-alert-settings');
         if (!box) return;
@@ -12930,7 +13132,8 @@
         box.innerHTML = `
           <label class="alert-opt"><input type="checkbox" data-lead-alert="popup" ${pr.popup ? 'checked' : ''} /> <span><strong>Pop-up in the app</strong><small>Shows the new lead with Call &amp; WhatsApp buttons</small></span></label>
           <label class="alert-opt"><input type="checkbox" data-lead-alert="sound" ${pr.sound ? 'checked' : ''} /> <span><strong>Sound</strong><small>A short chime when a lead arrives</small></span></label>
-          <label class="alert-opt"><input type="checkbox" data-lead-alert="system" ${pr.system && perm === 'granted' ? 'checked' : ''} ${supported ? '' : 'disabled'} /> <span><strong>Notification on this computer / phone</strong><small>${!supported ? 'Not supported in this browser. On iPhone/iPad: Share → Add to Home Screen, then open the app from there.' : perm === 'denied' ? 'Blocked — allow notifications for this site in the browser settings.' : 'Also alerts you when the app is in the background (the app must stay open in a tab).'}</small></span></label>
+          <label class="alert-opt"><input type="checkbox" data-lead-alert="system" ${pr.system && perm === 'granted' ? 'checked' : ''} ${supported ? '' : 'disabled'} /> <span><strong>Notifications on this device</strong><small>Phone, iPad or laptop — new leads, follow-up calls, meetings and task reminders, even when you are in another app or tab</small></span></label>
+          <div class="notif-status ${notifStatus().cls}">${notifStatus().html}</div>
           <div class="cloud-actions" style="margin-top:8px;"><button type="button" class="btn btn-outline btn-sm" data-lead-alert-test>Send a test alert</button></div>`;
       }
 
@@ -12948,12 +13151,11 @@
           document.title = `(${unseenLeadCount}) New lead · ${BASE_TITLE}`;
           if (prev.popup) showLeadPop([demo], 'test');
           if (prev.sound) playLeadChime();
-          if (prev.system && 'Notification' in window && Notification.permission === 'granted') {
-            try {
-              const opts = { body: '3BHK · Baner · ₹15 L · +91 98765 43210', tag: 'ids-new-lead' };
-              if (swRegistration) swRegistration.showNotification('New lead: Test Lead (sample)', opts); else new Notification('New lead: Test Lead (sample)', opts);
-            } catch (err) { /* ignore */ }
-          }
+          if (prev.system) {
+            sysNotify('New lead: Test Lead (sample)', '3BHK · Baner · ₹15 L · +91 98765 43210', 'ids-test', { tab: 'leads' }).then(ok => {
+              if (!ok) showToast('Could not show a device notification — see the note under the setting');
+            });
+          } else showToast('Device notifications are off — tick “Notifications on this device” first');
         }
       });
 
@@ -12978,10 +13180,11 @@
       });
 
       // Small service worker so notifications also work on Android and installed apps (only on the web address)
-      if ('serviceWorker' in navigator && /^https:$/.test(location.protocol)) {
+      if ('serviceWorker' in navigator && (/^https:$/.test(location.protocol) || /^(localhost|127\.0\.0\.1)$/.test(location.hostname))) {
         navigator.serviceWorker.register('./sw.js').then(reg => { swRegistration = reg; }).catch(() => { /* optional */ });
         navigator.serviceWorker.addEventListener('message', ev => {
           if (ev.data && ev.data.type === 'open-leads') { switchTab('leads'); closeLeadPop(); }
+          if (ev.data && ev.data.type === 'open') openFromNotification(ev.data.data);
         });
       }
 
@@ -14084,6 +14287,18 @@
             if (now >= t + (Number(m.duration || 60) + 15) * 60000) items.push({ key: `${l.id}|check|${m.id}|${m.start}`, kind: 'check', leadId: l.id, meetingId: m.id });
           });
         });
+        // tasks given to me (or not given to anyone, for the admin) when their date / time comes
+        const me = getCurrentStaff();
+        const perms = getCurrentPermissions();
+        if (perms.tabs.includes('clients')) {
+          (state.tasks || []).forEach(t => {
+            if (t.done || !t.dueDate) return;
+            const mine = t.assigneeEmail ? t.assigneeEmail === me.email : me.role === 'Principal / Admin';
+            if (!mine) return;
+            const at = new Date(`${t.dueDate}T${t.dueTime || '10:00'}`);
+            if (!isNaN(at) && at.getTime() <= now) items.push({ key: `task|${t.id}|${t.dueDate}|${t.dueTime || ''}`, kind: 'task', taskId: t.id });
+          });
+        }
         return items;
       }
       function checkReminders(firstRun) {
@@ -14095,35 +14310,47 @@
         if (!due.length) return;
         due.forEach(it => { reminded[it.key] = { shown: now }; });
         writeReminded(reminded);
-        if (firstRun && due.filter(x => x.kind === 'due').length > 3) {
-          const n = due.filter(x => x.kind === 'due').length;
-          reminderQueue = reminderQueue.concat([{ key: 'summary|' + now, kind: 'summary', count: n }], due.filter(x => x.kind !== 'due'));
+        if (firstRun && due.filter(x => x.kind === 'due' || x.kind === 'task').length > 3) {
+          const n = due.filter(x => x.kind === 'due').length, nt = due.filter(x => x.kind === 'task').length;
+          reminderQueue = reminderQueue.concat([{ key: 'summary|' + now, kind: 'summary', count: n, tasks: nt }], due.filter(x => x.kind !== 'due' && x.kind !== 'task'));
         } else {
           reminderQueue = reminderQueue.concat(due);
         }
         renderReminders();
         const prefs = leadAlertPrefs();
         if (prefs.sound) playLeadChime();
-        if (prefs.system && 'Notification' in window && Notification.permission === 'granted' && document.visibilityState !== 'visible') {
+        if (prefs.system && appInBackground()) {
           try {
-            const first = due[0]; const l = findLead(first.leadId);
-            const title = due.length > 1 ? `${due.length} reminders` : first.kind === 'soon' ? `Meeting soon: ${l ? l.name : ''}` : first.kind === 'check' ? `How did the meeting with ${l ? l.name : ''} go?` : `${first.label || 'Call'}: ${l ? l.name : ''}`;
-            const n2 = new Notification(title, { body: l ? [l.phone, l.location].filter(Boolean).join(' · ') : '', tag: 'ids-reminder' });
-            n2.onclick = () => { window.focus(); n2.close(); };
+            const first = due[0]; const l = first.leadId ? findLead(first.leadId) : null; const tk = first.taskId ? (state.tasks || []).find(x => x.id === first.taskId) : null;
+            const title = due.length > 1 ? `${due.length} reminders` : first.kind === 'task' ? `Task: ${tk ? tk.title : ''}` : first.kind === 'soon' ? `Meeting soon: ${l ? l.name : ''}` : first.kind === 'check' ? `How did the meeting with ${l ? l.name : ''} go?` : `${first.label || 'Call'}: ${l ? l.name : ''}`;
+            const body = due.length > 1 ? due.slice(0, 4).map(x => x.kind === 'task' ? ((state.tasks || []).find(t => t.id === x.taskId) || {}).title : (findLead(x.leadId) || {}).name).filter(Boolean).join(', ')
+              : tk ? [(clientById(tk.clientId) || {}).name, tk.dueTime ? `due ${tk.dueTime}` : 'due today'].filter(Boolean).join(' · ') : l ? [l.phone, l.location].filter(Boolean).join(' · ') : '';
+            sysNotify(title, body, 'ids-reminder', due.length > 1 ? { tab: 'dashboard' } : tk ? { taskId: tk.id } : l ? { leadId: l.id } : {});
           } catch (e) { /* ignore */ }
         }
       }
       function renderReminders() {
         const box = document.getElementById('reminder-stack');
         if (!box) return;
-        reminderQueue = reminderQueue.filter(it => it.kind === 'summary' || findLead(it.leadId));
+        reminderQueue = reminderQueue.filter(it => it.kind === 'summary' || (it.kind === 'task' ? (state.tasks || []).some(t => t.id === it.taskId && !t.done) : findLead(it.leadId)));
         if (!reminderQueue.length) { box.hidden = true; box.innerHTML = ''; return; }
         box.hidden = false;
         const shown = reminderQueue.slice(0, 3);
         box.innerHTML = shown.map(it => {
           if (it.kind === 'summary') {
-            return `<div class="rem-card"><div class="rem-head"><span class="rem-ico">⏰</span><div style="flex:1;"><strong>${it.count} follow-ups are due</strong><small>Calls and follow-ups waiting for you</small></div><button class="lead-pop-x" data-rem-close="${it.key}" aria-label="Close">✕</button></div>
+            return `<div class="rem-card"><div class="rem-head"><span class="rem-ico">⏰</span><div style="flex:1;"><strong>${[it.count ? `${it.count} follow-up${it.count === 1 ? '' : 's'}` : '', it.tasks ? `${it.tasks} task${it.tasks === 1 ? '' : 's'}` : ''].filter(Boolean).join(' & ')} due</strong><small>Waiting for you — see Home and the client Tasks</small></div><button class="lead-pop-x" data-rem-close="${it.key}" aria-label="Close">✕</button></div>
               <div class="rem-actions"><button type="button" class="btn btn-dark btn-sm" data-rem-open-list="${it.key}">Open Home</button></div></div>`;
+          }
+          if (it.kind === 'task') {
+            const tk = (state.tasks || []).find(x => x.id === it.taskId) || {};
+            const cl = clientById(tk.clientId) || {};
+            return `<div class="rem-card rem-due">
+            <div class="rem-head"><span class="rem-ico">✓</span>
+              <div style="flex:1; min-width:0;"><strong>Task: ${escapeHtml(tk.title || '')}</strong><small>${escapeHtml([cl.name, `due ${fmtDay(tk.dueDate)}${tk.dueTime ? ' ' + tk.dueTime : ''}`].filter(Boolean).join(' · '))}</small></div>
+              <button class="lead-pop-x" data-rem-close="${it.key}" aria-label="Close">✕</button></div>
+            <div class="rem-actions"><button type="button" class="btn btn-emerald btn-sm" data-rem-task-done="${it.key}" data-task-id="${tk.id}">Mark done</button>
+              <button type="button" class="btn btn-outline btn-sm" data-rem-task-open="${it.key}" data-task-id="${tk.id}">Open</button>
+              <button type="button" class="btn btn-outline btn-sm" data-rem-snooze="${it.key}">Snooze 30 min</button></div></div>`;
           }
           const l = findLead(it.leadId);
           const m = it.meetingId ? (l.meetings || []).find(x => x.id === it.meetingId) : null;
@@ -14274,6 +14501,8 @@
         // reminder card actions
         const rc = t.closest('[data-rem-close]'); if (rc) { dropReminder(rc.dataset.remClose); return; }
         const rs = t.closest('[data-rem-snooze]'); if (rs) { snoozeReminder(rs.dataset.remSnooze, 30); return; }
+        const rtd = t.closest('[data-rem-task-done]'); if (rtd) { const tk = (state.tasks || []).find(x => x.id === rtd.dataset.taskId); dropReminder(rtd.dataset.remTaskDone); if (tk) { tk.done = true; commitState(); renderAll(); showToast('Task done'); } return; }
+        const rto = t.closest('[data-rem-task-open]'); if (rto) { const tk = (state.tasks || []).find(x => x.id === rto.dataset.taskId); dropReminder(rto.dataset.remTaskOpen); if (tk) openTaskInHub(tk); return; }
         const rl = t.closest('[data-rem-log]'); if (rl) { dropReminder(rl.dataset.remLog); openLeadFlow('call', rl.dataset.leadId); return; }
         const rd = t.closest('[data-rem-detail]'); if (rd) { dropReminder(rd.dataset.remDetail); openLeadDetail(rd.dataset.leadId); return; }
         const ro = t.closest('[data-rem-outcome]');
@@ -16817,7 +17046,7 @@
       }, true);
 
       // ===== Undo for deletes =====
-      const UNDOABLE = '[data-client-del], [data-leads-bulk-del], [data-hub-ls-del], [data-sel-del], [data-po-del], [data-ph-del], [data-ck-del], [data-invoice-del], [data-sb-del], [data-pay-del], [data-vendor-del], [data-ms-due], [data-ms-quick], #btn-import-confirm, [data-delete-room], [data-delete-item], [data-cat-delete], [data-delete-revision], [data-hub-task-del], [data-hub-note-del], [data-hub-link-del], [data-remove-staff], #btn-confirm-delete-estimate, #btn-clear-all-rooms';
+      const UNDOABLE = '[data-sv-del], [data-trade-del], [data-wa-del], [data-client-del], [data-leads-bulk-del], [data-hub-ls-del], [data-sel-del], [data-po-del], [data-ph-del], [data-ck-del], [data-invoice-del], [data-sb-del], [data-pay-del], [data-vendor-del], [data-ms-due], [data-ms-quick], #btn-import-confirm, [data-delete-room], [data-delete-item], [data-cat-delete], [data-delete-revision], [data-hub-task-del], [data-hub-note-del], [data-hub-link-del], [data-remove-staff], #btn-confirm-delete-estimate, #btn-clear-all-rooms';
       let undoSnapshot = null;
       let undoTimer = null;
       let undoArm = null;
@@ -16835,9 +17064,11 @@
       }, true);
       function offerUndo(before) {
         undoSnapshot = before;
+        let trashed = false;
+        try { trashed = recordTrash(before); } catch (err) { /* keep Undo working */ }
         const el = document.getElementById('toast');
         if (!el) return;
-        const msg = (el.classList.contains('show') && el.textContent.trim()) || 'Deleted';
+        const msg = ((el.classList.contains('show') && el.textContent.trim()) || 'Deleted') + (trashed ? ' · in Trash for 30 days' : '');
         el.innerHTML = `<span>${escapeHtml(msg)}</span><button type="button" class="toast-undo" id="btn-toast-undo">Undo</button>`;
         el.classList.add('show', 'has-action');
         clearTimeout(toastTimer);
@@ -18306,6 +18537,7 @@
             title: (fd.get('title') || '').trim(),
             assigneeEmail: fd.get('assigneeEmail') || state.activeStaffEmail,
             dueDate: fd.get('dueDate') || getDateOffset(1),
+            dueTime: fd.get('dueTime') || '',
             done: false,
             clientId: fd.get('clientId') || ''
           });
