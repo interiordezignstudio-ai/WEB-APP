@@ -6406,7 +6406,7 @@
           <div class="card" style="margin-bottom:20px;">
             <div class="hub-card-title" style="display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap;">
               <span>Money in &amp; out</span>
-              ${perms.canEditBilling ? `<span style="display:flex; gap:6px; flex-wrap:wrap;"><button type="button" class="btn btn-primary btn-sm" data-pay-new="in" data-client="${c.id}">+ Received</button><button type="button" class="btn btn-outline btn-sm" data-pay-new="out" data-client="${c.id}">+ Paid out</button></span>` : ''}
+              ${perms.canEditBilling ? `<span style="display:flex; gap:6px; flex-wrap:wrap;">${moneyList({ dir: 'in', clientId: c.id }).length ? `<button type="button" class="btn btn-outline btn-sm" data-client-stmt="${c.id}">Statement PDF</button>` : ''}<button type="button" class="btn btn-primary btn-sm" data-pay-new="in" data-client="${c.id}">+ Received</button><button type="button" class="btn btn-outline btn-sm" data-pay-new="out" data-client="${c.id}">+ Paid out</button></span>` : ''}
             </div>
             <div class="pay-mini">
               <div><small>Received</small><strong class="pay-in tabular">${formatINR(fin.received)}</strong></div>
@@ -9099,6 +9099,93 @@
         for (const f of files) { try { payCtx.d.photos.push(await compressImageFile(f, 1000, 0.72)); } catch (err) { bad++; } }
         renderPayModal();
         showToast(`${files.length - bad} photo${files.length - bad === 1 ? '' : 's'} added${bad ? ` · ${bad} could not be read` : ''}`);
+      });
+
+
+      // ===== Payment statements (PDF) for a vendor or a client =====
+      function paymentsFilteredRows() {
+        const rng = payPeriodRange();
+        const proj = state.payProject || ''; const dirF = state.payDir || ''; const q = (state.paySearch || '').toLowerCase();
+        return { rng, rows: moneyList({ from: rng.from, to: rng.to }).filter(m => (!proj || (proj === '_none' ? !m.clientId : m.clientId === proj)) && payDirMatch(m, dirF) && (payDirIsIn(dirF) || payMatchesVendorCat(m, state.payVendor || '', state.payCat || '')) && (!q || paySearchText(m).includes(q))) };
+      }
+      // rows: payments to show; who: { vendor } | { client } | {}; periodLabel: text
+      function paymentStatementSpec(rows, who, periodLabel) {
+        const list = rows.slice().sort((a, b) => String(a.date).localeCompare(String(b.date)));
+        const ins = list.filter(m => m.dir === 'in'), outs = list.filter(m => m.dir === 'out');
+        const v = who.vendor, c = who.client;
+        const studio = (state.studioProfile || {}).name || 'Studio';
+        const onlyOut = !ins.length && outs.length, onlyIn = ins.length && !outs.length;
+        const title = v ? 'PAYMENT STATEMENT' : c && onlyIn ? 'PAYMENT RECEIPT STATEMENT' : 'PAYMENT STATEMENT';
+        const cells = m => {
+          const proj = (clientById(m.clientId) || {}).name || (m.dir === 'out' ? 'Office / general' : '');
+          const main = m.dir === 'in' ? (moneyTitle(m) || 'Payment received') : (m.work || moneyTitle(m) || 'Payment');
+          const sub = [!c && proj ? proj : '', !v && m.dir === 'out' ? partyName(m) : '', !c && m.dir === 'in' ? partyName(m) : '', m.note && !m.auto ? m.note : ''].filter(Boolean).join(' · ');
+          return [fmtDay(m.date), { main, sub }, [m.mode, m.ref ? 'Ref ' + m.ref : ''].filter(Boolean).join('\n') || '—', `${onlyIn || onlyOut ? '' : m.dir === 'in' ? '+ ' : '− '}${formatINR(m.amount)}`];
+        };
+        const cols = [{ label: 'Date', w: 26 }, { label: v ? 'Paid for' : c ? 'Payment for' : 'Details', w: 92 }, { label: 'Mode / reference', w: 36, muted: true }, { label: 'Amount', w: 32, align: 'right' }];
+        const blocks = [{ type: 'table', cols, rows: list.map(m => ({ cells: cells(m) })) }];
+        const tot = [];
+        if (ins.length) tot.push([onlyIn ? 'Total received' : 'Total received (in)', formatINR(moneySum(ins)), { bold: true, fill: onlyIn ? '#F8E9DF' : undefined, color: onlyIn ? '#A44A22' : undefined }]);
+        if (outs.length) tot.push([onlyOut ? 'Total paid' : 'Total paid (out)', formatINR(moneySum(outs)), { bold: true, fill: onlyOut ? '#F8E9DF' : undefined, color: onlyOut ? '#A44A22' : undefined }]);
+        if (c && onlyIn) {
+          const f = getClientFinance(c); const all = clientReceived(c.id);
+          if (f.contract) {
+            tot.push(['Contract value', formatINR(f.contract), {}]);
+            if (all !== moneySum(ins)) tot.push(['Received in total (all dates)', formatINR(all), {}]);
+            tot.push(['Balance due', formatINR(Math.max(0, f.contract - all)), { bold: true }]);
+          }
+        }
+        blocks.push({ type: 'totals', rows: tot });
+        blocks.push({ type: 'text', text: v ? `Payments made by ${studio} to ${v.name} (${periodLabel}). Please check and confirm.` : c ? `Payments received by ${studio} from ${c.name} (${periodLabel}). Thank you.` : `Payments (${periodLabel}).` });
+        const party = v || c;
+        return {
+          title, docTitle: `${title.charAt(0) + title.slice(1).toLowerCase()} — ${party ? party.name : 'Payments'}`,
+          filename: `Statement_${String(party ? party.name : 'Payments').replace(/[^\w]+/g, '_')}.html`,
+          info: {
+            leftLabel: v ? 'Paid to' : c ? 'Received from' : 'Statement',
+            leftName: party ? party.name : 'All payments',
+            leftSub: v ? [v.trade, v.phone].filter(Boolean).join(' · ') : c ? [c.address, c.phone].filter(Boolean).join(' · ') : '',
+            rightLabel: 'Statement',
+            rightLines: [periodLabel, `${list.length} payment${list.length === 1 ? '' : 's'}`, `Date: ${fmtDay(getDateOffset(0))}`]
+          },
+          blocks,
+          signatures: v ? [`For ${studio}`, `${v.name} — received`] : c ? ['Client acknowledgement', `For ${studio}`] : [`For ${studio}`, 'Checked by']
+        };
+      }
+      function periodText(rows, rngLabel) {
+        if (!rows.length) return rngLabel;
+        const ds = rows.map(m => m.date).filter(Boolean).sort();
+        return ds.length ? `${fmtDay(ds[0])} – ${fmtDay(ds[ds.length - 1])}` : rngLabel;
+      }
+      document.addEventListener('click', e => {
+        const t = e.target;
+        if (t.closest('[data-pay-stmt]')) {
+          const { rng, rows } = paymentsFilteredRows(); if (!rows.length) { showToast('No payments to put in a statement'); return; }
+          const vendorIds = [...new Set(rows.map(m => m.vendorId).filter(Boolean))];
+          const clientIds = [...new Set(rows.map(m => m.clientId).filter(Boolean))];
+          const allOut = rows.every(m => m.dir === 'out'), allIn = rows.every(m => m.dir === 'in');
+          const who = allOut && vendorIds.length === 1 && rows.every(m => m.vendorId === vendorIds[0]) ? { vendor: vendorById(vendorIds[0]) }
+            : allIn && clientIds.length === 1 && rows.every(m => m.clientId === clientIds[0]) ? { client: clientById(clientIds[0]) } : {};
+          openSpecPreview(paymentStatementSpec(rows, who, rng.label === 'All time' ? periodText(rows, rng.label) : rng.label));
+          return;
+        }
+        const vs = t.closest('[data-vendor-stmt]');
+        if (vs) {
+          const v = vendorById(vs.dataset.vendorStmt); if (!v) return;
+          const rng = payPeriodRange();
+          const rows = moneyList({ dir: 'out', vendorId: v.id, from: rng.from, to: rng.to });
+          if (!rows.length) { showToast(`No payments to ${v.name} in ${rng.label.toLowerCase()} — choose “All time” above`); return; }
+          openSpecPreview(paymentStatementSpec(rows, { vendor: v }, rng.label === 'All time' ? periodText(rows, rng.label) : rng.label));
+          return;
+        }
+        const cs = t.closest('[data-client-stmt]');
+        if (cs) {
+          const c = clientById(cs.dataset.clientStmt); if (!c) return;
+          const hf = (state.hubPayF || {})[c.id] || {};
+          const dirF = payDirIsIn(hf.dir) ? hf.dir : 'in';
+          const rows = moneyList({ dir: 'in', clientId: c.id }).filter(m => payDirMatch(m, dirF));
+          openSpecPreview(paymentStatementSpec(rows, { client: c }, periodText(rows, 'All payments')));
+        }
       });
 
       // ===== Delete an onboarded client (and everything that belongs to them) =====
@@ -14582,7 +14669,7 @@
             ${filtersOn ? `<div class="pay-filter-note"><span>Showing ${rows.length} of ${scoped.length} payments</span><button type="button" class="wa-linkbtn" data-pay-clear>Clear filters</button></div>` : ''}
             <div class="card pay-ledger">
               ${rows.length ? rows.map(m => payRow(m, perms, true)).join('') : `<div class="hub-muted" style="padding:18px; text-align:center;">No payments in ${escapeHtml(rng.label.toLowerCase())}. Use <strong>+ Received</strong> or <strong>+ Paid out</strong> to add one.</div>`}
-              ${rows.length ? `<div class="pay-foot"><span>${rows.length} entr${rows.length === 1 ? 'y' : 'ies'} · in <strong class="pay-in">${formatINR(moneySum(rows.filter(m => m.dir === 'in')))}</strong> · out <strong class="pay-out">${formatINR(moneySum(rows.filter(m => m.dir === 'out')))}</strong></span><button type="button" class="btn btn-outline btn-sm" data-pay-csv>Download Excel (CSV)</button></div>` : ''}
+              ${rows.length ? `<div class="pay-foot"><span>${rows.length} entr${rows.length === 1 ? 'y' : 'ies'} · in <strong class="pay-in">${formatINR(moneySum(rows.filter(m => m.dir === 'in')))}</strong> · out <strong class="pay-out">${formatINR(moneySum(rows.filter(m => m.dir === 'out')))}</strong></span><span style="display:flex; gap:6px; flex-wrap:wrap;"><button type="button" class="btn btn-primary btn-sm" data-pay-stmt>Statement PDF</button><button type="button" class="btn btn-outline btn-sm" data-pay-csv>Download Excel (CSV)</button></span></div>` : ''}
             </div>`;
         } else if (view === 'projects') {
           const rowsP = (state.clients || []).map(c => {
@@ -14640,7 +14727,7 @@
                   <div class="vendor-actions">
                     ${v.phone ? `<a class="btn btn-emerald btn-sm" href="tel:${escapeHtml(phoneDigits(v.phone))}" data-call-phone>Call</a><button type="button" class="btn btn-wa btn-sm" data-wa-vendor="${v.id}">WhatsApp</button>` : ''}
                     ${perms.canEditBilling ? `<button type="button" class="btn btn-primary btn-sm" data-pay-new="out" data-vendor="${v.id}">+ Pay</button>` : ''}
-                    ${pays.length ? `<button type="button" class="btn btn-outline btn-sm" data-vendor-hist="${v.id}">${open ? 'Hide' : 'Payments'} (${pays.length})</button><button type="button" class="btn btn-outline btn-sm" data-vendor-ledger="${v.id}">Show in ledger</button>` : ''}
+                    ${pays.length ? `<button type="button" class="btn btn-outline btn-sm" data-vendor-hist="${v.id}">${open ? 'Hide' : 'Payments'} (${pays.length})</button><button type="button" class="btn btn-outline btn-sm" data-vendor-ledger="${v.id}">Show in ledger</button><button type="button" class="btn btn-outline btn-sm" data-vendor-stmt="${v.id}">Statement PDF</button>` : ''}
                     ${perms.canEditBilling ? `<button type="button" class="btn btn-outline btn-sm" data-vendor-edit="${v.id}">Edit</button>` : ''}
                   </div>
                   ${open ? `<div class="vendor-hist">${pays.map(m => payRow(m, perms, false)).join('')}</div>` : ''}
