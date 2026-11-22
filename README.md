@@ -1,4 +1,4 @@
-# Interior Dezign Studio OS
+# Interior Dezign Studio
 
 The studio's web app: leads, clients, Quick BOQ, item catalog, BOQ estimates, GST bills, payments and team access.
 
@@ -23,7 +23,7 @@ The app needs a free Google "Client ID" so it can save to your Drive.
    - Optional: also enable **Google Sheets API** (for importing leads from a sheet) and **Google Calendar API** (for adding site visits to your calendar).
 4. **APIs & Services → OAuth consent screen** (also called **Google Auth Platform**):
    - **User type:** External
-   - **App name:** Interior Dezign Studio OS
+   - **App name:** Interior Dezign Studio
    - **Support email:** your email
    - **Test users:** add the studio Google account (the one that will hold the data).
 5. **APIs & Services → Credentials → Create credentials → OAuth client ID**:

@@ -1,6 +1,6 @@
 {
-  "name": "Interior Dezign Studio OS",
-  "short_name": "Dezign OS",
+  "name": "Interior Dezign Studio",
+  "short_name": "Dezign Studio",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
