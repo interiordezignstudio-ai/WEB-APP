@@ -2352,6 +2352,10 @@
       .att-row > span:first-child, .att-row .att-workcell { grid-column:1 / -1; }
       .ad-work-row { grid-template-columns:1fr 1fr; } .ad-work-row .input[data-k="text"] { grid-column:1 / -1; }
     }
+    .mse-row { display:grid; grid-template-columns: 30px minmax(0, 1fr) 80px 100px 36px; gap:8px; align-items:center; padding:5px 0; }
+    .mse-row .input { padding:8px; font-size:14px; min-width:0; }
+    .mse-head { font-size:10.5px; font-weight:700; text-transform:uppercase; letter-spacing:0.05em; color:var(--text-light); }
+    .mse-amt { text-align:right; font-size:13px; color:var(--text-muted); }
     .sal-settings { display:flex; gap:14px; flex-wrap:wrap; align-items:center; margin-bottom:12px; font-size:13px; font-weight:600; }
     .sal-settings label { display:flex; align-items:center; gap:6px; margin:0; }
     .sal-settings .input { width:74px; padding:6px 8px; }
@@ -3371,6 +3375,12 @@
     <div class="modal-box modal-lg">
       <div class="modal-header"><h3 class="font-serif" style="font-size:22px; font-weight:700;" id="sel-title">Selection</h3><button class="btn btn-outline btn-sm" data-close-modal="modal-sel">✕</button></div>
       <div id="sel-body"></div>
+    </div>
+  </div>
+  <div class="modal-backdrop" id="modal-ms">
+    <div class="modal-box">
+      <div class="modal-header"><h3 class="font-serif" style="font-size:20px; font-weight:700;">Payment schedule</h3><button class="btn btn-outline btn-sm" data-close-modal="modal-ms">✕</button></div>
+      <div id="ms-body"></div>
     </div>
   </div>
   <div class="modal-backdrop" id="modal-salpay">
@@ -5758,6 +5768,25 @@
         { label: '20% Laminate / PU & Finishing', pct: 0.20 },
         { label: '10% Final Handover & Snag Clearance', pct: 0.10 }
       ];
+      // Editable payment schedule: each client can have its own milestones; otherwise the studio default is used.
+      // Payments / bills are matched by milestone name (without the %), so changing a % keeps them linked.
+      const MS_DEFAULTS = [
+        { id: 'ms1', name: 'Booking & Design Advance', pct: 30 },
+        { id: 'ms2', name: 'Carcass & Material Dispatch', pct: 40 },
+        { id: 'ms3', name: 'Laminate / PU & Finishing', pct: 20 },
+        { id: 'ms4', name: 'Final Handover & Snag Clearance', pct: 10 }
+      ];
+      const fmtPct = n => String(Math.round((Number(n) || 0) * 100) / 100);
+      const msName = label => String(label || '').replace(/^\s*\d+(\.\d+)?\s*%\s*/, '').trim().toLowerCase();
+      function msDefaultRaw() { const d = state.studioProfile && state.studioProfile.milestones; return Array.isArray(d) && d.length ? d : MS_DEFAULTS; }
+      function msRaw(c) { return c && Array.isArray(c.milestones) && c.milestones.length ? c.milestones : msDefaultRaw(); }
+      function msList(c) { return msRaw(c).map(m => ({ id: m.id, name: m.name, pctNum: Number(m.pct) || 0, pct: (Number(m.pct) || 0) / 100, label: `${fmtPct(m.pct)}% ${m.name}` })); }
+      function msFind(list, label) {
+        if (!label) return -1;
+        const i = list.findIndex(x => x.label === label); if (i >= 0) return i;
+        const n = msName(label); return list.findIndex(x => msName(x.label) === n);
+      }
+
       const HUB_TABS = [
         ['overview', 'Overview'],
         ['estimate', 'Estimate'],
@@ -6223,9 +6252,9 @@
           </div>`;
 
         const msOpen = (state.hubMsOpen || {})[c.id];
-        const schedule = PAYMENT_MILESTONES.map((m, idx) => {
+        const schedule = msList(c).map((m, idx) => {
           const ms = milestoneStatus(c, fin, idx);
-          const invs = fin.invoices.filter(i => i.milestone === m.label);
+          const invs = fin.invoices.filter(i => msName(i.milestone) === msName(m.label));
           const bill = invs[0];
           const open = msOpen === idx;
           const pill = { paid: ['Paid', 'ms-pill-paid'], part: ['Part paid', 'ms-pill-part'], due: ['Due', 'ms-pill-due'] }[ms.status];
@@ -6303,7 +6332,7 @@
           ${money}
           <div class="hub-grid">
             <div class="card">
-              <div class="hub-card-title">Payment schedule</div>
+              <div class="hub-card-title" style="display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap;"><span>Payment schedule</span>${perms.canEditBilling ? `<button type="button" class="btn btn-outline btn-sm" data-ms-edit="${c.id}">✎ Edit schedule</button>` : ''}</div>
               <div class="hub-muted" style="margin:-6px 0 12px;">${fin.estimateValue ? `Based on the ${fin.isFinal ? '<strong>final estimate</strong>' : 'estimate'} total ${formatINR(fin.estimateValue)} — ${fin.isFinal ? 'approved by client' : fin.isApproved ? `approved ${escapeHtml(fin.verTitle)}` : `Option ${fin.verKey}, not approved yet`}. Tap a milestone to see or add payments.` : 'Create an estimate to see milestone amounts'}</div>
               ${schedule}
               ${loose.length ? `<div class="ms-loose">${formatINR(moneySum(loose))} received is not linked to a milestone (${loose.length} payment${loose.length === 1 ? '' : 's'}). Use <strong>Edit</strong> on a payment to link it.</div>` : ''}
@@ -6546,6 +6575,11 @@
         }
       }
 
+      function fillBillMilestones(recordId, idx) {
+        const mSel = document.getElementById('bill-modal-milestone'); if (!mSel) return;
+        const list = msList(clientById(recordId));
+        mSel.innerHTML = list.map((m, i) => `<option value="${escapeHtml(m.label)}" data-pct="${m.pct}" ${i === Math.min(idx || 0, list.length - 1) ? 'selected' : ''}>${escapeHtml(m.label)}</option>`).join('');
+      }
       function openBillModalForClient(clientId, milestoneIdx) {
         const records = getBoqEstimateRecords();
         const clientSel = document.getElementById('bill-modal-client');
@@ -6555,7 +6589,7 @@
           return `<option value="${r.id}" ${r.id === clientId ? 'selected' : ''}>${escapeHtml(label)}</option>`;
         }).join('');
         const mSel = document.getElementById('bill-modal-milestone');
-        if (mSel && milestoneIdx !== undefined && milestoneIdx !== '') mSel.selectedIndex = Number(milestoneIdx) || 0;
+        fillBillMilestones(clientId, milestoneIdx !== undefined && milestoneIdx !== '' ? Number(milestoneIdx) || 0 : 0);
         ensureBoqForClient(clientId);
         mSel.dispatchEvent(new Event('change', { bubbles: true }));
         openModal('modal-bill');
@@ -8659,6 +8693,103 @@
         }
         const up = t.closest('[data-sal-unpay]'); if (up) { const r = salRun(up.dataset.salUnpay, window.__attMonth); if (r) { r.paid = false; delete r.snap; delete r.paidOn; commitState(); renderAttendance(); showToast('Marked as not paid'); } }
       });
+
+
+      // ===== Edit a client's payment schedule =====
+      let msEdit = null;
+      function openMsEditor(clientId) {
+        const c = clientById(clientId); if (!c) return;
+        msEdit = { clientId, rows: msRaw(c).map(m => ({ id: m.id, name: m.name, pct: Number(m.pct) || 0, oldLabel: `${fmtPct(m.pct)}% ${m.name}` })), own: Array.isArray(c.milestones) && c.milestones.length > 0 };
+        renderMsEditor(); openModal('modal-ms');
+      }
+      function msCapture() {
+        document.querySelectorAll('[data-mse]').forEach(el => { const r = msEdit.rows.find(x => x.id === el.dataset.mse); if (r) r[el.dataset.k] = el.dataset.k === 'pct' ? (el.value === '' ? '' : Number(el.value)) : el.value; });
+      }
+      function msTotal() { return Math.round(msEdit.rows.reduce((a, r) => a + (Number(r.pct) || 0), 0) * 100) / 100; }
+      function renderMsEditor() {
+        const box = document.getElementById('ms-body'); if (!box || !msEdit) return;
+        const c = clientById(msEdit.clientId); const fin = c ? getClientFinance(c) : null; const base = fin ? fin.estimateValue || 0 : 0;
+        const tot = msTotal();
+        box.innerHTML = `
+          <div class="hub-muted" style="margin:-4px 0 10px;">${escapeHtml(c ? c.name : '')}${base ? ` · estimate ${formatINR(base)}` : ''}${msEdit.own ? '' : ' · now using the studio default'}</div>
+          <div class="mse-row mse-head"><span>#</span><span>Milestone</span><span>%</span><span>Amount</span><span></span></div>
+          ${msEdit.rows.map((r, i) => `<div class="mse-row">
+            <span class="hub-ms-num">${i + 1}</span>
+            <input class="input" data-mse="${r.id}" data-k="name" value="${escapeHtml(r.name)}" placeholder="e.g. Booking & design advance" />
+            <input class="input tabular" type="number" inputmode="decimal" min="0" max="100" step="0.5" data-mse="${r.id}" data-k="pct" value="${escapeHtml(r.pct)}" />
+            <span class="tabular mse-amt" data-mse-amt="${r.id}">${base ? formatINR(Math.round(base * (Number(r.pct) || 0) / 100)) : '—'}</span>
+            <button type="button" class="btn btn-outline btn-sm pay-del" data-mse-del="${r.id}" aria-label="Remove milestone" ${msEdit.rows.length === 1 ? 'disabled' : ''}>✕</button>
+          </div>`).join('')}
+          <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap; margin-top:8px;">
+            <button type="button" class="btn btn-outline btn-sm" data-mse-add>+ Add milestone</button>
+            <strong id="mse-total" class="${Math.abs(tot - 100) < 0.01 ? 'pay-in' : 'pay-out'}">Total ${fmtPct(tot)}%${Math.abs(tot - 100) < 0.01 ? ' ✓' : ' — must be 100%'}</strong>
+          </div>
+          <label class="pay-check" style="margin-top:12px;"><input type="checkbox" id="mse-default" /> Also make this the default for new clients</label>
+          <div class="modal-actions-row">
+            ${msEdit.own ? '<button type="button" class="btn btn-outline" data-mse-reset>Use studio default</button><span style="flex:1;"></span>' : ''}
+            <button type="button" class="btn btn-outline" data-close-modal="modal-ms">Cancel</button>
+            <button type="button" class="btn btn-primary" data-mse-save>Save schedule</button>
+          </div>`;
+      }
+      function msLiveUpdate() {
+        msCapture();
+        const c = clientById(msEdit.clientId); const base = c ? getClientFinance(c).estimateValue || 0 : 0;
+        msEdit.rows.forEach(r => { const el = document.querySelector(`[data-mse-amt="${r.id}"]`); if (el) el.textContent = base ? formatINR(Math.round(base * (Number(r.pct) || 0) / 100)) : '—'; });
+        const tot = msTotal(); const t = document.getElementById('mse-total');
+        if (t) { t.textContent = `Total ${fmtPct(tot)}%${Math.abs(tot - 100) < 0.01 ? ' ✓' : ' — must be 100%'}`; t.className = Math.abs(tot - 100) < 0.01 ? 'pay-in' : 'pay-out'; }
+      }
+      // keep payments & bills linked when a milestone's name or % changes
+      function relabelClientMilestones(c, pairs) {
+        pairs.forEach(([oldLabel, newLabel]) => {
+          if (!oldLabel || oldLabel === newLabel) return;
+          const on = msName(oldLabel);
+          (state.money || []).forEach(m => { if (m.clientId === c.id && m.dir === 'in' && m.milestone && msName(m.milestone) === on) m.milestone = newLabel; });
+          (state.invoices || []).forEach(i => { if (i.clientId === c.id && i.milestone && msName(i.milestone) === on) i.milestone = newLabel; });
+        });
+      }
+      async function saveMsEditor() {
+        msCapture();
+        const c = clientById(msEdit.clientId); if (!c) return;
+        const rows = msEdit.rows.map(r => ({ id: r.id, name: String(r.name || '').trim(), pct: Number(r.pct) || 0, oldLabel: r.oldLabel }));
+        if (rows.some(r => !r.name)) { showToast('Give every milestone a name'); return; }
+        if (rows.some(r => r.pct <= 0)) { showToast('Every milestone needs a % above 0'); return; }
+        if (new Set(rows.map(r => r.name.toLowerCase())).size !== rows.length) { showToast('Two milestones have the same name'); return; }
+        const tot = Math.round(rows.reduce((a, r) => a + r.pct, 0) * 100) / 100;
+        if (Math.abs(tot - 100) >= 0.01) { showToast(`The total is ${fmtPct(tot)}% — it must be 100%`); return; }
+        // payments on milestones that are being removed
+        const keepIds = new Set(rows.map(r => r.id));
+        const removed = msRaw(c).filter(m => !keepIds.has(m.id));
+        const orphan = removed.reduce((a, m) => a + (state.money || []).filter(x => x.clientId === c.id && x.dir === 'in' && msName(x.milestone) === msName(m.name)).length, 0);
+        if (orphan && !await appConfirm(`Remove ${removed.length} milestone${removed.length === 1 ? '' : 's'}?\n\n${orphan} payment${orphan === 1 ? '' : 's'} recorded against ${removed.length === 1 ? 'it' : 'them'} will no longer be linked to a milestone (the money stays recorded).`, { ok: 'Remove' })) return;
+        const asDefault = document.getElementById('mse-default') && document.getElementById('mse-default').checked;
+        const clean = rows.map(r => ({ id: r.id, name: r.name, pct: r.pct }));
+        relabelClientMilestones(c, rows.map(r => [r.oldLabel, `${fmtPct(r.pct)}% ${r.name}`]));
+        if (asDefault) {
+          // clients still on the old default keep it
+          const oldDefault = JSON.parse(JSON.stringify(msDefaultRaw()));
+          (state.clients || []).forEach(x => { if (x !== c && !(Array.isArray(x.milestones) && x.milestones.length)) x.milestones = JSON.parse(JSON.stringify(oldDefault)); });
+          state.studioProfile = state.studioProfile || {};
+          state.studioProfile.milestones = JSON.parse(JSON.stringify(clean));
+        }
+        c.milestones = clean;
+        commitState(); closeModal('modal-ms'); msEdit = null; renderAll();
+        showToast(`Payment schedule saved${asDefault ? ' — also the default for new clients' : ''}`);
+      }
+      document.addEventListener('click', async e => {
+        const t = e.target;
+        const op = t.closest('[data-ms-edit]'); if (op) { if (!getCurrentPermissions().canEditBilling) { showToast('Only Admin / Accounts can change the payment schedule'); return; } openMsEditor(op.dataset.msEdit); return; }
+        if (!msEdit || !t.closest('#modal-ms')) return;
+        if (t.closest('[data-mse-add]')) { msCapture(); const left = Math.max(0, Math.round((100 - msTotal()) * 100) / 100); msEdit.rows.push({ id: uid('ms'), name: '', pct: left || '', oldLabel: '' }); renderMsEditor(); const ins = document.querySelectorAll('[data-mse][data-k="name"]'); ins[ins.length - 1]?.focus(); return; }
+        const dl = t.closest('[data-mse-del]'); if (dl) { msCapture(); msEdit.rows = msEdit.rows.filter(r => r.id !== dl.dataset.mseDel); renderMsEditor(); return; }
+        if (t.closest('[data-mse-reset]')) {
+          const c = clientById(msEdit.clientId); if (!c) return;
+          if (!await appConfirm('Use the studio default schedule for this client?', { ok: 'Use default', danger: false })) return;
+          relabelClientMilestones(c, msRaw(c).map(m => { const d = msDefaultRaw().find(x => msName(x.name) === msName(m.name)); return [`${fmtPct(m.pct)}% ${m.name}`, d ? `${fmtPct(d.pct)}% ${d.name}` : '']; }).filter(p2 => p2[1]));
+          delete c.milestones; commitState(); closeModal('modal-ms'); msEdit = null; renderAll(); showToast('Using the studio default schedule'); return;
+        }
+        if (t.closest('[data-mse-save]')) { saveMsEditor(); }
+      });
+      document.addEventListener('input', e => { if (msEdit && e.target.dataset && e.target.dataset.mse) msLiveUpdate(); });
 
       // ===== Delete an onboarded client (and everything that belongs to them) =====
       function clientLinkedRecords(c) {
@@ -14002,7 +14133,7 @@
         const v = vendorById(m.vendorId); return v ? v.name : (m.payee || 'Expense');
       }
       function moneyTitle(m) {
-        if (m.dir === 'in') { const i = milestoneIndexOf(m); return `${m.kind || 'Payment'}${m.kind === 'Token' ? ' payment' : ''}${i >= 0 ? ' · ' + PAYMENT_MILESTONES[i].label.replace(/^\d+%\s*/, '') : ''}`; }
+        if (m.dir === 'in') { const i = milestoneIndexOf(m); return `${m.kind || 'Payment'}${m.kind === 'Token' ? ' payment' : ''}${i >= 0 ? ' · ' + ((msList(clientById(m.clientId))[i] || {}).name || '') : ''}`; }
         return m.work || m.category || 'Payment';
       }
       function clientOnboarding(c) {
@@ -14016,10 +14147,10 @@
         if (m.dir !== 'in') return -1;
         let label = m.milestone || '';
         if (!label && m.invoiceId) { const inv = (state.invoices || []).find(i => i.id === m.invoiceId); label = inv ? inv.milestone || '' : ''; }
-        return label ? PAYMENT_MILESTONES.findIndex(x => x.label === label) : -1;
+        return label ? msFind(msList(clientById(m.clientId)), label) : -1;
       }
       function milestoneStatus(c, fin, idx) {
-        const expected = Math.round((fin.estimateValue || 0) * PAYMENT_MILESTONES[idx].pct);
+        const expected = Math.round((fin.estimateValue || 0) * ((msList(c)[idx] || {}).pct || 0));
         const payments = moneyList({ dir: 'in', clientId: c.id }).filter(m => milestoneIndexOf(m) === idx);
         const received = moneySum(payments);
         const balance = Math.max(0, expected - received);
@@ -14027,7 +14158,7 @@
         return { expected, received, balance, payments, status };
       }
       async function msMarkPaid(c, idx) {
-        const fin = getClientFinance(c); const ms = milestoneStatus(c, fin, idx); const lab = PAYMENT_MILESTONES[idx].label;
+        const fin = getClientFinance(c); const ms = milestoneStatus(c, fin, idx); const lab = (msList(c)[idx] || {}).label || '';
         if (!ms.expected) { openPay('in', { clientId: c.id, milestone: idx, kind: 'Milestone' }); return; }
         if (!await appConfirm(`Mark "${lab}" as paid?\n\n${formatINR(ms.balance)} received today will be recorded${ms.received ? ` (on top of ${formatINR(ms.received)} already received)` : ''}. You can edit the date and mode afterwards.`)) return;
         ensureMoney();
@@ -14037,7 +14168,7 @@
         showToast(`${lab.replace(/^\d+%\s*/, '')} marked paid · ${formatINR(ms.balance)}`);
       }
       async function msMarkDue(c, idx) {
-        const fin = getClientFinance(c); const ms = milestoneStatus(c, fin, idx); const lab = PAYMENT_MILESTONES[idx].label;
+        const fin = getClientFinance(c); const ms = milestoneStatus(c, fin, idx); const lab = (msList(c)[idx] || {}).label || '';
         if (!ms.payments.length) return;
         if (!await appConfirm(`Mark "${lab}" as due?\n\nThis removes the ${ms.payments.length} payment${ms.payments.length === 1 ? '' : 's'} recorded for it (${formatINR(ms.received)}).`)) return;
         const ids = new Set(ms.payments.map(m => m.id));
@@ -14252,8 +14383,9 @@
         if (!m && dir === 'in' && payCtx.d.clientId && !moneyList({ dir: 'in', clientId: payCtx.d.clientId }).length && !opts.kind) payCtx.d.kind = 'Token';
         if (!m && dir === 'in' && String(payCtx.d.clientId).startsWith('lead:') && !opts.kind) payCtx.d.kind = 'Token';
         if (!m && dir === 'in') {
-          if (opts.milestone !== undefined) { payCtx.d.milestone = PAYMENT_MILESTONES[opts.milestone].label; if (!opts.kind) payCtx.d.kind = 'Milestone'; }
-          else if (['Token', 'Advance'].includes(payCtx.d.kind)) payCtx.d.milestone = PAYMENT_MILESTONES[0].label;
+          const msl = msList(clientById(payCtx.d.clientId));
+          if (opts.milestone !== undefined) { payCtx.d.milestone = (msl[opts.milestone] || {}).label || ''; if (!opts.kind) payCtx.d.kind = 'Milestone'; }
+          else if (['Token', 'Advance'].includes(payCtx.d.kind)) payCtx.d.milestone = (msl[0] || {}).label || '';
         }
         if (m && m.dir === 'in' && !m.milestone && m.invoiceId) { const inv = (state.invoices || []).find(i => i.id === m.invoiceId); if (inv && inv.milestone) payCtx.d.milestone = inv.milestone; }
         if (!m && (opts.siteBillId || opts.poId)) { if (opts.siteBillId) payCtx.d.siteBillId = opts.siteBillId; if (opts.poId) payCtx.d.poId = opts.poId; if (opts.amount) payCtx.d.amount = opts.amount; if (opts.note) payCtx.d.note = opts.note; if (opts.work) payCtx.d.work = opts.work; }
@@ -14295,8 +14427,8 @@
               <div class="form-full"><label class="form-label">Against milestone</label><select class="select" id="pay-ms"><option value="">— not linked to a milestone —</option>${(() => {
                 const cl = String(d.clientId).startsWith('lead:') ? null : clientById(d.clientId);
                 const f2 = cl ? getClientFinance(cl) : null;
-                return PAYMENT_MILESTONES.map((x, i) => { const ms = cl ? milestoneStatus(cl, f2, i) : null; return `<option value="${escapeHtml(x.label)}" ${d.milestone === x.label ? 'selected' : ''}>${escapeHtml(x.label)}${ms && ms.expected ? ` — ${ms.status === 'paid' ? 'paid' : 'balance ' + formatINR(ms.balance)}` : ''}</option>`; }).join('');
-              })()}</select>${(() => { const cl = String(d.clientId).startsWith('lead:') ? null : clientById(d.clientId); if (!cl || !d.milestone) return ''; const i = PAYMENT_MILESTONES.findIndex(x => x.label === d.milestone); const ms = i >= 0 ? milestoneStatus(cl, getClientFinance(cl), i) : null; return ms && ms.expected && ms.balance && !payCtx.id ? `<button type="button" class="wa-linkbtn" data-pay-fillbal="${ms.balance}" style="margin-top:6px;">Fill balance ${formatINR(ms.balance)}</button>` : ''; })()}</div>
+                return msList(cl).map((x, i) => { const ms = cl ? milestoneStatus(cl, f2, i) : null; return `<option value="${escapeHtml(x.label)}" ${d.milestone && msName(d.milestone) === msName(x.label) ? 'selected' : ''}>${escapeHtml(x.label)}${ms && ms.expected ? ` — ${ms.status === 'paid' ? 'paid' : 'balance ' + formatINR(ms.balance)}` : ''}</option>`; }).join('');
+              })()}</select>${(() => { const cl = String(d.clientId).startsWith('lead:') ? null : clientById(d.clientId); if (!cl || !d.milestone) return ''; const i = msFind(msList(cl), d.milestone); const ms = i >= 0 ? milestoneStatus(cl, getClientFinance(cl), i) : null; return ms && ms.expected && ms.balance && !payCtx.id ? `<button type="button" class="wa-linkbtn" data-pay-fillbal="${ms.balance}" style="margin-top:6px;">Fill balance ${formatINR(ms.balance)}</button>` : ''; })()}</div>
               ${openBills.length ? `<div class="form-full"><label class="form-label">Against bill (optional)</label><select class="select" id="pay-invoice"><option value="">— not against a bill —</option>${openBills.map(i => `<option value="${i.id}" ${d.invoiceId === i.id ? 'selected' : ''}>${escapeHtml(i.invoiceNo)} · ${escapeHtml(i.milestone || '')} · ${formatINR(getInvoiceGross(i))}</option>`).join('')}</select>
                 <label class="pay-check"><input type="checkbox" id="pay-markpaid" ${d.markPaid === false ? '' : 'checked'} /> Mark that bill as paid</label></div>` : ''}
             ` : `
@@ -17960,6 +18092,7 @@
         }
         if (['bill-modal-client', 'bill-modal-milestone'].includes(e.target.id)) {
           const cId = document.getElementById('bill-modal-client')?.value;
+          if (e.target.id === 'bill-modal-client') { const ms0 = document.getElementById('bill-modal-milestone'); fillBillMilestones(cId, ms0 ? ms0.selectedIndex : 0); }
           const mSel = document.getElementById('bill-modal-milestone');
           const pct = Number(mSel?.options[mSel.selectedIndex]?.dataset?.pct) || 0.30;
           const boq = ensureBoqForClient(cId);
