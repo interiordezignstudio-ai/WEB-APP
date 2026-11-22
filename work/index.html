@@ -87,6 +87,11 @@
     .vid .vcap small { color: var(--muted); font-weight: 500; }
 
     .section { margin-bottom: 34px; }
+    .ref-card { background: var(--card); border: 1px solid var(--line); border-left: 4px solid var(--accent); border-radius: 14px; padding: 18px 20px; margin-bottom: 22px; }
+    .ref-k { font-size: 12px; font-weight: 700; letter-spacing: .08em; color: var(--accent); }
+    .ref-scope { margin: 0 0 8px; font-size: 15.5px; }
+    .ref-note { margin: 0; color: var(--muted); font-size: 13.5px; }
+    .ref-more { display: inline-block; margin-top: 10px; font-weight: 600; color: var(--accent); text-decoration: none; }
     .empty { text-align: center; color: var(--muted); padding: 60px 0; }
 
     /* contact */
@@ -138,6 +143,7 @@
   <div class="bar" id="bar" hidden><div class="wrap"><div class="chips" id="chips" role="tablist" aria-label="Filter"></div></div></div>
 
   <main class="wrap">
+    <div id="ref-intro"></div>
     <div id="content"><div class="loading">Loading our work…</div></div>
     <div class="contact">
       <div>
@@ -216,7 +222,14 @@
         document.getElementById('strip').innerHTML =
           (st.email ? '<a class="s-mail" href="mailto:' + esc(st.email) + '">' + ICON.mail + esc(st.email) + '</a>' : '<span class="s-mail"></span>')
           + (waNo ? '<a class="s-wa" href="https://wa.me/' + waNo + '" target="_blank" rel="noopener">' + ICON.wa + esc(waShow) + '</a>' : '<span class="s-wa"></span>')
-          + '<span class="s-social">' + social + '</span>';
+          + (social ? '<span class="s-social">' + social + '</span>' : '');
+        document.getElementById('strip').style.gridTemplateColumns = social ? '' : (window.innerWidth > 760 ? '1fr 1fr' : '');
+
+        // reference images for an estimate option: ?o=A / B / C
+        window.__data = data;
+        var tierKey = (params.get('o') || '').toUpperCase();
+        if (/^[ABC]$/.test(tierKey) && items.some(function (x) { return x.tier === tierKey; })) { renderRef(tierKey); return; }
+        items = items.filter(function (x) { return !x.tier; });
 
         photos = items.filter(function (x) { return x.type === 'photo' && x.file; });
         var vids = items.filter(function (x) { return x.type === 'video' && videoEmbed(x.url); });
@@ -241,6 +254,27 @@
         draw();
       }
 
+      function renderRef(k) {
+        var data = window.__data, items = data.items || [], tiers = data.tiers || {}, st = data.studio || {};
+        var t = tiers[k] || {};
+        var have = ['A', 'B', 'C'].filter(function (x) { return items.some(function (i) { return i.tier === x && i.type === 'photo'; }); });
+        document.title = 'Option ' + k + (t.name ? ' — ' + t.name : '') + ' · ' + (st.name || 'Interior Dezign Studio');
+        document.getElementById('stats').innerHTML = '';
+        document.getElementById('tagline').textContent = 'Reference images for your estimate options';
+        if (have.length > 1) {
+          document.getElementById('bar').hidden = false;
+          document.getElementById('chips').innerHTML = have.map(function (x) { var n = tiers[x] || {}; return '<button class="chip' + (x === k ? ' on' : '') + '" data-o="' + x + '">Option ' + x + (n.name ? ' · ' + esc(n.name) : '') + '</button>'; }).join('');
+        }
+        var hasMain = items.some(function (i) { return !i.tier; });
+        document.getElementById('ref-intro').innerHTML = '<div class="ref-card"><div class="ref-k">OPTION ' + k + '</div><h2 style="margin:2px 0 6px;">' + esc(t.title || ('Option ' + k + (t.name ? ' — ' + t.name : ''))) + '</h2>'
+          + (t.scope ? '<p class="ref-scope">' + esc(t.scope) + '</p>' : '')
+          + '<p class="ref-note">These photos show the look and finish of this option. Your design is made to measure for your home.</p>'
+          + (hasMain ? '<a class="ref-more" href="./">See our completed projects ›</a>' : '') + '</div>';
+        window.__all = { photos: items.filter(function (i) { return i.tier === k && i.type === 'photo' && i.file; }), vids: [] };
+        current = 'all';
+        draw();
+        window.scrollTo(0, 0);
+      }
       function draw() {
         var a = window.__all; if (!a) return;
         document.querySelectorAll('.chip').forEach(function (b) { b.classList.toggle('on', b.getAttribute('data-c') === current); b.setAttribute('aria-selected', b.getAttribute('data-c') === current); });
@@ -266,6 +300,8 @@
       }
 
       document.addEventListener('click', function (e) {
+        var co = e.target.closest('[data-o]');
+        if (co) { var k = co.getAttribute('data-o'); history.replaceState(null, '', '?o=' + k); renderRef(k); return; }
         var c = e.target.closest('.chip');
         if (c) { current = c.getAttribute('data-c'); draw(); var bar = document.getElementById('bar'); window.scrollTo({ top: bar.offsetTop - 0, behavior: 'smooth' }); return; }
         var p = e.target.closest('.ph');

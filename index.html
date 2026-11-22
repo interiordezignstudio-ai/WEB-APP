@@ -9426,6 +9426,7 @@
       const GH_TOKEN_KEY = 'ids_github_key';
       const PF_CATS = ['Living room', 'Kitchen', 'Bedroom', 'Wardrobe', 'Kids room', 'Dining', 'TV unit', 'Pooja unit', 'Bathroom', 'False ceiling', 'Balcony', 'Office', 'Commercial', '3D design'];
       const PF_DEFAULT_STUDIO = { name: 'Interior Dezign Studio', tagline: 'Homes and workspaces designed and built end-to-end in Pune.', phone: '+91 80939 35151', whatsapp: '918093935151', instagram: '', address: 'Baner, Pune', email: 'interiordezignstudio@gmail.com', facebook: '', behance: '' };
+      let pfRefTier = 'A';
       let pfBusy = null, pfDraft = null, pfFilter = 'all', pfShareCat = '', pfRefreshed = false, pfEditId = null, pfShowSetup = false;
       const pfPreview = {}; // just-uploaded photos (shown until the site has them)
       function ghRepo() {
@@ -9509,6 +9510,7 @@
           const d = await pfReadRepo();
           d.studio = { ...PF_DEFAULT_STUDIO, ...(d.studio || {}) }; d.items = Array.isArray(d.items) ? d.items : [];
           mutate(d);
+          d.tiers = refTierInfo();
           d.updated = new Date().toISOString();
           await ghCommit((files || []).concat([{ path: 'work/data.json', text: JSON.stringify(d, null, 2) + '\n' }]), deletes || [], `Our work: ${label}`, (i, n) => { pfBusy = `${label} — uploading ${i} of ${n}…`; renderPortfolio(); });
           pfAdopt(d);
@@ -9535,7 +9537,17 @@
         const dims = await new Promise(res => { const im = new Image(); im.onload = () => res({ w: im.naturalWidth, h: im.naturalHeight }); im.onerror = () => res({ w: 0, h: 0 }); im.src = url; });
         return { url, ...dims };
       }
-      function pfCatsInUse() { return [...new Set(pfData().items.map(x => x.category).filter(Boolean))]; }
+      function pfCatsInUse() { return [...new Set(pfData().items.filter(x => !x.tier).map(x => x.category).filter(Boolean))]; }
+      // reference images per estimate option (A / B / C)
+      function refTiers() { try { const have = new Set(pfData().items.filter(x => x.tier).map(x => x.tier)); return ['A', 'B', 'C'].filter(k => have.has(k)); } catch (e) { return []; } }
+      function refLink(k) { return siteBase() + 'work/?o=' + k; }
+      function refTierInfo() { const o = {}; ['A', 'B', 'C'].forEach(k => { const t = tierCfg(k); o[k] = { name: t.name, title: t.title, scope: t.scope }; }); return o; }
+      function refBoxHtml(keys) {
+        keys = (keys || []).filter(k => refTiers().includes(k)); if (!keys.length) return '';
+        return `<div style="display:flex; gap:10px; flex-wrap:wrap; margin:14px 0 4px;">${keys.map(k => { const t = tierCfg(k); return `<a href="${escapeHtml(refLink(k))}" target="_blank" rel="noopener" style="flex:1 1 180px; display:flex; align-items:center; gap:12px; text-decoration:none; border:1.4px solid #A44A22; background:#FFF7F2; border-radius:10px; padding:10px 14px; color:#1C1917;">
+          <span style="flex:1; min-width:0;"><span style="display:block; font-size:10.5px; font-weight:700; letter-spacing:.06em; color:#A44A22;">SEE HOW OPTION ${k} LOOKS</span><span style="display:block; font-size:13px; font-weight:600;">${escapeHtml(t.name)}${keys.length === 1 ? ` — <span style="font-weight:400; color:#57534E;">${escapeHtml(t.scope)}</span>` : ''}</span></span>
+          <span style="background:#A44A22; color:#FFF; border-radius:8px; padding:6px 10px; font-size:12px; font-weight:700; white-space:nowrap;">View photos ›</span></a>`; }).join('')}</div>`;
+      }
       function pfCatOptions(sel) { const all = [...new Set([...pfCatsInUse(), ...PF_CATS])]; return all.map(c => `<option ${c === sel ? 'selected' : ''}>${escapeHtml(c)}</option>`).join(''); }
       function pfProjects() { return [...new Set(pfData().items.map(x => x.project).filter(Boolean))]; }
 
@@ -9544,10 +9556,12 @@
         if (!pfRefreshed) { pfRefreshed = true; setTimeout(() => pfRefresh(true), 50); }
         const d = pfData(); const items = d.items;
         const canEdit = pfCanEdit(); const admin = amTrashAdmin();
-        const nPh = items.filter(x => x.type === 'photo').length, nV = items.filter(x => x.type === 'video').length;
+        const nPh = items.filter(x => x.type === 'photo' && !x.tier).length, nV = items.filter(x => x.type === 'video' && !x.tier).length;
         const cats = pfCatsInUse();
         const link = workLink(pfShareCat);
-        const shown = items.filter(x => pfFilter === 'all' || (pfFilter === '__v' ? x.type === 'video' : x.category === pfFilter));
+        const shown = items.filter(x => !x.tier).filter(x => pfFilter === 'all' || (pfFilter === '__v' ? x.type === 'video' : x.category === pfFilter));
+        const refItems = items.filter(x => x.tier === pfRefTier);
+        const refCount = k => items.filter(x => x.tier === k).length;
         const leads = (typeof getScopedLeads === 'function' ? getScopedLeads() : []).filter(l => l.phone).slice(0, 400);
         box.innerHTML = `
           ${pfBusy ? `<div class="pf-busy" style="margin-bottom:14px;">⏳ ${escapeHtml(pfBusy)}</div>` : ''}
@@ -9593,17 +9607,19 @@
             <div class="hub-card-title" style="display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap;"><span>On the page <span class="hub-row-meta">· ${nPh} photo${nPh === 1 ? '' : 's'} · ${nV} video${nV === 1 ? '' : 's'}</span></span>
               <button type="button" class="btn btn-outline btn-sm" data-pf-refresh>↻ Refresh</button></div>
             ${items.length ? `<div class="pf-filters"><button type="button" class="${pfFilter === 'all' ? 'on' : ''}" data-pf-f="all">All</button>${cats.map(c => `<button type="button" class="${pfFilter === c ? 'on' : ''}" data-pf-f="${escapeHtml(c)}">${escapeHtml(c)}</button>`).join('')}${nV ? `<button type="button" class="${pfFilter === '__v' ? 'on' : ''}" data-pf-f="__v">Videos</button>` : ''}</div>` : ''}
-            ${shown.length ? `<div class="pf-grid">${shown.map(it => {
-              const v = it.type === 'video' ? pfVideo(it.url) : null;
-              const thumb = it.type === 'photo' ? `<img src="${escapeHtml(pfImg(it))}" alt="" loading="lazy" />`
-                : v && v.kind === 'yt' ? `<img src="https://img.youtube.com/vi/${escapeHtml(v.code)}/hqdefault.jpg" alt="" loading="lazy" /><div class="pf-play yt"><span>▶</span>YouTube</div>` : `<div class="pf-play"><span>▶</span>Instagram</div>`;
-              const idx = items.indexOf(it);
-              return `<div class="pf-item">
-                <div class="pf-thumb">${thumb}${idx === 0 ? '<span class="pf-badge">First</span>' : ''}</div>
-                <div class="pf-meta"><strong>${escapeHtml(it.title || it.category || (it.type === 'video' ? 'Video' : 'Photo'))}</strong><small>${escapeHtml([it.category, it.project].filter(Boolean).join(' · ') || '—')}</small></div>
-                ${canEdit ? `<div class="pf-btns">${idx > 0 ? `<button type="button" class="btn btn-outline btn-sm" data-pf-top="${it.id}" title="Show first on the page">↑ First</button>` : ''}<button type="button" class="btn btn-outline btn-sm" data-pf-edit="${it.id}">Edit</button><button type="button" class="btn btn-danger-soft btn-sm" data-pf-del="${it.id}" aria-label="Delete">✕</button></div>` : ''}
-              </div>`;
-            }).join('')}</div>` : `<div class="hub-muted" style="padding:20px 0; text-align:center;">${items.length ? 'Nothing in this filter.' : canEdit ? 'Nothing yet — add your first photos above.' : 'Nothing on the page yet.'}</div>`}
+            ${shown.length ? `<div class="pf-grid">${shown.map(it => pfTile(it, items, canEdit)).join('')}</div>` : `<div class="hub-muted" style="padding:20px 0; text-align:center;">${items.some(x => !x.tier) ? 'Nothing in this filter.' : canEdit ? 'Nothing yet — add your first photos above.' : 'Nothing on the page yet.'}</div>`}
+          </div>
+
+          <div class="card" style="margin-top:16px;">
+            <div class="hub-card-title">Reference images for estimate options</div>
+            <div class="hub-muted" style="font-size:13px;">Show clients what each option looks like (e.g., laminate for A, PU / acrylic for B, veneer for C). Estimates and the 3-option comparison PDF get a “See how it looks” link when an option has photos here.</div>
+            <div class="pf-filters" style="margin-top:12px;">${['A', 'B', 'C'].map(k => `<button type="button" class="${pfRefTier === k ? 'on' : ''}" data-pf-reftier="${k}">Option ${k} · ${escapeHtml(tierCfg(k).name)} <span style="opacity:.7;">(${refCount(k)})</span></button>`).join('')}</div>
+            <div style="margin-top:10px; font-size:13px;"><strong>${escapeHtml(tierCfg(pfRefTier).title)}</strong> <span class="hub-muted">— ${escapeHtml(tierCfg(pfRefTier).scope)}</span></div>
+            <div class="pf-actions">
+              ${canEdit ? `<label class="btn btn-primary btn-sm" style="cursor:pointer;">📷 Add photos to Option ${pfRefTier}<input type="file" accept="image/*" multiple hidden id="pf-ref-files" ${pfBusy ? 'disabled' : ''} /></label>` : ''}
+              ${refCount(pfRefTier) ? `<a class="btn btn-outline btn-sm" href="${escapeHtml(refLink(pfRefTier))}" target="_blank" rel="noopener">Open Option ${pfRefTier} page</a><button type="button" class="btn btn-outline btn-sm" data-pf-copyref="${pfRefTier}">Copy link</button>` : ''}
+            </div>
+            ${refItems.length ? `<div class="pf-grid">${refItems.map(it => pfTile(it, items.filter(x => x.tier === pfRefTier), canEdit)).join('')}</div>` : `<div class="hub-muted" style="padding:16px 0; text-align:center;">No reference photos for Option ${pfRefTier} yet.</div>`}
           </div>
 
           ${canEdit ? `
@@ -9641,6 +9657,17 @@
           ${!admin ? '<div class="hub-muted" style="margin-top:12px; font-size:12.5px;">Only the admin can add or remove photos.</div>' : ''}`;
       }
 
+      function pfTile(it, list, canEdit) {
+        const v = it.type === 'video' ? pfVideo(it.url) : null;
+        const thumb = it.type === 'photo' ? `<img src="${escapeHtml(pfImg(it))}" alt="" loading="lazy" />`
+          : v && v.kind === 'yt' ? `<img src="https://img.youtube.com/vi/${escapeHtml(v.code)}/hqdefault.jpg" alt="" loading="lazy" /><div class="pf-play yt"><span>▶</span>YouTube</div>` : `<div class="pf-play"><span>▶</span>Instagram</div>`;
+        const idx = list.indexOf(it);
+        return `<div class="pf-item">
+          <div class="pf-thumb">${thumb}${idx === 0 ? '<span class="pf-badge">First</span>' : ''}</div>
+          <div class="pf-meta"><strong>${escapeHtml(it.title || (it.tier ? `Option ${it.tier}` : it.category) || (it.type === 'video' ? 'Video' : 'Photo'))}</strong><small>${escapeHtml((it.tier ? [it.category] : [it.category, it.project]).filter(Boolean).join(' · ') || '—')}</small></div>
+          ${canEdit ? `<div class="pf-btns">${idx > 0 ? `<button type="button" class="btn btn-outline btn-sm" data-pf-top="${it.id}" title="Show first on the page">↑ First</button>` : ''}<button type="button" class="btn btn-outline btn-sm" data-pf-edit="${it.id}">Edit</button><button type="button" class="btn btn-danger-soft btn-sm" data-pf-del="${it.id}" aria-label="Delete">✕</button></div>` : ''}
+        </div>`;
+      }
       function pfEditModal(it) {
         pfEditId = it.id;
         const body = document.getElementById('pf-edit-body');
@@ -9672,6 +9699,23 @@
         const t = e.target;
         if (t.id === 'pf-share-cat') { pfShareCat = t.value; renderPortfolio(); return; }
         if (t.id === 'pf-cat' || t.id === 'pfe-cat') { await pfAskCategory(t); if (t.id === 'pf-cat') pfDraftMeta(); return; }
+        if (t.id === 'pf-ref-files') {
+          const files = [...(t.files || [])]; if (!files.length) return;
+          const tier = pfRefTier; const made = [];
+          pfBusy = `Preparing ${files.length} photo${files.length === 1 ? '' : 's'} for Option ${tier}…`; renderPortfolio();
+          for (const f of files) {
+            try { const full = await pfImage(f, 1600, 0.82); const thumb = await pfImage(f, 640, 0.76); const id = pfId(); made.push({ id, full, thumb, item: { id, type: 'photo', tier, file: `photos/${id}.jpg`, thumb: `photos/${id}_t.jpg`, w: full.w, h: full.h, title: '', category: '', added: new Date().toISOString() } }); }
+            catch (err) { showToast(`Could not read ${f.name}`); }
+          }
+          pfBusy = null;
+          if (!made.length) { renderPortfolio(); return; }
+          const upl = [];
+          made.forEach(m => upl.push({ path: `work/${m.item.file}`, b64: m.full.url.split(',')[1] }, { path: `work/${m.item.thumb}`, b64: m.thumb.url.split(',')[1] }));
+          const ok = await pfPublish(`Option ${tier}: added ${made.length} reference photo${made.length === 1 ? '' : 's'}`, d => { d.items = d.items.concat(made.map(m => m.item)); d.tiers = refTierInfo(); }, upl, []);
+          if (ok) made.forEach(m => { pfPreview[m.id] = m.thumb.url; });
+          renderPortfolio();
+          return;
+        }
         if (t.id === 'pf-files') {
           const files = [...(t.files || [])]; if (!files.length) return;
           pfDraftMeta();
@@ -9698,6 +9742,9 @@
           openWa('lead', id, 'send', 'wa_work'); return;
         }
         const pff = t.closest('[data-pf-f]'); if (pff) { pfFilter = pff.dataset.pfF; renderPortfolio(); return; }
+        const prt = t.closest('[data-pf-reftier]'); if (prt) { pfRefTier = prt.dataset.pfReftier; renderPortfolio(); return; }
+        const pcr = t.closest('[data-pf-copyref]');
+        if (pcr) { const l = refLink(pcr.dataset.pfCopyref); try { await navigator.clipboard.writeText(l); showToast('Link copied'); } catch (err) { window.prompt('Copy this link', l); } return; }
         if (t.closest('[data-pf-refresh]')) { pfRefresh(false); return; }
         if (t.closest('[data-pf-clear]')) { pfDraft = null; renderPortfolio(); return; }
         if (t.closest('[data-pf-upload]')) {
@@ -9720,7 +9767,16 @@
           return;
         }
         const top = t.closest('[data-pf-top]');
-        if (top) { const id = top.dataset.pfTop; await pfPublish('moved a photo to first', d => { const i = d.items.findIndex(x => x.id === id); if (i > 0) d.items.unshift(d.items.splice(i, 1)[0]); }); return; }
+        if (top) {
+          const id = top.dataset.pfTop;
+          await pfPublish('moved a photo to first', d => {
+            const i = d.items.findIndex(x => x.id === id); if (i < 0) return;
+            const it = d.items.splice(i, 1)[0];
+            const j = d.items.findIndex(x => (x.tier || '') === (it.tier || '')); // first of the same group
+            d.items.splice(j < 0 ? 0 : Math.min(j, d.items.length), 0, it);
+          });
+          return;
+        }
         const del = t.closest('[data-pf-del]');
         if (del) {
           const it = pfData().items.find(x => x.id === del.dataset.pfDel); if (!it) return;
@@ -10364,6 +10420,7 @@
             const canvasH = px(PAGE_H_MM);
 
             const pages = [];
+            const pdfLinks = []; // clickable areas: { page, x, y, w, h, url } in mm
             let currentCanvas = null;
             let ctx = null;
             let curY = MARGIN_MM;
@@ -10404,6 +10461,28 @@
               if (curY + neededMm > PAGE_H_MM - MARGIN_MM) {
                 startNewPage();
               }
+            }
+
+            function drawRefBox(keys) {
+              keys = (keys || []).filter(k => refTiers().includes(k)); if (!keys.length) return;
+              const h = 13.5; const gap = 3;
+              ensureSpace(h + 8); curY += 4;
+              const w = (CONTENT_W_MM - gap * (keys.length - 1)) / keys.length;
+              keys.forEach((k, i) => {
+                const t = tierCfg(k); const x = MARGIN_MM + i * (w + gap);
+                drawRoundRect(x, curY, w, h, 2, '#FFF7F2', '#A44A22', 0.45);
+                const btnW = keys.length === 1 ? 30 : 0;
+                drawText(`SEE HOW OPTION ${k} LOOKS`, x + 3.5, curY + 2.4, { font: 'bold', sizePt: 7.2, color: '#A44A22' });
+                const line = keys.length === 1 ? `${t.name} — ${t.scope}` : `${t.name} · View photos ›`;
+                const lines = wrapText(line, w - 7 - btnW, 8.2, 'bold');
+                drawText(lines[0] + (lines.length > 1 ? '…' : ''), x + 3.5, curY + 7, { font: 'bold', sizePt: 8.2, color: '#1C1917' });
+                if (btnW) {
+                  drawRoundRect(x + w - btnW - 3, curY + 3.2, btnW, 7, 1.6, '#A44A22', null);
+                  drawText('View photos ›', x + w - 3 - btnW / 2, curY + 4.9, { font: 'bold', sizePt: 8, color: '#FFFFFF', align: 'center' });
+                }
+                pdfLinks.push({ page: pages.length - 1, x, y: curY, w, h, url: refLink(k) });
+              });
+              curY += h + 2;
             }
 
             function drawBankBox(kind) {
@@ -11064,6 +11143,7 @@
                   drawText(formatINR(sums[k].grandTotal), rx, curY + 3.0, { font: 'bold', sizePt: 9.5, color: tierCols[idx], align: 'right' });
                 });
                 curY += 10.5;
+                drawRefBox(['A', 'B', 'C']);
                 drawBankBox('estimate');
                 drawEstimateAppendix(boq, 'compare');
               } else {
@@ -11241,8 +11321,9 @@
                 drawText(formatINR(summary.grandTotal), tableRight, sumLineY + 1, { font: 'bold', sizePt: 12, color: '#A44A22', align: 'right' });
                 curY = sumLineY + 9;
                 {
-                  drawBankBox('estimate');
                   const boqForAppendix = ensureBoqForClient(state.activeBoqClientId);
+                  drawRefBox([boqForAppendix.activeVersion || 'A']);
+                  drawBankBox('estimate');
                   drawEstimateAppendix(boqForAppendix, boqForAppendix.activeVersion || 'A');
                 }
               }
@@ -11262,6 +11343,7 @@
                   // page number as real (sharp) text
                   try { doc.setFont('helvetica', 'normal'); doc.setFontSize(7); doc.setTextColor(120, 113, 108); doc.text(`Page ${pIdx + 1} of ${totalPages}`, PAGE_W_MM - MARGIN_MM, pdfFooterTopMm - 4.6, { align: 'right', baseline: 'top' }); } catch (err) { /* ignore */ }
                 }
+                if (typeof doc.link === 'function') pdfLinks.filter(l => l.page === pIdx).forEach(l => { try { doc.link(l.x, l.y, l.w, l.h, { url: l.url }); } catch (err) { /* ignore */ } });
                 if (footerHeightMm > 0 && typeof doc.link === 'function') {
                   // Make the footer's email & phone tappable (strip sections: email 0–37%, phone 37–75.6%)
                   const fy = PAGE_H_MM - footerHeightMm;
@@ -11832,6 +11914,7 @@
               <div style="font-size:18px; color:#A44A22; margin-top:4px;">Grand Total: <strong>${formatINR(summary.grandTotal)}</strong></div>
             </div>
           </div>
+          ${refBoxHtml([boq.activeVersion || 'A'])}
           ${bankBoxHtml('estimate')}
           ${buildEstimateAppendixHtml(boq, boq.activeVersion || 'A')}
           ${renderBrandFooterHtml()}
@@ -11933,6 +12016,7 @@
               </tr>
             </tbody>
           </table>
+          ${refBoxHtml(['A', 'B', 'C'])}
           ${bankBoxHtml('estimate')}
           ${buildEstimateAppendixHtml(boq, 'compare')}
           ${renderBrandFooterHtml()}
