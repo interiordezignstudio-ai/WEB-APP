@@ -2558,6 +2558,20 @@
     .pf-filters { display:flex; gap:6px; flex-wrap:wrap; margin-top:10px; }
     .pf-filters button { border:1px solid var(--border-subtle); background: var(--bg-card); color: var(--text-main); border-radius:999px; padding:5px 11px; font-size:12.5px; font-weight:600; cursor:pointer; }
     .pf-filters button.on { background: var(--text-main); color: var(--bg-card); border-color: var(--text-main); }
+    /* Quick payment (iPhone / iPad shortcut) */
+    .qp-search { font-size:16px !important; padding:12px 14px !important; }
+    .qp-list { display:flex; flex-direction:column; gap:6px; margin-top:10px; max-height: min(56vh, 460px); overflow:auto; -webkit-overflow-scrolling: touch; }
+    .qp-client { display:flex; align-items:center; gap:12px; width:100%; text-align:left; border:1px solid var(--border-subtle); background: var(--bg-card); color: var(--text-main); border-radius:12px; padding:12px 14px; cursor:pointer; font:inherit; }
+    .qp-client:hover, .qp-client:focus-visible { border-color: var(--accent-terracotta); }
+    .qp-av { width:38px; height:38px; border-radius:50%; background: var(--accent-terracotta-soft); color: var(--accent-terracotta-dark); display:flex; align-items:center; justify-content:center; font-weight:700; flex:0 0 38px; }
+    .qp-client strong { display:block; font-size:15px; }
+    .qp-client small { display:block; color: var(--text-muted); font-size:12.5px; }
+    .qp-dirs { display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-top:12px; }
+    .qp-dir { border:0; border-radius:16px; padding:22px 12px; font:700 17px/1.25 inherit; color:#FFF; cursor:pointer; display:flex; flex-direction:column; align-items:center; gap:6px; }
+    .qp-dir span { font-size:30px; line-height:1; }
+    .qp-dir small { font-weight:500; font-size:12.5px; opacity:.9; }
+    .qp-in { background:#0F7457; } .qp-out { background:#A44A22; }
+    .qp-foot { margin-top:14px; padding-top:12px; border-top:1px solid var(--border-subtle); font-size:12.5px; color: var(--text-muted); display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
     /* Trash */
     .trash-row { display:flex; gap:12px; align-items:center; padding:12px 0; border-bottom:1px solid var(--border-subtle); flex-wrap:wrap; }
     .trash-row:last-child { border-bottom:0; }
@@ -3357,6 +3371,7 @@
               <p class="page-sub">Money received from clients and paid to vendors &amp; labour — with dates, by project</p>
             </div>
             <div style="display:flex; gap:8px; flex-wrap:wrap;">
+              <button type="button" class="btn btn-outline" data-quickpay title="Pick client → received or paid out">⚡ Quick payment</button>
               <button class="btn btn-outline" data-vendor-new>+ Vendor / labour</button>
               <button class="btn btn-outline" data-pay-new="out">+ Paid out</button>
               <button class="btn btn-primary" data-pay-new="in">+ Received</button>
@@ -3608,6 +3623,12 @@
     <div class="modal-box">
       <div class="modal-header"><h3 class="font-serif" style="font-size:20px; font-weight:700;">Edit</h3><button class="btn btn-outline btn-sm" data-close-modal="modal-pf-edit">✕</button></div>
       <div id="pf-edit-body"></div>
+    </div>
+  </div>
+  <div class="modal-backdrop" id="modal-quickpay">
+    <div class="modal-box">
+      <div class="modal-header"><h3 class="font-serif" style="font-size:22px; font-weight:700;" id="qp-title">Quick payment</h3><button class="btn btn-outline btn-sm" data-close-modal="modal-quickpay">✕</button></div>
+      <div id="qp-body"></div>
     </div>
   </div>
   <div class="modal-backdrop" id="modal-trash">
@@ -9421,6 +9442,80 @@
       setTimeout(applyTheme, 0);
 
 
+
+
+      // ===== Quick payment: pick client → received / paid out (for an iPhone / iPad Shortcut) =====
+      // Shortcut link: <site>/?quick=pay   (optional: &dir=in|out  &amount=5000)
+      let qpCtx = null;
+      function quickPayLink() { return (typeof siteBase === 'function' ? siteBase() : location.href.split('?')[0]) + '?quick=pay'; }
+      function qpClients() {
+        const last = {};
+        (state.money || []).forEach(m => { if (m.clientId && (!last[m.clientId] || m.date > last[m.clientId])) last[m.clientId] = m.date; });
+        return getScopedClients().slice().sort((a, b) => ((b.status === 'Active') - (a.status === 'Active')) || String(last[b.id] || b.createdAt || '').localeCompare(String(last[a.id] || a.createdAt || '')) || a.name.localeCompare(b.name));
+      }
+      function openQuickPay(opts = {}) {
+        if (!getCurrentPermissions().canEditBilling) { showToast('Only Admin / Accounts can record payments'); return; }
+        qpCtx = { step: 'client', clientId: null, dir: opts.dir === 'in' || opts.dir === 'out' ? opts.dir : '', amount: Number(opts.amount) || 0, q: '' };
+        renderQuickPay(); openModal('modal-quickpay');
+        setTimeout(() => { const i = document.getElementById('qp-q'); if (i && !isTouchDevice()) i.focus(); }, 60);
+      }
+      function qpListHtml() {
+        const q = qpCtx.q.toLowerCase();
+        const list = qpClients().filter(c => !q || [c.name, c.phone, c.address].join(' ').toLowerCase().includes(q));
+        return `${list.map(c => `<button type="button" class="qp-client" data-qp-client="${c.id}"><span class="qp-av">${escapeHtml((firstNameOf(c.name) || '?').charAt(0).toUpperCase())}</span><span style="flex:1; min-width:0;"><strong>${escapeHtml(c.name)}</strong><small>${escapeHtml([c.address ? String(c.address).split(',').slice(-2).join(',').trim() : '', c.status && c.status !== 'Active' ? c.status : ''].filter(Boolean).join(' · ') || ' ')}</small></span><span aria-hidden="true">›</span></button>`).join('')}
+          ${!q ? `<button type="button" class="qp-client" data-qp-client=""><span class="qp-av">🏢</span><span style="flex:1;"><strong>Office / no project</strong><small>Rent, tools, general expenses</small></span><span aria-hidden="true">›</span></button>` : ''}
+          ${!list.length && q ? '<div class="hub-muted" style="padding:14px 4px;">No client matches.</div>' : ''}`;
+      }
+      function renderQuickPay() {
+        const box = document.getElementById('qp-body'); if (!box || !qpCtx) return;
+        const title = document.getElementById('qp-title');
+        const amt = qpCtx.amount ? ` · ${formatINR(qpCtx.amount)}` : '';
+        if (qpCtx.step === 'client') {
+          title.textContent = `Which client?${amt}`;
+          box.innerHTML = `
+            <input class="input qp-search" id="qp-q" type="search" placeholder="Search client name, phone, area…" value="${escapeHtml(qpCtx.q)}" autocomplete="off" />
+            <div class="qp-list" id="qp-list">${qpListHtml()}</div>
+            <div class="qp-foot"><span style="flex:1 1 200px;">iPhone / iPad Shortcut link:</span><button type="button" class="btn btn-outline btn-sm" data-qp-copylink>Copy link</button></div>`;
+          return;
+        }
+        const c = clientById(qpCtx.clientId);
+        title.textContent = `${c ? c.name : 'Office / no project'}${amt}`;
+        box.innerHTML = `
+          <div class="hub-muted" style="font-size:14px;">Is this money received or paid out?</div>
+          <div class="qp-dirs">
+            <button type="button" class="qp-dir qp-in" data-qp-dir="in" ${c ? '' : 'disabled style="opacity:.45; cursor:not-allowed;"'}><span>⬇</span>Received<small>${c ? 'from ' + escapeHtml(firstNameOf(c.name)) : 'only from a client'}</small></button>
+            <button type="button" class="qp-dir qp-out" data-qp-dir="out"><span>⬆</span>Paid out<small>to vendor / labour</small></button>
+          </div>
+          <div style="margin-top:12px;"><button type="button" class="btn btn-outline btn-sm" data-qp-back>‹ Change client</button></div>`;
+      }
+      function qpFinish(dir) {
+        const cid = qpCtx.clientId || ''; const amount = qpCtx.amount;
+        closeModal('modal-quickpay'); qpCtx = null;
+        openPay(dir, { clientId: cid });
+        if (amount) setTimeout(() => { const a = document.getElementById('pay-amount'); if (a) { a.value = amount; a.dispatchEvent(new Event('input', { bubbles: true })); a.dispatchEvent(new Event('change', { bubbles: true })); } }, 60);
+      }
+      document.addEventListener('input', e => { if (e.target.id === 'qp-q' && qpCtx) { qpCtx.q = e.target.value; const l = document.getElementById('qp-list'); if (l) l.innerHTML = qpListHtml(); } });
+      document.addEventListener('keydown', e => { if (e.target.id === 'qp-q' && e.key === 'Enter') { const first = document.querySelector('[data-qp-client]'); if (first) { e.preventDefault(); first.click(); } } });
+      document.addEventListener('click', async e => {
+        const t = e.target;
+        if (t.closest('[data-quickpay]')) { openQuickPay(); return; }
+        if (!qpCtx) { return; }
+        const qc = t.closest('[data-qp-client]');
+        if (qc) { qpCtx.clientId = qc.dataset.qpClient || null; if (qpCtx.dir && (qpCtx.dir === 'out' || qpCtx.clientId)) { qpFinish(qpCtx.dir); return; } qpCtx.step = 'dir'; renderQuickPay(); return; }
+        const qd = t.closest('[data-qp-dir]'); if (qd && !qd.disabled) { qpFinish(qd.dataset.qpDir); return; }
+        if (t.closest('[data-qp-back]')) { qpCtx.step = 'client'; renderQuickPay(); return; }
+        if (t.closest('[data-qp-copylink]')) { const l = quickPayLink(); try { await navigator.clipboard.writeText(l); showToast('Shortcut link copied'); } catch (err) { window.prompt('Copy this link', l); } }
+      });
+      // opened from a Shortcut / Home Screen icon: ?quick=pay
+      (function () {
+        let qs; try { qs = new URLSearchParams(location.search); } catch (e) { return; }
+        const qv = (qs.get('quick') || '').toLowerCase();
+        if (!/^pay(-in|-out)?$/.test(qv)) return;
+        const dir = qv === 'pay-in' ? 'in' : qv === 'pay-out' ? 'out' : (qs.get('dir') || '');
+        const amount = qs.get('amount') || '';
+        try { history.replaceState(null, '', location.pathname); } catch (e) { /* ignore */ }
+        setTimeout(() => { try { switchTab('payments'); openQuickPay({ dir, amount }); } catch (err) { /* ignore */ } }, 1200);
+      })();
 
       // ===== Our work: public portfolio on the GitHub site =====
       const GH_TOKEN_KEY = 'ids_github_key';
