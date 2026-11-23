@@ -10730,6 +10730,34 @@
         reader.readAsDataURL(file);
       }
 
+
+      // ----- selectable text in PDFs -----
+      // Pages are pictures (exact look); the same text is written on top as invisible text,
+      // so it can be selected, copied and searched — like a scanned PDF with OCR.
+      function pdfSafeText(str) {
+        return String(str)
+          .replace(/₹\s?/g, 'Rs. ')
+          .replace(/[–—]/g, '-').replace(/[•●]/g, '-').replace(/[‘’]/g, "'").replace(/[“”]/g, '"').replace(/…/g, '...')
+          .replace(/[→⇄]/g, '->').replace(/[›»]/g, '>').replace(/[‹«]/g, '<').replace(/[✓✔]/g, 'v').replace(/[✕✖]/g, 'x')
+          .replace(/[   ]/g, ' ')
+          .replace(/[^\x09\x0A\x0D\x20-\x7E¡-ÿ]/g, '');
+      }
+      function writePdfTextLayer(doc, items) {
+        if (!items || !items.length) return;
+        let cur = '';
+        items.forEach(it => {
+          const str = pdfSafeText(it.t); if (!str.trim()) return;
+          try {
+            const style = it.bold ? 'bold' : 'normal';
+            if (cur !== style + it.size) { doc.setFont('helvetica', style); doc.setFontSize(it.size); cur = style + it.size; }
+            const natural = doc.getTextWidth(str);
+            const width = it.w > 0 ? it.w : natural;
+            const left = it.align === 'right' ? it.x - width : it.align === 'center' ? it.x - width / 2 : it.x;
+            const cs = str.length > 1 ? Math.max(-0.6, Math.min(2, (width - natural) / (str.length - 1))) : 0;
+            doc.text(str, left, it.y, { baseline: 'top', renderingMode: 'invisible', charSpace: cs });
+          } catch (err) { /* skip a piece that the PDF engine cannot write */ }
+        });
+      }
       function downloadExactGraphicPdf(pdfFilename) {
         const cleanPdfName = (pdfFilename || 'Interior_Dezign_Estimate.pdf').replace(/\.html$/i, '.pdf');
         const jsPdfCtor = (window.jspdf && window.jspdf.jsPDF) ? window.jspdf.jsPDF : (window.jsPDF || null);
@@ -10778,6 +10806,7 @@
 
             const pages = [];
             const pdfLinks = []; // clickable areas: { page, x, y, w, h, url } in mm
+            const pdfTexts = []; // every piece of text drawn, written again as invisible PDF text so it can be selected, copied and searched
             let currentCanvas = null;
             let ctx = null;
             let curY = MARGIN_MM;
@@ -10899,6 +10928,8 @@
               ctx.textAlign = align;
               ctx.textBaseline = 'top';
               ctx.fillText(String(text || ''), px(xMm), px(yMm));
+              const str = String(text == null ? '' : text);
+              if (str.trim()) pdfTexts.push({ page: pages.length - 1, t: str, x: xMm, y: yMm, size: sizePt, bold: /bold|[6-9]00/.test(font), align, w: ctx.measureText(str).width / MM_TO_PX });
             }
 
             function wrapText(text, maxWMm, sizePt, font = 'normal', family = '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif') {
@@ -11700,6 +11731,7 @@
                   // page number as real (sharp) text
                   try { doc.setFont('helvetica', 'normal'); doc.setFontSize(7); doc.setTextColor(120, 113, 108); doc.text(`Page ${pIdx + 1} of ${totalPages}`, PAGE_W_MM - MARGIN_MM, pdfFooterTopMm - 4.6, { align: 'right', baseline: 'top' }); } catch (err) { /* ignore */ }
                 }
+                if (typeof doc.text === 'function') writePdfTextLayer(doc, pdfTexts.filter(t => t.page === pIdx));
                 if (typeof doc.link === 'function') pdfLinks.filter(l => l.page === pIdx).forEach(l => { try { doc.link(l.x, l.y, l.w, l.h, { url: l.url }); } catch (err) { /* ignore */ } });
                 if (footerHeightMm > 0 && typeof doc.link === 'function') {
                   // Make the footer's email & phone tappable (strip sections: email 0–37%, phone 37–75.6%)
