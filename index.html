@@ -3892,6 +3892,12 @@
       <div id="vlist-body"></div>
     </div>
   </div>
+  <div class="modal-backdrop" id="modal-selcats">
+    <div class="modal-box">
+      <div class="modal-header"><h3 class="font-serif" style="font-size:20px; font-weight:700;">Categories</h3><button class="btn btn-outline btn-sm" data-close-modal="modal-selcats">✕</button></div>
+      <div id="selcats-body"></div>
+    </div>
+  </div>
   <div class="modal-backdrop" id="modal-trades">
     <div class="modal-box">
       <div class="modal-header"><h3 class="font-serif" style="font-size:20px; font-weight:700;">Trades / work</h3><button class="btn btn-outline btn-sm" data-close-modal="modal-trades">✕</button></div>
@@ -17019,6 +17025,94 @@
       });
 
       // ===== Selections =====
+      // Editable category list for selections & purchase orders (fixed ids for the starter list → no duplicates after sync)
+      function selCatList() { if (!Array.isArray(state.selCats)) state.selCats = SEL_CATS.map((n, i) => ({ id: `sc_${i + 1}`, name: n })); return state.selCats; }
+      function selCatNames() { return selCatList().map(c => c.name); }
+      function selCatSelectHtml(id, value) {
+        const names = selCatNames(); const v = String(value || '');
+        const opts = (v && !names.includes(v) ? [v] : []).concat(names);
+        return `<select class="select" id="${id}" data-selcat-pick>${opts.map(n => `<option ${n === v ? 'selected' : ''}>${escapeHtml(n)}</option>`).join('')}<option value="__new">+ New category…</option><option value="__manage">✎ Manage categories…</option></select>`;
+      }
+      function syncSelCatsDatalist() {
+        const dl = document.getElementById('dl-selcats'); if (!dl) return;
+        const html = selCatNames().map(n => `<option value="${escapeHtml(n)}"></option>`).join('');
+        if (dl.innerHTML !== html) dl.innerHTML = html;
+      }
+      let selCatEdit = null, selCatReturn = null;
+      function openSelCatEditor(fromSelect) {
+        selCatReturn = fromSelect || null;
+        selCatEdit = selCatList().map(c => ({ id: c.id, name: c.name, orig: c.name }));
+        renderSelCatEditor(); openModal('modal-selcats');
+      }
+      function selCatCapture() { document.querySelectorAll('[data-selcat-row]').forEach(el => { const r = selCatEdit.find(x => x.id === el.dataset.selcatRow); if (r) r.name = el.value; }); }
+      function selCatUsed(n) { const k = String(n || '').toLowerCase(); return (state.selections || []).filter(x => String(x.category || '').toLowerCase() === k).length + (state.pos || []).filter(x => String(x.category || '').toLowerCase() === k).length; }
+      function renderSelCatEditor() {
+        const box = document.getElementById('selcats-body'); if (!box || !selCatEdit) return;
+        box.innerHTML = `
+          <div class="hub-muted" style="margin:-4px 0 10px;">Used in Selections and Purchase orders. Renaming a category also renames it on the items and POs that use it. Deleting only removes it from this list — items keep their category.</div>
+          <div class="trade-list">${selCatEdit.map(r => { const u = selCatUsed(r.orig); return `<div class="trade-row">
+            <input class="input" data-selcat-row="${r.id}" value="${escapeHtml(r.name)}" placeholder="e.g. Curtains & blinds" />
+            <span class="hub-muted">${u ? `${u} in use` : ''}</span>
+            <button type="button" class="btn btn-outline btn-sm pay-del" data-selcat-del="${r.id}" aria-label="Delete ${escapeHtml(r.name)}">✕</button>
+          </div>`; }).join('') || '<div class="hub-muted">No categories. Add one below.</div>'}</div>
+          <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:10px;">
+            <button type="button" class="btn btn-outline btn-sm" data-selcat-add>+ Add category</button>
+            <button type="button" class="btn btn-outline btn-sm" data-selcat-reset>Restore starter list</button>
+          </div>
+          <div class="modal-actions-row"><button type="button" class="btn btn-outline" data-close-modal="modal-selcats">Cancel</button><button type="button" class="btn btn-primary" data-selcat-save>Save list</button></div>`;
+      }
+      function saveSelCats() {
+        selCatCapture();
+        const seen = new Set(); const clean = [];
+        selCatEdit.map(r => ({ id: r.id, name: String(r.name || '').trim(), orig: r.orig })).filter(r => r.name).forEach(r => { const k = r.name.toLowerCase(); if (!seen.has(k)) { seen.add(k); clean.push(r); } });
+        let renamed = 0;
+        clean.forEach(r => {
+          if (!r.orig || r.orig === r.name) return;
+          [...(state.selections || []), ...(state.pos || [])].forEach(x => { if (String(x.category || '').toLowerCase() === r.orig.toLowerCase()) { x.category = r.name; renamed++; } });
+          if (selCatReturn && selCatReturn.value === r.orig) selCatReturn.value = r.name;
+        });
+        state.selCats = clean.map(r => ({ id: r.id, name: r.name }));
+        commitState(); syncSelCatsDatalist(); closeModal('modal-selcats'); selCatEdit = null;
+        refreshSelCatSelects();
+        if (state.activeTab === 'clients') renderClients();
+        showToast(`Categories saved${renamed ? ` · ${renamed} item${renamed === 1 ? '' : 's'} renamed` : ''}`);
+      }
+      // keep open forms in step with the list (and keep what each one had chosen)
+      function refreshSelCatSelects() {
+        document.querySelectorAll('[data-selcat-pick]').forEach(sel => {
+          const cur = sel.dataset.prev || sel.value;
+          const tmp = document.createElement('div'); tmp.innerHTML = selCatSelectHtml(sel.id, cur);
+          sel.innerHTML = tmp.firstChild.innerHTML; sel.value = cur; sel.dataset.prev = cur;
+        });
+      }
+      document.addEventListener('focusin', e => { if (e.target.dataset && e.target.dataset.selcatPick !== undefined) e.target.dataset.prev = e.target.value; });
+      document.addEventListener('change', e => {
+        const sel = e.target; if (!sel.dataset || sel.dataset.selcatPick === undefined) return;
+        const prev = sel.dataset.prev || selCatNames()[0] || '';
+        if (sel.value === '__new') {
+          const n = (window.prompt('New category name (e.g. Curtains & blinds)') || '').trim();
+          if (!n) { sel.value = prev; return; }
+          if (!selCatNames().some(x => x.toLowerCase() === n.toLowerCase())) { selCatList().push({ id: uid('sc'), name: n }); commitState(); syncSelCatsDatalist(); }
+          sel.dataset.prev = selCatNames().find(x => x.toLowerCase() === n.toLowerCase()) || n;
+          refreshSelCatSelects(); sel.value = sel.dataset.prev;
+          sel.dispatchEvent(new Event('input', { bubbles: true }));
+          showToast(`Category “${sel.value}” added`);
+          return;
+        }
+        if (sel.value === '__manage') { sel.value = prev; openSelCatEditor(sel); return; }
+        sel.dataset.prev = sel.value;
+      }, true);
+      document.addEventListener('click', async e => {
+        const t = e.target;
+        if (t.closest('[data-selcats-manage]')) { e.preventDefault(); openSelCatEditor(null); return; }
+        if (!selCatEdit || !t.closest('#modal-selcats')) return;
+        if (t.closest('[data-selcat-add]')) { selCatCapture(); const r = { id: uid('sc'), name: '', orig: '' }; selCatEdit.push(r); renderSelCatEditor(); document.querySelector(`[data-selcat-row="${r.id}"]`)?.focus(); return; }
+        const dl = t.closest('[data-selcat-del]'); if (dl) { selCatCapture(); selCatEdit = selCatEdit.filter(r => r.id !== dl.dataset.selcatDel); renderSelCatEditor(); return; }
+        if (t.closest('[data-selcat-reset]')) { if (!await appConfirm('Restore the starter category list?\n\nYour own categories in the list are replaced. Items keep their category.', { ok: 'Restore', danger: true })) return; selCatEdit = SEL_CATS.map((n, i) => ({ id: `sc_${i + 1}`, name: n, orig: n })); renderSelCatEditor(); return; }
+        if (t.closest('[data-selcat-save]')) saveSelCats();
+      });
+      document.addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.dataset && e.target.dataset.selcatRow) { e.preventDefault(); document.querySelector('[data-selcat-add]')?.click(); } });
+      setTimeout(() => { try { syncSelCatsDatalist(); } catch (err) { /* ignore */ } }, 0);
       const SEL_CATS = ['Lights', 'Tiles & flooring', 'Sanitaryware & CP fittings', 'Hardware & handles', 'Laminates & veneers', 'Paint shades & wallpaper', 'Fabric & upholstery', 'Countertops & stone', 'Appliances', 'Furniture & decor', 'Glass & mirrors', 'Other'];
       const SEL_STATUSES = ['Proposed', 'Approved by client', 'Ordered', 'Delivered', 'Installed'];
       const SEL_UNITS = ['nos', 'sq ft', 'rft', 'set', 'box', 'roll', 'm', 'lump sum'];
@@ -17050,7 +17144,7 @@
         const q = (f.q || '').toLowerCase();
         const showRates = r.money && state.selShowRates !== false;
         const shown = all.filter(s2 => (!f.cat || s2.category === f.cat) && (!f.status || s2.status === f.status) && (!q || [s2.name, s2.brand, s2.code, s2.description, s2.room, s2.category].join(' ').toLowerCase().includes(q)));
-        const cats = [...SEL_CATS, ...[...new Set(all.map(s2 => s2.category))].filter(x => !SEL_CATS.includes(x))];
+        const cats = [...selCatNames(), ...[...new Set(all.map(s2 => s2.category))].filter(x => !selCatNames().includes(x))];
         const groups = cats.map(cat => [cat, shown.filter(s2 => s2.category === cat)]).filter(([, l]) => l.length);
         const picked = [...selPicked].filter(id => all.some(s2 => s2.id === id));
         return `
@@ -17059,7 +17153,7 @@
               <span>Selections</span>
               <span style="display:flex; gap:6px; flex-wrap:wrap;">
                 ${all.length ? `<button type="button" class="btn btn-outline btn-sm" data-sel-pdf="${c.id}">PDF${r.money ? (showRates ? ' (with rates)' : ' (no rates)') : ''}</button>` : ''}
-                ${r.editSel ? `<button type="button" class="btn btn-outline btn-sm" data-selb-new="${c.id}">📷 Add many items</button><button type="button" class="btn btn-primary btn-sm" data-sel-new="${c.id}">+ Add selection</button>` : ''}
+                ${r.editSel ? `<button type="button" class="btn btn-outline btn-sm" data-selcats-manage>⚙ Categories</button><button type="button" class="btn btn-outline btn-sm" data-selb-new="${c.id}">📷 Add many items</button><button type="button" class="btn btn-primary btn-sm" data-sel-new="${c.id}">+ Add selection</button>` : ''}
               </span>
             </div>
             ${all.length ? `<div class="pay-filters sel-filters">
@@ -17103,7 +17197,7 @@
         const box = document.getElementById('sel-body'); if (!box || !selCtx) return;
         const d = selCtx.d; const r = siteRights();
         document.getElementById('sel-title').textContent = selCtx.id ? 'Edit selection' : 'Add selection';
-        const cats = [...new Set([...SEL_CATS, d.category].filter(Boolean))];
+        const cats = [...new Set([...selCatNames(), d.category].filter(Boolean))];
         box.innerHTML = `
           <div class="sel-modal-grid">
             <div class="sel-photo-edit">
@@ -17113,7 +17207,7 @@
               ${d.photo ? '<button type="button" class="wa-linkbtn" data-sel-photo-del>Remove photo</button>' : ''}
             </div>
             <div class="form-grid">
-              <div><label class="form-label">Category</label><input class="input" id="sel-cat" list="dl-selcats" value="${escapeHtml(d.category)}" /></div>
+              <div><label class="form-label">Category</label>${selCatSelectHtml('sel-cat', d.category)}</div>
               <div><label class="form-label">Room / area</label><input class="input" id="sel-room" value="${escapeHtml(d.room || '')}" placeholder="e.g. Living room" /></div>
               <div class="form-full"><label class="form-label">Product name *</label><input class="input" id="sel-name" value="${escapeHtml(d.name)}" placeholder="e.g. 12W COB spot light, warm white" /></div>
               <div><label class="form-label">Brand</label><input class="input" id="sel-brand" value="${escapeHtml(d.brand || '')}" placeholder="e.g. Philips" /></div>
@@ -17204,7 +17298,7 @@
         box.innerHTML = `
           <div class="hub-muted" style="margin-bottom:10px;">${escapeHtml(c ? c.name : '')} · these details apply to every item below</div>
           <div class="selb-common">
-            <div><label class="form-label">Category</label><input class="input" id="selb-cat" list="dl-selcats" value="${escapeHtml(cm.category)}" /></div>
+            <div><label class="form-label">Category</label>${selCatSelectHtml('selb-cat', cm.category)}</div>
             <div><label class="form-label">Room / area</label><input class="input" id="selb-room" value="${escapeHtml(cm.room)}" placeholder="e.g. Master bedroom" /></div>
             <div><label class="form-label">Vendor / shop</label>${vendorSelectHtml('selb-vendor', cm.vendorId, cm.nvName, cm.nvPhone)}</div>
             <div><label class="form-label">Status</label><select class="select" id="selb-status">${SEL_STATUSES.map(x => `<option ${cm.status === x ? 'selected' : ''}>${x}</option>`).join('')}</select></div>
@@ -17288,7 +17382,7 @@
         const q = (f.q || '').toLowerCase();
         const showRates = r.money && state.selShowRates !== false;
         const list = state.selections.filter(s2 => s2.clientId === c.id && (!f.cat || s2.category === f.cat) && (!f.status || s2.status === f.status) && (!q || [s2.name, s2.brand, s2.code, s2.description, s2.room, s2.category].join(' ').toLowerCase().includes(q)));
-        const cats = [...new Set([...SEL_CATS, ...list.map(s2 => s2.category)])].filter(x => list.some(s2 => s2.category === x));
+        const cats = [...new Set([...selCatNames(), ...list.map(s2 => s2.category)])].filter(x => list.some(s2 => s2.category === x));
         const cols = [{ label: 'Photo', w: 28, type: 'img' }, { label: 'Item', w: showRates ? 66 : 92 }, { label: 'Room', w: 26, muted: true }, { label: 'Qty', w: showRates ? 20 : 40, align: 'right' }];
         if (showRates) cols.push({ label: 'Rate', w: 22, align: 'right' }, { label: 'Amount', w: 24, align: 'right' });
         const rows = [];
@@ -17338,7 +17432,7 @@
           <div class="card">
             <div class="hub-card-title" style="display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap;">
               <span>Purchase orders</span>
-              ${r.po ? `<button type="button" class="btn btn-primary btn-sm" data-po-new="${c.id}">+ New PO</button>` : ''}
+              ${r.po ? `<span style="display:flex; gap:6px; flex-wrap:wrap;"><button type="button" class="btn btn-outline btn-sm" data-selcats-manage>⚙ Categories</button><button type="button" class="btn btn-primary btn-sm" data-po-new="${c.id}">+ New PO</button></span>` : ''}
             </div>
             ${all.length ? `
             <div class="pay-mini">
@@ -17399,7 +17493,7 @@
           <div class="form-grid">
             <div><label class="form-label">Vendor *</label><select class="select" id="po-vendor"><option value="">— choose vendor —</option>${(state.vendors || []).slice().sort((a, b) => a.name.localeCompare(b.name)).map(v => `<option value="${v.id}" ${d.vendorId === v.id ? 'selected' : ''}>${escapeHtml(v.name)}${v.trade ? ' · ' + escapeHtml(v.trade) : ''}</option>`).join('')}</select>
               ${(state.vendors || []).length ? '' : '<div class="hub-muted" style="font-size:12px; margin-top:4px;">Add vendors under Payments → Vendors &amp; labour first.</div>'}</div>
-            <div><label class="form-label">Category</label><input class="input" id="po-cat" list="dl-selcats" value="${escapeHtml(d.category || '')}" /></div>
+            <div><label class="form-label">Category</label>${selCatSelectHtml('po-cat', d.category)}</div>
             <div><label class="form-label">PO date</label><input class="input" id="po-date" type="date" value="${escapeHtml(d.date)}" /></div>
             <div><label class="form-label">Deliver by</label><input class="input" id="po-delivery" type="date" value="${escapeHtml(d.deliveryDate || '')}" /></div>
             <div class="form-full"><label class="form-label">Deliver to</label><input class="input" id="po-address" value="${escapeHtml(d.address || '')}" /></div>
