@@ -2573,6 +2573,67 @@
     .qp-dir small { font-weight:500; font-size:12.5px; opacity:.9; }
     .qp-in { background:#0F7457; } .qp-out { background:#A44A22; }
     .qp-foot { margin-top:14px; padding-top:12px; border-top:1px solid var(--border-subtle); font-size:12.5px; color: var(--text-muted); display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+    /* Social calendar */
+    .sc-bar { display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:14px; }
+    .sc-month { font-family: var(--font-display); font-size:26px; font-weight:500; min-width:190px; }
+    .sc-nav { display:flex; gap:6px; }
+    .sc-stats { display:flex; gap:8px; flex-wrap:wrap; margin-left:auto; }
+    .sc-stat { font-size:12.5px; color: var(--text-muted); background: var(--bg-card); border:1px solid var(--border-subtle); border-radius:999px; padding:5px 11px; }
+    .sc-stat b { color: var(--text-main); }
+    .sc-filters { display:flex; gap:6px; flex-wrap:wrap; margin-bottom:12px; }
+    .sc-filters button { border:1px solid var(--border-subtle); background: var(--bg-card); color: var(--text-main); border-radius:999px; padding:5px 12px; font-size:12.5px; font-weight:600; cursor:pointer; }
+    .sc-filters button.on { background: var(--text-main); color: var(--bg-card); border-color: var(--text-main); }
+    .sc-layout { display:grid; grid-template-columns: minmax(0, 1fr) 280px; gap:16px; align-items:start; }
+    .sc-grid { display:grid; grid-template-columns: repeat(7, minmax(0, 1fr)); border:1px solid var(--border-subtle); border-radius: var(--radius-lg); overflow:hidden; background: var(--border-subtle); gap:1px; }
+    .sc-dow { background: var(--bg-sunken); font-size:10.5px; font-weight:600; letter-spacing:.1em; text-transform:uppercase; color: var(--text-muted); padding:8px 8px; }
+    .sc-day { background: var(--bg-card); min-height:118px; padding:6px; display:flex; flex-direction:column; gap:4px; cursor:pointer; position:relative; min-width:0; }
+    .sc-day.out { background: var(--bg-sunken); }
+    .sc-day.out .sc-num { opacity:.45; }
+    .sc-day.sel { box-shadow: inset 0 0 0 2px var(--accent-terracotta); }
+    .sc-day.drop { background: var(--accent-terracotta-soft); }
+    .sc-num { font-size:12px; font-weight:600; color: var(--text-muted); display:flex; align-items:center; justify-content:space-between; }
+    .sc-day.today .sc-num span { background: var(--text-main); color: var(--bg-card); border-radius:999px; min-width:22px; height:22px; display:inline-flex; align-items:center; justify-content:center; padding:0 6px; }
+    .sc-add { opacity:0; border:0; background: transparent; color: var(--text-muted); font-size:16px; line-height:1; cursor:pointer; padding:0 2px; }
+    .sc-day:hover .sc-add { opacity:1; }
+    .sc-chip { display:flex; align-items:center; gap:5px; border-radius:8px; padding:3px 6px; font-size:11.5px; font-weight:600; line-height:1.25; cursor:pointer; border:1px solid transparent; min-width:0; background: var(--bg-sunken); color: var(--text-main); }
+    .sc-chip span.t { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; flex:1; min-width:0; }
+    .sc-chip img { width:18px; height:18px; border-radius:4px; object-fit:cover; flex:0 0 18px; }
+    .sc-chip[draggable="true"] { cursor:grab; }
+    .sc-more { font-size:11px; color: var(--text-muted); font-weight:600; padding-left:4px; }
+    .st-Idea { background:#EFEDE8; color:#57534E; }
+    .st-Draft { background:#E3EAEE; color:#2F4A58; }
+    .st-Scheduled { background:#F0E6D8; color:#7A5733; }
+    .st-Posted { background:#E2E9DC; color:#2F462D; }
+    .st-dot { width:7px; height:7px; border-radius:50%; flex:0 0 7px; background: currentColor; opacity:.8; }
+    .sc-dots { display:none; gap:3px; flex-wrap:wrap; }
+    .sc-dots i { width:6px; height:6px; border-radius:50%; display:block; }
+    .sc-side .card + .card { margin-top:14px; }
+    .sc-item { display:flex; gap:10px; padding:10px 0; border-bottom:1px solid var(--border-subtle); cursor:pointer; align-items:flex-start; }
+    .sc-item:last-child { border-bottom:0; }
+    .sc-item img, .sc-item .ph { width:44px; height:44px; border-radius:8px; object-fit:cover; flex:0 0 44px; background: var(--bg-sunken); display:flex; align-items:center; justify-content:center; font-size:18px; }
+    .sc-item strong { display:block; font-size:13.5px; }
+    .sc-item small { display:block; color: var(--text-muted); font-size:12px; }
+    .sc-pl { display:inline-flex; gap:3px; }
+    .sc-pl b { font-size:9.5px; font-weight:700; letter-spacing:.04em; border-radius:4px; padding:1px 4px; background: var(--bg-sunken); color: var(--text-muted); }
+    .pp-pills { display:flex; gap:6px; flex-wrap:wrap; }
+    .pp-pills label { display:inline-flex; align-items:center; gap:6px; border:1px solid var(--border-strong); border-radius:999px; padding:6px 12px; font-size:13px; font-weight:600; cursor:pointer; user-select:none; }
+    .pp-pills input { display:none; }
+    .pp-pills label.on { background: var(--text-main); color: var(--bg-card); border-color: var(--text-main); }
+    .pp-photo { display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
+    .pp-photo img { width:96px; height:96px; object-fit:cover; border-radius:10px; }
+    @media (max-width: 1100px) { .sc-layout { grid-template-columns: 1fr; } }
+    @media (max-width: 700px) {
+      .sc-day { min-height:58px; padding:4px; }
+      .sc-day .sc-chip, .sc-day .sc-more, .sc-add { display:none; }
+      .sc-dots { display:flex; }
+      .sc-dow { padding:6px 2px; text-align:center; letter-spacing:0; font-size:10px; }
+      .sc-num { justify-content:center; }
+      .sc-month { font-size:22px; min-width:0; }
+      .sc-stats { margin-left:0; }
+      .sc-filters { flex-wrap:nowrap; overflow-x:auto; margin:0 -16px 12px; padding:0 16px; scrollbar-width:none; }
+      .sc-filters::-webkit-scrollbar { display:none; }
+      .sc-filters button { flex:0 0 auto; }
+    }
     /* Trash */
     .trash-row { display:flex; gap:12px; align-items:center; padding:12px 0; border-bottom:1px solid var(--border-subtle); flex-wrap:wrap; }
     .trash-row:last-child { border-bottom:0; }
@@ -2962,6 +3023,11 @@
         <button class="nav-item" data-tab="portfolio" data-short="Our work" title="Our work — photos &amp; videos to share with leads">
           <span class="nav-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2.5"/><circle cx="9" cy="10" r="1.8"/><path d="m21 16-5-5-9 9"/></svg></span>
           <span class="nav-label">Our Work</span>
+        </button>
+        <button class="nav-item" data-tab="social" data-short="Social" title="Social media calendar — plan posts and reels">
+          <span class="nav-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4.5" width="18" height="16" rx="2.5"/><path d="M3 9.5h18M8 3v3M16 3v3"/><path d="m10 13.2 4.5 2.3-4.5 2.3z" fill="currentColor" stroke="none"/></svg></span>
+          <span class="nav-label">Social Calendar</span>
+          <span class="nav-badge" id="badge-social" hidden>0</span>
         </button>
         <div class="nav-section">Estimating</div>
         <button class="nav-item" data-tab="quickboq" data-short="Quick" title="Quick BOQ — rough cost for a phone enquiry">
@@ -3645,6 +3711,20 @@
         </section>
 
         <!-- ==================== 8. GOOGLE DRIVE SYNC & STUDIO BRANDING VIEW ==================== -->
+        <section id="view-social" class="app-view" style="display:none;">
+          <div class="page-header">
+            <div>
+              <h1 class="page-title">Social Calendar</h1>
+              <p class="page-sub">Plan Instagram, Facebook &amp; YouTube posts — reels, before/after, site progress, tips — and never miss a posting day</p>
+            </div>
+            <div style="display:flex; gap:8px; flex-wrap:wrap;">
+              <button type="button" class="btn btn-outline" data-sp-new="idea">+ Idea</button>
+              <button type="button" class="btn btn-primary" data-sp-new="">+ New post</button>
+            </div>
+          </div>
+          <div id="social-root"></div>
+        </section>
+
         <section id="view-portfolio" class="app-view" style="display:none;">
           <div class="page-header">
             <div>
@@ -3872,6 +3952,12 @@
     <div class="modal-box">
       <div class="modal-header"><h3 class="font-serif" style="font-size:22px; font-weight:700;" id="qp-title">Quick payment</h3><button class="btn btn-outline btn-sm" data-close-modal="modal-quickpay">✕</button></div>
       <div id="qp-body"></div>
+    </div>
+  </div>
+  <div class="modal-backdrop" id="modal-post">
+    <div class="modal-box modal-lg">
+      <div class="modal-header"><h3 class="font-serif" style="font-size:22px; font-weight:700;" id="post-title">Post</h3><button class="btn btn-outline btn-sm" data-close-modal="modal-post">✕</button></div>
+      <div id="post-body"></div>
     </div>
   </div>
   <div class="modal-backdrop" id="modal-trash">
@@ -4802,7 +4888,7 @@
       ];
       function normPerm(o) {
         o = o || {};
-        const out = { tabs: ACCESS_SCREENS.map(x => x[0]).filter(t => t === 'dashboard' || t === 'attendance' || (o.tabs || []).includes(t)).concat(['portfolio']) };
+        const out = { tabs: ACCESS_SCREENS.map(x => x[0]).filter(t => t === 'dashboard' || t === 'attendance' || (o.tabs || []).includes(t)).concat(['portfolio', 'social']) };
         ACCESS_ABILITIES.forEach(([k]) => { out[k] = Boolean(o[k]); });
         return out;
       }
@@ -9710,6 +9796,176 @@
 
 
 
+
+      // ===== Social media calendar =====
+      const SP_PLATFORMS = [['Instagram', 'IG'], ['Facebook', 'FB'], ['YouTube', 'YT'], ['LinkedIn', 'IN'], ['Pinterest', 'PIN'], ['WhatsApp status', 'WA']];
+      const SP_TYPES = ['Reel', 'Post', 'Carousel', 'Story', 'Video', 'Short'];
+      const SP_STATUSES = ['Idea', 'Draft', 'Scheduled', 'Posted'];
+      const SP_THEMES = ['Before / after', 'Project walkthrough', 'Site progress', 'Design tips', 'Client testimonial', 'Material spotlight', 'Behind the scenes', 'Team', 'Festival / greeting', 'Offer / announcement', '3D render', 'Quote / inspiration'];
+      const SP_DOT = { Idea: '#A39A90', Draft: '#46606E', Scheduled: '#A67C52', Posted: '#3E5A3B' };
+      let spCtx = null; // editing a post
+      const spUI = { month: null, sel: null, plat: '' };
+      function spList() { if (!Array.isArray(state.posts)) state.posts = []; return state.posts; }
+      const spPad = n => String(n).padStart(2, '0');
+      const spYmd = d => `${d.getFullYear()}-${spPad(d.getMonth() + 1)}-${spPad(d.getDate())}`;
+      function spShort(name) { const f = SP_PLATFORMS.find(x => x[0] === name); return f ? f[1] : name; }
+      function spVisible(x) { return !spUI.plat || (x.platforms || []).includes(spUI.plat); }
+      function spDueNow() { const now = Date.now(); return spList().filter(x => x.date && x.status !== 'Posted' && x.status !== 'Idea' && new Date(`${x.date}T${x.time || '10:00'}`).getTime() <= now); }
+      function updateSocialBadge() { const b = document.getElementById('badge-social'); if (!b) return; const n = spDueNow().length; b.textContent = n; b.hidden = !n; }
+      function spChip(x) {
+        return `<div class="sc-chip st-${escapeHtml(x.status || 'Idea')}" draggable="true" data-sp-open="${x.id}" data-sp-drag="${x.id}" title="${escapeHtml([x.time, x.title, (x.platforms || []).join(', '), x.status].filter(Boolean).join(' · '))}">${x.photo ? `<img src="${escapeHtml(x.photo)}" alt="" />` : '<i class="st-dot"></i>'}<span class="t">${x.time ? `${escapeHtml(x.time)} ` : ''}${escapeHtml(x.title || x.type || 'Post')}</span></div>`;
+      }
+      function spRow(x) {
+        const when = x.date ? `${fmtDay(x.date)}${x.time ? ' · ' + x.time : ''}` : 'No date yet';
+        return `<div class="sc-item" data-sp-open="${x.id}">${x.photo ? `<img src="${escapeHtml(x.photo)}" alt="" />` : `<span class="ph">${x.type === 'Reel' || x.type === 'Video' || x.type === 'Short' ? '🎬' : '🖼️'}</span>`}
+          <span style="flex:1; min-width:0;"><strong>${escapeHtml(x.title || x.type || 'Post')}</strong><small>${escapeHtml([when, x.type, x.theme].filter(Boolean).join(' · '))}</small>
+          <span style="display:flex; gap:6px; align-items:center; margin-top:4px; flex-wrap:wrap;"><span class="badge st-${escapeHtml(x.status || 'Idea')}" style="font-size:10.5px;">${escapeHtml(x.status || 'Idea')}</span><span class="sc-pl">${(x.platforms || []).map(pl => `<b>${escapeHtml(spShort(pl))}</b>`).join('')}</span>${x.ownerEmail ? `<small style="display:inline;">${escapeHtml(staffFirst(x.ownerEmail) || '')}</small>` : ''}</span></span></div>`;
+      }
+      function renderSocial() {
+        const box = document.getElementById('social-root'); if (!box) return;
+        const today = new Date(); const todayYmd = spYmd(today);
+        if (!spUI.month) spUI.month = `${today.getFullYear()}-${spPad(today.getMonth() + 1)}`;
+        if (!spUI.sel) spUI.sel = todayYmd;
+        const [Y, M] = spUI.month.split('-').map(Number);
+        const first = new Date(Y, M - 1, 1);
+        const start = new Date(first); start.setDate(1 - ((first.getDay() + 6) % 7)); // weeks start Monday
+        const days = []; for (let i = 0; i < 42; i++) { const d = new Date(start); d.setDate(start.getDate() + i); days.push(d); }
+        while (days.length > 35 && days[days.length - 7].getMonth() !== M - 1) days.splice(-7, 7);
+        const all = spList().filter(spVisible);
+        const byDay = {}; all.filter(x => x.date).forEach(x => { (byDay[x.date] = byDay[x.date] || []).push(x); });
+        Object.values(byDay).forEach(l => l.sort((a, b) => String(a.time || '99').localeCompare(String(b.time || '99'))));
+        const inMonth = all.filter(x => x.date && x.date.startsWith(spUI.month));
+        const cnt = st => inMonth.filter(x => x.status === st).length;
+        const ideas = all.filter(x => !x.date).sort((a, b) => String(b.createdAt || '').localeCompare(String(a.createdAt || '')));
+        const selList = byDay[spUI.sel] || [];
+        const upcoming = all.filter(x => x.date && x.date >= todayYmd && x.status !== 'Posted').sort((a, b) => (a.date + (a.time || '')).localeCompare(b.date + (b.time || ''))).slice(0, 8);
+        const due = spDueNow().filter(spVisible);
+        const monthName = first.toLocaleDateString('en-IN', { month: 'long', year: 'numeric' });
+        box.innerHTML = `
+          <div class="sc-bar">
+            <div class="sc-nav"><button type="button" class="btn btn-outline btn-sm" data-sp-month="-1" aria-label="Previous month">‹</button><button type="button" class="btn btn-outline btn-sm" data-sp-month="0">Today</button><button type="button" class="btn btn-outline btn-sm" data-sp-month="1" aria-label="Next month">›</button></div>
+            <div class="sc-month">${escapeHtml(monthName)}</div>
+            <div class="sc-stats"><span class="sc-stat"><b>${inMonth.length}</b> planned</span><span class="sc-stat"><b>${cnt('Scheduled')}</b> scheduled</span><span class="sc-stat"><b>${cnt('Posted')}</b> posted</span>${due.length ? `<span class="sc-stat" style="color:var(--accent-rose); border-color:var(--accent-rose-soft);"><b style="color:inherit;">${due.length}</b> due — not posted</span>` : ''}</div>
+          </div>
+          <div class="sc-filters"><button type="button" class="${!spUI.plat ? 'on' : ''}" data-sp-plat="">All platforms</button>${SP_PLATFORMS.map(([n]) => `<button type="button" class="${spUI.plat === n ? 'on' : ''}" data-sp-plat="${escapeHtml(n)}">${escapeHtml(n)}</button>`).join('')}</div>
+          <div class="sc-layout">
+            <div>
+              <div class="sc-grid">
+                ${['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map(d => `<div class="sc-dow">${d}</div>`).join('')}
+                ${days.map(d => {
+                  const k = spYmd(d); const l = byDay[k] || [];
+                  const cls = ['sc-day', d.getMonth() !== M - 1 ? 'out' : '', k === todayYmd ? 'today' : '', k === spUI.sel ? 'sel' : ''].filter(Boolean).join(' ');
+                  return `<div class="${cls}" data-sp-day="${k}">
+                    <div class="sc-num"><span>${d.getDate()}</span><button type="button" class="sc-add" data-sp-addday="${k}" aria-label="Add post on ${k}">+</button></div>
+                    ${l.slice(0, 3).map(spChip).join('')}${l.length > 3 ? `<div class="sc-more">+${l.length - 3} more</div>` : ''}
+                    <div class="sc-dots">${l.slice(0, 6).map(x => `<i style="background:${SP_DOT[x.status] || '#A39A90'}"></i>`).join('')}</div>
+                  </div>`;
+                }).join('')}
+              </div>
+              <div class="card" style="margin-top:14px;">
+                <div class="hub-card-title" style="display:flex; justify-content:space-between; align-items:center; gap:8px;"><span>${escapeHtml(new Date(spUI.sel + 'T00:00').toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long' }))}</span><button type="button" class="btn btn-outline btn-sm" data-sp-addday="${spUI.sel}">+ Post on this day</button></div>
+                ${selList.length ? selList.map(spRow).join('') : '<div class="hub-muted" style="padding:8px 0;">Nothing planned for this day.</div>'}
+              </div>
+            </div>
+            <div class="sc-side">
+              ${due.length ? `<div class="card"><div class="hub-card-title" style="color:var(--accent-rose);">Due — not posted yet</div>${due.slice(0, 6).map(spRow).join('')}</div>` : ''}
+              <div class="card"><div class="hub-card-title">Coming up</div>${upcoming.length ? upcoming.map(spRow).join('') : '<div class="hub-muted">Nothing scheduled ahead. Plan 2–3 posts a week to stay visible.</div>'}</div>
+              <div class="card"><div class="hub-card-title" style="display:flex; justify-content:space-between; align-items:center;"><span>Ideas · no date</span><button type="button" class="btn btn-outline btn-sm" data-sp-new="idea">+ Idea</button></div>
+                <div class="hub-muted" style="font-size:12px; margin:-6px 0 4px;">Drag an idea onto a day to schedule it.</div>
+                <div data-sp-day="">${ideas.length ? ideas.map(x => spRow(x).replace('class="sc-item"', `class="sc-item" draggable="true" data-sp-drag="${x.id}"`)).join('') : '<div class="hub-muted">Jot down post ideas here — site photos to share, tips, festivals.</div>'}</div>
+              </div>
+            </div>
+          </div>`;
+      }
+      function spOpen(id, preset) {
+        const x = id ? spList().find(p2 => p2.id === id) : null;
+        const me = getCurrentStaff ? getCurrentStaff() : {};
+        spCtx = { id: x ? x.id : null, d: x ? JSON.parse(JSON.stringify(x)) : Object.assign({ title: '', date: '', time: '', platforms: ['Instagram'], type: 'Reel', status: 'Draft', theme: '', caption: '', hashtags: '', photo: '', ownerEmail: me && me.email || '', clientId: '', link: '' }, preset || {}) };
+        renderPostModal(); openModal('modal-post');
+        setTimeout(() => { const t = document.getElementById('pp-title'); if (t && !x && !isTouchDevice()) t.focus(); }, 60);
+      }
+      function renderPostModal() {
+        const box = document.getElementById('post-body'); if (!box || !spCtx) return;
+        const d = spCtx.d;
+        document.getElementById('post-title').textContent = spCtx.id ? 'Edit post' : d.status === 'Idea' ? 'New idea' : 'New post';
+        box.innerHTML = `
+          <div class="form-grid">
+            <div class="form-full"><label class="form-label">Title / hook *</label><input class="input" id="pp-title" value="${escapeHtml(d.title)}" placeholder="e.g. 3BHK Baner — kitchen before / after" /></div>
+            <div><label class="form-label">Date</label><input class="input" type="date" id="pp-date" value="${escapeHtml(d.date || '')}" /></div>
+            <div><label class="form-label">Time</label><input class="input" type="time" id="pp-time" value="${escapeHtml(d.time || '')}" /></div>
+            <div class="form-full"><label class="form-label">Platforms</label><div class="pp-pills">${SP_PLATFORMS.map(([n]) => `<label class="${(d.platforms || []).includes(n) ? 'on' : ''}"><input type="checkbox" data-pp-plat="${escapeHtml(n)}" ${(d.platforms || []).includes(n) ? 'checked' : ''} />${escapeHtml(n)}</label>`).join('')}</div></div>
+            <div><label class="form-label">Type</label><select class="select" id="pp-type">${SP_TYPES.map(t => `<option ${d.type === t ? 'selected' : ''}>${t}</option>`).join('')}</select></div>
+            <div><label class="form-label">Status</label><select class="select" id="pp-status">${SP_STATUSES.map(t => `<option ${d.status === t ? 'selected' : ''}>${t}</option>`).join('')}</select></div>
+            <div><label class="form-label">Theme</label><input class="input" id="pp-theme" list="dl-sp-themes" value="${escapeHtml(d.theme || '')}" placeholder="e.g. Before / after" /><datalist id="dl-sp-themes">${SP_THEMES.map(t => `<option value="${escapeHtml(t)}"></option>`).join('')}</datalist></div>
+            <div><label class="form-label">Who posts it</label><select class="select" id="pp-owner">${buildStaffOptionsHtml(d.ownerEmail, true)}</select></div>
+            <div class="form-full"><label class="form-label" style="display:flex; justify-content:space-between;"><span>Caption</span><button type="button" class="wa-linkbtn" data-pp-copy="caption" style="font-size:12px; padding:0;">Copy caption + hashtags</button></label><textarea class="textarea" id="pp-caption" rows="4" placeholder="Write the caption…">${escapeHtml(d.caption || '')}</textarea></div>
+            <div class="form-full"><label class="form-label">Hashtags</label><input class="input" id="pp-tags" value="${escapeHtml(d.hashtags || '')}" placeholder="#interiordesign #puneinteriors #baner #homedecor" /></div>
+            <div><label class="form-label">Project (optional)</label><select class="select" id="pp-client"><option value="">— none —</option>${(state.clients || []).map(c => `<option value="${c.id}" ${d.clientId === c.id ? 'selected' : ''}>${escapeHtml(c.name)}</option>`).join('')}</select></div>
+            <div><label class="form-label">Link after posting</label><input class="input" id="pp-link" value="${escapeHtml(d.link || '')}" placeholder="https://instagram.com/reel/…" /></div>
+            <div class="form-full"><label class="form-label">Photo / cover</label><div class="pp-photo">${d.photo ? `<img src="${escapeHtml(d.photo)}" alt="" /><button type="button" class="btn btn-outline btn-sm" data-pp-photo-del>Remove</button>` : ''}<label class="sb-photo-btn">📷 ${d.photo ? 'Change' : 'Add'} photo<input type="file" accept="image/*" hidden id="pp-photo" /></label></div></div>
+          </div>
+          <div class="modal-actions-row" style="justify-content:space-between; flex-wrap:wrap;">
+            <span style="display:flex; gap:8px;">${spCtx.id ? `<button type="button" class="btn btn-danger-soft" data-sp-del="${spCtx.id}">Delete</button><button type="button" class="btn btn-outline" data-sp-dup>Duplicate</button>` : ''}</span>
+            <span style="display:flex; gap:8px;"><button type="button" class="btn btn-outline" data-close-modal="modal-post">Cancel</button>${spCtx.id && d.status !== 'Posted' ? '<button type="button" class="btn btn-emerald" data-sp-posted>Mark posted</button>' : ''}<button type="button" class="btn btn-primary" data-sp-save>Save</button></span>
+          </div>`;
+      }
+      function spCapture() {
+        if (!spCtx) return; const d = spCtx.d; const g = id => document.getElementById(id);
+        if (!g('pp-title')) return;
+        d.title = g('pp-title').value.trim(); d.date = g('pp-date').value; d.time = g('pp-time').value;
+        d.type = g('pp-type').value; d.status = g('pp-status').value; d.theme = g('pp-theme').value.trim();
+        d.ownerEmail = g('pp-owner').value; d.caption = g('pp-caption').value; d.hashtags = g('pp-tags').value.trim();
+        d.clientId = g('pp-client').value; d.link = g('pp-link').value.trim();
+        d.platforms = [...document.querySelectorAll('[data-pp-plat]')].filter(x => x.checked).map(x => x.dataset.ppPlat);
+      }
+      function spSave(extra) {
+        spCapture(); const d = spCtx.d; Object.assign(d, extra || {});
+        if (!d.title) { showToast('Add a title'); document.getElementById('pp-title')?.focus(); return; }
+        if (d.status === 'Idea' && d.date) d.status = 'Draft';
+        if (spCtx.id) { const x = spList().find(p2 => p2.id === spCtx.id); if (x) Object.assign(x, d, { editedBy: state.activeStaffEmail, editedAt: new Date().toISOString() }); }
+        else spList().push(Object.assign({ id: uid('sp'), createdAt: new Date().toISOString(), by: state.activeStaffEmail }, d));
+        if (d.date) { spUI.month = d.date.slice(0, 7); spUI.sel = d.date; }
+        commitState(); closeModal('modal-post'); spCtx = null; renderAll();
+        showToast(extra && extra.status === 'Posted' ? 'Marked as posted' : 'Saved');
+      }
+      document.addEventListener('click', async e => {
+        const t = e.target;
+        const nw = t.closest('[data-sp-new]'); if (nw) { spOpen(null, nw.dataset.spNew === 'idea' ? { status: 'Idea' } : { date: spUI.sel || '' }); return; }
+        const ad = t.closest('[data-sp-addday]'); if (ad) { e.stopPropagation(); spUI.sel = ad.dataset.spAddday; spOpen(null, { date: ad.dataset.spAddday, status: 'Draft' }); return; }
+        const op = t.closest('[data-sp-open]'); if (op && !t.closest('#modal-post')) { spOpen(op.dataset.spOpen); return; }
+        const dy = t.closest('.sc-day[data-sp-day]'); if (dy) { spUI.sel = dy.dataset.spDay; renderSocial(); return; }
+        const mo = t.closest('[data-sp-month]');
+        if (mo) { const v = +mo.dataset.spMonth; if (!v) { const n = new Date(); spUI.month = `${n.getFullYear()}-${spPad(n.getMonth() + 1)}`; spUI.sel = spYmd(n); } else { const [y, m] = spUI.month.split('-').map(Number); const n = new Date(y, m - 1 + v, 1); spUI.month = `${n.getFullYear()}-${spPad(n.getMonth() + 1)}`; spUI.sel = `${spUI.month}-01`; } renderSocial(); return; }
+        const pl = t.closest('[data-sp-plat]'); if (pl) { spUI.plat = pl.dataset.spPlat; renderSocial(); return; }
+        if (!spCtx || !t.closest('#modal-post')) return;
+        if (t.closest('[data-sp-save]')) { spSave(); return; }
+        if (t.closest('[data-sp-posted]')) { spSave({ status: 'Posted', postedAt: new Date().toISOString() }); return; }
+        if (t.closest('[data-sp-dup]')) { spCapture(); const copy = JSON.parse(JSON.stringify(spCtx.d)); copy.title = `${copy.title} (copy)`; copy.status = 'Draft'; copy.link = ''; delete copy.postedAt; spCtx = { id: null, d: copy }; renderPostModal(); showToast('Copy — change the date and save'); return; }
+        if (t.closest('[data-pp-photo-del]')) { spCapture(); spCtx.d.photo = ''; renderPostModal(); return; }
+        if (t.closest('[data-pp-copy]')) { spCapture(); const txt = [spCtx.d.caption, spCtx.d.hashtags].filter(Boolean).join('\n\n'); try { await navigator.clipboard.writeText(txt); showToast('Caption copied'); } catch (err) { window.prompt('Copy the caption', txt); } return; }
+        const del = t.closest('[data-sp-del]');
+        if (del) {
+          const x = spList().find(p2 => p2.id === del.dataset.spDel); if (!x) return;
+          if (!await appConfirm(`Delete “${x.title}”?\n\nIt stays in Trash for 30 days.`)) return;
+          state.posts = spList().filter(p2 => p2.id !== x.id); commitState(); closeModal('modal-post'); spCtx = null; renderAll(); showToast('Post deleted');
+        }
+      });
+      document.addEventListener('change', async e => {
+        const t = e.target;
+        if (t.dataset && t.dataset.ppPlat !== undefined) { t.closest('label').classList.toggle('on', t.checked); return; }
+        if (t.id === 'pp-photo' && spCtx) { const f = t.files && t.files[0]; if (!f) return; spCapture(); try { spCtx.d.photo = await compressImageFile(f, 900, 0.78); } catch (err) { showToast('Could not read that photo'); } renderPostModal(); }
+      });
+      // drag a post (or an idea) onto another day
+      document.addEventListener('dragstart', e => { const c = e.target.closest && e.target.closest('[data-sp-drag]'); if (!c) return; e.dataTransfer.setData('text/plain', c.dataset.spDrag); e.dataTransfer.effectAllowed = 'move'; });
+      document.addEventListener('dragover', e => { const d = e.target.closest && e.target.closest('.sc-day[data-sp-day]'); if (!d) return; e.preventDefault(); document.querySelectorAll('.sc-day.drop').forEach(x => x !== d && x.classList.remove('drop')); d.classList.add('drop'); });
+      document.addEventListener('dragleave', e => { const d = e.target.closest && e.target.closest('.sc-day.drop'); if (d && !d.contains(e.relatedTarget)) d.classList.remove('drop'); });
+      document.addEventListener('drop', e => {
+        const d = e.target.closest && e.target.closest('.sc-day[data-sp-day]'); if (!d) return; e.preventDefault();
+        const x = spList().find(p2 => p2.id === e.dataTransfer.getData('text/plain')); if (!x) return;
+        x.date = d.dataset.spDay; if (x.status === 'Idea') x.status = 'Draft';
+        spUI.sel = x.date; commitState(); renderAll(); showToast(`Moved to ${fmtDay(x.date)}`);
+      });
+
       // ===== Quick payment: pick client → received / paid out (for an iPhone / iPad Shortcut) =====
       // Shortcut link: <site>/?quick=pay   (optional: &dir=in|out  &amount=5000)
       let qpCtx = null;
@@ -10191,7 +10447,7 @@
       const TRASH_DAYS = 30;
       let trashSkipSet = null;
       const trashSkip = k => { if (!trashSkipSet) trashSkipSet = new Set(['trash', 'cloudMeta', ...LOCAL_UI_KEYS]); return trashSkipSet.has(k); };
-      const TRASH_KIND = { leads: ['Lead', '👤'], clients: ['Client', '🏠'], money: ['Payment', '₹'], selections: ['Selection', '🪑'], pos: ['Purchase order', '📦'], siteBills: ['Site bill', '🧾'], invoices: ['GST bill', '🧾'], tasks: ['Task', '✓'], vendors: ['Vendor', '🔧'], catalog: ['Catalog item', '📋'], staff: ['Team member', '👥'], roles: ['Role', '👥'], salaryRuns: ['Salary record', '💼'], attendance: ['Attendance', '🕘'], links: ['Link', '🔗'], linkSets: ['Link bundle', '🔗'], notes: ['Note', '📝'], phases: ['Timeline phase', '📅'], checklist: ['Checklist item', '☑'], siteVendors: ['Vendor on site', '🔧'], trades: ['Trade', '🔧'], waTemplates: ['Message', '💬'], meetings: ['Meeting', '📅'], activities: ['Call / discussion', '📞'] };
+      const TRASH_KIND = { posts: ['Social post', '📣'], leads: ['Lead', '👤'], clients: ['Client', '🏠'], money: ['Payment', '₹'], selections: ['Selection', '🪑'], pos: ['Purchase order', '📦'], siteBills: ['Site bill', '🧾'], invoices: ['GST bill', '🧾'], tasks: ['Task', '✓'], vendors: ['Vendor', '🔧'], catalog: ['Catalog item', '📋'], staff: ['Team member', '👥'], roles: ['Role', '👥'], salaryRuns: ['Salary record', '💼'], attendance: ['Attendance', '🕘'], links: ['Link', '🔗'], linkSets: ['Link bundle', '🔗'], notes: ['Note', '📝'], phases: ['Timeline phase', '📅'], checklist: ['Checklist item', '☑'], siteVendors: ['Vendor on site', '🔧'], trades: ['Trade', '🔧'], waTemplates: ['Message', '💬'], meetings: ['Meeting', '📅'], activities: ['Call / discussion', '📞'] };
       const isIdList = v => Array.isArray(v) && v.length > 0 && v.every(x => x && typeof x === 'object' && !Array.isArray(x) && x.id);
       function trashKindOf(key) { return TRASH_KIND[key] || [key.replace(/([A-Z])/g, ' $1').replace(/^./, c => c.toUpperCase()).replace(/s$/, ''), '🗂️']; }
       function trashItemName(key, it) {
@@ -12513,6 +12769,8 @@
         if (state.activeTab === 'team') renderTeam();
         if (state.activeTab === 'attendance') renderAttendance();
         if (state.activeTab === 'portfolio' && typeof renderPortfolio === 'function') renderPortfolio();
+        if (state.activeTab === 'social' && typeof renderSocial === 'function') renderSocial();
+        if (typeof updateSocialBadge === 'function') updateSocialBadge();
         if (state.activeTab === 'backup' && typeof renderCloudSettings === 'function') renderCloudSettings();
         if (state.activeTab === 'backup' && typeof renderLeadAlertSettings === 'function') renderLeadAlertSettings();
         if (state.activeTab === 'leads' && typeof leadPopQueue !== 'undefined' && !leadPopQueue.length) document.title = BASE_TITLE;
@@ -15185,6 +15443,14 @@
             if (!isNaN(at) && at.getTime() <= now) items.push({ key: `task|${t.id}|${t.dueDate}|${t.dueTime || ''}`, kind: 'task', taskId: t.id });
           });
         }
+        // social posts I post (or nobody's, for the admin) when their day / time comes
+        (state.posts || []).forEach(x => {
+          if (!x.date || x.status === 'Posted' || x.status === 'Idea') return;
+          const mine = x.ownerEmail ? x.ownerEmail === me.email : me.role === 'Principal / Admin';
+          if (!mine) return;
+          const at = new Date(`${x.date}T${x.time || '10:00'}`);
+          if (!isNaN(at) && at.getTime() <= now && now - at.getTime() < 3 * 86400000) items.push({ key: `post|${x.id}|${x.date}|${x.time || ''}`, kind: 'post', postId: x.id });
+        });
         return items;
       }
       function checkReminders(firstRun) {
@@ -15208,7 +15474,8 @@
         if (prefs.system && appInBackground()) {
           try {
             const first = due[0]; const l = first.leadId ? findLead(first.leadId) : null; const tk = first.taskId ? (state.tasks || []).find(x => x.id === first.taskId) : null;
-            const title = due.length > 1 ? `${due.length} reminders` : first.kind === 'task' ? `Task: ${tk ? tk.title : ''}` : first.kind === 'soon' ? `Meeting soon: ${l ? l.name : ''}` : first.kind === 'check' ? `How did the meeting with ${l ? l.name : ''} go?` : `${first.label || 'Call'}: ${l ? l.name : ''}`;
+            const px = first.postId ? (state.posts || []).find(q => q.id === first.postId) : null;
+            const title = due.length > 1 ? `${due.length} reminders` : first.kind === 'post' ? `Post today: ${px ? px.title : ''}` : first.kind === 'task' ? `Task: ${tk ? tk.title : ''}` : first.kind === 'soon' ? `Meeting soon: ${l ? l.name : ''}` : first.kind === 'check' ? `How did the meeting with ${l ? l.name : ''} go?` : `${first.label || 'Call'}: ${l ? l.name : ''}`;
             const body = due.length > 1 ? due.slice(0, 4).map(x => x.kind === 'task' ? ((state.tasks || []).find(t => t.id === x.taskId) || {}).title : (findLead(x.leadId) || {}).name).filter(Boolean).join(', ')
               : tk ? [(clientById(tk.clientId) || {}).name, tk.dueTime ? `due ${tk.dueTime}` : 'due today'].filter(Boolean).join(' · ') : l ? [l.phone, l.location].filter(Boolean).join(' · ') : '';
             sysNotify(title, body, 'ids-reminder', due.length > 1 ? { tab: 'dashboard' } : tk ? { taskId: tk.id } : l ? { leadId: l.id } : {});
@@ -15218,7 +15485,7 @@
       function renderReminders() {
         const box = document.getElementById('reminder-stack');
         if (!box) return;
-        reminderQueue = reminderQueue.filter(it => it.kind === 'summary' || (it.kind === 'task' ? (state.tasks || []).some(t => t.id === it.taskId && !t.done) : findLead(it.leadId)));
+        reminderQueue = reminderQueue.filter(it => it.kind === 'summary' || (it.kind === 'post' ? (state.posts || []).some(x => x.id === it.postId && x.status !== 'Posted') : it.kind === 'task' ? (state.tasks || []).some(t => t.id === it.taskId && !t.done) : findLead(it.leadId)));
         if (!reminderQueue.length) { box.hidden = true; box.innerHTML = ''; return; }
         box.hidden = false;
         const shown = reminderQueue.slice(0, 3);
@@ -15226,6 +15493,16 @@
           if (it.kind === 'summary') {
             return `<div class="rem-card"><div class="rem-head"><span class="rem-ico">⏰</span><div style="flex:1;"><strong>${[it.count ? `${it.count} follow-up${it.count === 1 ? '' : 's'}` : '', it.tasks ? `${it.tasks} task${it.tasks === 1 ? '' : 's'}` : ''].filter(Boolean).join(' & ')} due</strong><small>Waiting for you — see Home and the client Tasks</small></div><button class="lead-pop-x" data-rem-close="${it.key}" aria-label="Close">✕</button></div>
               <div class="rem-actions"><button type="button" class="btn btn-dark btn-sm" data-rem-open-list="${it.key}">Open Home</button></div></div>`;
+          }
+          if (it.kind === 'post') {
+            const x = (state.posts || []).find(q => q.id === it.postId) || {};
+            return `<div class="rem-card rem-due">
+            <div class="rem-head"><span class="rem-ico">📣</span>
+              <div style="flex:1; min-width:0;"><strong>Post today: ${escapeHtml(x.title || '')}</strong><small>${escapeHtml([(x.platforms || []).join(', '), x.type, x.time].filter(Boolean).join(' · '))}</small></div>
+              <button class="lead-pop-x" data-rem-close="${it.key}" aria-label="Close">✕</button></div>
+            <div class="rem-actions"><button type="button" class="btn btn-outline btn-sm" data-rem-post-open="${it.key}" data-post-id="${x.id}">Open &amp; copy caption</button>
+              <button type="button" class="btn btn-emerald btn-sm" data-rem-post-done="${it.key}" data-post-id="${x.id}">Mark posted</button>
+              <button type="button" class="btn btn-outline btn-sm" data-rem-snooze="${it.key}">Snooze 30 min</button></div></div>`;
           }
           if (it.kind === 'task') {
             const tk = (state.tasks || []).find(x => x.id === it.taskId) || {};
@@ -15387,6 +15664,8 @@
         // reminder card actions
         const rc = t.closest('[data-rem-close]'); if (rc) { dropReminder(rc.dataset.remClose); return; }
         const rs = t.closest('[data-rem-snooze]'); if (rs) { snoozeReminder(rs.dataset.remSnooze, 30); return; }
+        const rpd = t.closest('[data-rem-post-done]'); if (rpd) { const x = (state.posts || []).find(q => q.id === rpd.dataset.postId); dropReminder(rpd.dataset.remPostDone); if (x) { x.status = 'Posted'; x.postedAt = new Date().toISOString(); commitState(); renderAll(); showToast('Marked as posted'); } return; }
+        const rpo = t.closest('[data-rem-post-open]'); if (rpo) { dropReminder(rpo.dataset.remPostOpen); switchTab('social'); spOpen(rpo.dataset.postId); return; }
         const rtd = t.closest('[data-rem-task-done]'); if (rtd) { const tk = (state.tasks || []).find(x => x.id === rtd.dataset.taskId); dropReminder(rtd.dataset.remTaskDone); if (tk) { tk.done = true; commitState(); renderAll(); showToast('Task done'); } return; }
         const rto = t.closest('[data-rem-task-open]'); if (rto) { const tk = (state.tasks || []).find(x => x.id === rto.dataset.taskId); dropReminder(rto.dataset.remTaskOpen); if (tk) openTaskInHub(tk); return; }
         const rl = t.closest('[data-rem-log]'); if (rl) { dropReminder(rl.dataset.remLog); openLeadFlow('call', rl.dataset.leadId); return; }
@@ -18026,7 +18305,7 @@
       }, true);
 
       // ===== Undo for deletes =====
-      const UNDOABLE = '[data-sv-del], [data-trade-del], [data-wa-del], [data-client-del], [data-leads-bulk-del], [data-hub-ls-del], [data-sel-del], [data-po-del], [data-ph-del], [data-ck-del], [data-invoice-del], [data-sb-del], [data-pay-del], [data-vendor-del], [data-ms-due], [data-ms-quick], #btn-import-confirm, [data-delete-room], [data-delete-item], [data-cat-delete], [data-delete-revision], [data-hub-task-del], [data-hub-note-del], [data-hub-link-del], [data-remove-staff], #btn-confirm-delete-estimate, #btn-clear-all-rooms';
+      const UNDOABLE = '[data-sp-del], [data-sv-del], [data-trade-del], [data-wa-del], [data-client-del], [data-leads-bulk-del], [data-hub-ls-del], [data-sel-del], [data-po-del], [data-ph-del], [data-ck-del], [data-invoice-del], [data-sb-del], [data-pay-del], [data-vendor-del], [data-ms-due], [data-ms-quick], #btn-import-confirm, [data-delete-room], [data-delete-item], [data-cat-delete], [data-delete-revision], [data-hub-task-del], [data-hub-note-del], [data-hub-link-del], [data-remove-staff], #btn-confirm-delete-estimate, #btn-clear-all-rooms';
       let undoSnapshot = null;
       let undoTimer = null;
       let undoArm = null;
