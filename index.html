@@ -2655,6 +2655,37 @@
     .lo-chip:hover { border-color: var(--accent-terracotta); color: var(--text-main); }
     .lo-rate { font-size: 9.5px; font-weight: 700; letter-spacing: .05em; color: var(--accent-sky); margin-top: 3px; text-transform: uppercase; }
     .lo-chip.on { border-style: solid; border-color: transparent; background: var(--accent-sky-soft); color: var(--accent-sky); }
+    /* Material calculator */
+    .mc-top { display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
+    .mc-top .input, .mc-top .select { width:auto; flex:1 1 200px; }
+    .mc-tabs { display:flex; gap:6px; flex-wrap:wrap; margin:14px 0 12px; }
+    .mc-tabs button { border:1px solid var(--border-subtle); background: var(--bg-card); color: var(--text-main); border-radius:999px; padding:7px 14px; font-size:13px; font-weight:600; cursor:pointer; }
+    .mc-tabs button.on { background: var(--text-main); color: var(--bg-card); border-color: var(--text-main); }
+    @media (max-width: 700px) { .mc-tabs { flex-wrap: nowrap; overflow-x: auto; margin-left: -16px; margin-right: -16px; padding: 0 16px; scrollbar-width: none; } .mc-tabs::-webkit-scrollbar { display: none; } .mc-tabs button { flex: 0 0 auto; } .mc-row { grid-template-columns: minmax(0, 1fr) auto; } .mc-row input, .mc-row .amt { grid-column: span 1; } }
+    .mc-tabs button small { opacity:.65; font-weight:500; margin-left:4px; }
+    .mc-layout { display:grid; grid-template-columns: minmax(0, 1.35fr) minmax(320px, 1fr); gap:16px; align-items:start; }
+    @media (max-width: 1150px) { .mc-layout { grid-template-columns: 1fr; } }
+    .mc-scroll { overflow-x:auto; margin: 0 -4px; padding: 0 4px; }
+    .mc-table { width:100%; border-collapse: collapse; font-size:13px; }
+    .mc-table th { text-align:left; font-size:10.5px; letter-spacing:.06em; text-transform:uppercase; color: var(--text-muted); font-weight:600; padding:6px 4px; border-bottom:1px solid var(--border-subtle); white-space:nowrap; }
+    .mc-table td { padding:5px 4px; border-bottom:1px solid var(--border-subtle); vertical-align:middle; }
+    .mc-table input.input, .mc-table select.select { min-height:34px; padding:5px 7px; font-size:13px; }
+    .mc-table input[type=number] { width:64px; }
+    .mc-table .w-name { min-width:130px; }
+    .mc-table input[type=checkbox] { width:17px; height:17px; }
+    .mc-note { font-size:12px; color: var(--text-muted); margin-top:8px; line-height:1.5; }
+    .mc-list .mc-grp { font-size:10.5px; letter-spacing:.12em; text-transform:uppercase; color: var(--text-muted); font-weight:600; padding:12px 0 4px; }
+    .mc-row { display:grid; grid-template-columns: minmax(0, 1fr) auto 84px 84px; gap:8px; align-items:center; padding:6px 0; border-bottom:1px solid var(--border-subtle); font-size:13px; }
+    .mc-row.norate { grid-template-columns: minmax(0, 1fr) auto; }
+    .mc-row strong { display:block; font-weight:600; }
+    .mc-row small { display:block; color: var(--text-muted); font-size:11.5px; }
+    .mc-row .q { font-weight:700; white-space:nowrap; text-align:right; }
+    .mc-row input { width:84px; min-height:30px; padding:4px 6px; font-size:12.5px; text-align:right; }
+    .mc-row .amt { text-align:right; font-weight:600; font-variant-numeric: tabular-nums; }
+    .mc-total { display:flex; justify-content:space-between; font-weight:700; font-size:15px; padding:12px 0 2px; }
+    .mc-cfg { display:grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap:8px 12px; }
+    .mc-cfg label { font-size:12px; color: var(--text-muted); display:flex; flex-direction:column; gap:3px; }
+    .mc-cfg input { min-height:32px; padding:4px 8px; }
     /* Trash */
     .trash-row { display:flex; gap:12px; align-items:center; padding:12px 0; border-bottom:1px solid var(--border-subtle); flex-wrap:wrap; }
     .trash-row:last-child { border-bottom:0; }
@@ -3109,6 +3140,10 @@
           <span class="nav-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4.5" y="2.8" width="15" height="18.4" rx="2.2"/><path d="M8 7h8"/><path d="M8 11.5h.01"/><path d="M12 11.5h.01"/><path d="M16 11.5h.01"/><path d="M8 15.5h.01"/><path d="M12 15.5h.01"/><path d="M16 15.5v.01"/></svg></span>
           <span class="nav-label">Quick BOQ</span>
         </button>
+        <button class="nav-item" data-tab="matcalc" data-short="Material" title="Material calculator — ply, laminate, hardware, paint, ceiling, tiles, lights">
+          <span class="nav-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="2.5" width="16" height="19" rx="2.5"/><path d="M8 6.5h8"/><path d="M8 11h.01M12 11h.01M16 11h.01M8 14.5h.01M12 14.5h.01M16 14.5h.01M8 18h.01M12 18h4"/></svg></span>
+          <span class="nav-label">Material Calculator</span>
+        </button>
         <button class="nav-item" data-tab="catalog" data-short="Catalog" title="Item Catalog">
           <span class="nav-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 8 12 3 3 8v8l9 5 9-5z"/><path d="m3 8 9 5 9-5"/><path d="M12 13v8"/><path d="m7.5 5.5 9 5"/></svg></span>
           <span class="nav-label">Item Catalog</span>
@@ -3359,6 +3394,16 @@
         </section>
 
         <!-- ==================== 4. MASTER ITEM CATALOG VIEW ==================== -->
+        <section id="view-matcalc" class="app-view" style="display:none;">
+          <div class="page-header">
+            <div>
+              <h1 class="page-title">Material Calculator</h1>
+              <p class="page-sub">Quantities for plywood, laminate, hardware, paint, false ceiling, tiles, lights &amp; wallpaper — from room sizes and furniture</p>
+            </div>
+          </div>
+          <div id="matcalc-root"></div>
+        </section>
+
         <section id="view-quickboq" class="app-view" style="display:none;">
           <div class="page-header">
             <div>
@@ -4990,7 +5035,7 @@
       ];
       function normPerm(o) {
         o = o || {};
-        const out = { tabs: ACCESS_SCREENS.map(x => x[0]).filter(t => t === 'dashboard' || t === 'attendance' || (o.tabs || []).includes(t)).concat(['portfolio', 'social']) };
+        const out = { tabs: ACCESS_SCREENS.map(x => x[0]).filter(t => t === 'dashboard' || t === 'attendance' || (o.tabs || []).includes(t)).concat(['portfolio', 'social', 'matcalc']) };
         ACCESS_ABILITIES.forEach(([k]) => { out[k] = Boolean(o[k]); });
         return out;
       }
@@ -10041,6 +10086,277 @@
         commitState(); renderBoqBuilder();
       });
 
+
+      // ===== Material calculator =====
+      const MC_TYPES = {
+        wardrobe: { label: 'Wardrobe (hinged)', W: 6, H: 7, D: 2, s: 4, p: 2, dr: 2, kind: 'hinged', rod: true },
+        sliding: { label: 'Wardrobe (sliding)', W: 7, H: 7, D: 2, s: 4, p: 2, dr: 2, kind: 'sliding', rod: true },
+        loft: { label: 'Loft', W: 6, H: 1.5, D: 2, s: 0, p: 1, dr: 0, kind: 'hinged' },
+        kbase: { label: 'Kitchen base unit', W: 10, H: 2.8, D: 1.9, s: 1, p: 3, dr: 3, kind: 'hinged' },
+        kwall: { label: 'Kitchen wall unit', W: 8, H: 2.3, D: 1.1, s: 1, p: 3, dr: 0, kind: 'hinged' },
+        tv: { label: 'TV unit', W: 6, H: 1.5, D: 1.5, s: 1, p: 2, dr: 2, kind: 'hinged' },
+        bed: { label: 'Bed with box storage', W: 5, H: 1.2, D: 6.5, s: 0, p: 1, dr: 0, kind: 'lift' },
+        shoe: { label: 'Shoe rack', W: 3, H: 3.5, D: 1.2, s: 4, p: 1, dr: 0, kind: 'hinged' },
+        book: { label: 'Bookshelf / study (open)', W: 4, H: 6, D: 1, s: 5, p: 1, dr: 0, kind: 'open' },
+        vanity: { label: 'Vanity unit', W: 3, H: 2.5, D: 1.75, s: 1, p: 1, dr: 1, kind: 'hinged' },
+        crockery: { label: 'Crockery unit', W: 4, H: 6, D: 1.5, s: 4, p: 1, dr: 2, kind: 'hinged' },
+        custom: { label: 'Custom unit', W: 4, H: 4, D: 1.5, s: 2, p: 1, dr: 0, kind: 'hinged' }
+      };
+      const MC_TILES = { '600x600': ['600×600 mm (2×2 ft)', 15.5], '600x1200': ['600×1200 mm (2×4 ft)', 15.5], '800x1600': ['800×1600 mm slab', 27.5], '300x300': ['300×300 mm (1×1 ft)', 9.7], '300x600': ['300×600 mm (wall/bath)', 15.5], wood: ['Wooden laminate flooring', 21.5] };
+      // downlights: one per this many sq ft (usual Indian home layouts)
+      const MC_LUX = { living: ['Living / dining', 25], bedroom: ['Bedroom', 30], kitchen: ['Kitchen', 20], bath: ['Bathroom', 25], study: ['Study / office', 20], passage: ['Passage / foyer', 30] };
+      const MC_CFG = [
+        ['plyWaste', 'Ply & laminate wastage %', 12], ['sheet', 'Sheet size (sq ft, 8×4 = 32)', 32], ['shutterW', 'Auto shutter width (ft)', 1.5],
+        ['door', 'Door size (sq ft)', 21], ['window', 'Window size (sq ft)', 16],
+        ['emulsion', 'Emulsion coverage (sq ft / L / coat)', 120], ['coats', 'Emulsion coats', 2], ['primer', 'Primer coverage (sq ft / L)', 110], ['putty', 'Putty coverage (sq ft / kg, 2 coats)', 18],
+        ['board', 'Gypsum board size (sq ft, 6×4 = 24)', 24], ['fcWaste', 'Ceiling wastage %', 8], ['popBag', 'POP: sq ft per 25 kg bag', 25],
+        ['tileWaste', 'Tile wastage %', 8], ['adhesive', 'Tile adhesive: sq ft per 20 kg bag', 45], ['grout', 'Grout: sq ft per kg', 40],
+['strip', 'LED strip roll length (ft, 5 m ≈ 16)', 16], ['wpRoll', 'Wallpaper usable sq ft per roll', 50]
+      ];
+      const mcDefCfg = () => Object.fromEntries(MC_CFG.map(([k, , v]) => [k, v]));
+      const mcNum = v => Math.max(0, Number(v) || 0);
+      const mcUnit = l => (l.qty === 1 ? String(l.unit).replace(/xes$/, 'x').replace(/(sheet|board|bag|roll|pair|set|box)s$/, '$1') : l.unit);
+      function mcNew() { return { id: uid('mc'), name: '', clientId: '', rooms: [], units: [], cfg: mcDefCfg(), tab: 'rooms' }; }
+      function mcCur() { if (!state.matCalc || !Array.isArray(state.matCalc.rooms)) state.matCalc = mcNew(); if (!state.matCalc.cfg) state.matCalc.cfg = mcDefCfg(); return state.matCalc; }
+      function mcRates() { if (!state.matRates || typeof state.matRates !== 'object') state.matRates = {}; return state.matRates; }
+      function mcPacks(l, sizes) {
+        // choose the pack mix with the least waste, then the fewest packs
+        const need = Math.ceil(l); let best = null;
+        (function go(i, left, used) {
+          if (left <= 0) { const waste = -left, n = used.reduce((a, x) => a + x[0], 0); if (!best || waste < best.waste || (waste === best.waste && n < best.n)) best = { waste, n, used: used.slice() }; return; }
+          if (i >= sizes.length) return;
+          const sz = sizes[i], max = i === sizes.length - 1 ? Math.ceil(left / sz) : Math.ceil(left / sz);
+          for (let k = max; k >= 0; k--) { if (k) used.push([k, sz]); go(i + 1, left - k * sz, used); if (k) used.pop(); }
+        })(0, need, []);
+        return best ? best.used.map(([k, sz]) => `${k}×${sz}`).join(' + ') : '';
+      }
+      // the maths: returns material lines grouped by section
+      function mcCompute(mc) {
+        const C = Object.assign(mcDefCfg(), mc.cfg || {});
+        const L = []; const add = (sec, key, name, qty, unit, note) => { if (qty > 0) L.push({ sec, key, name, qty, unit, note: note || '' }); };
+        // furniture → ply, laminate, hardware
+        let c18 = 0, s18 = 0, b8 = 0, d12 = 0, outer = 0, liner = 0, edge = 0, hinges = 0, handles = 0, channels = 0, rods = 0, tracks = 0, lifts = 0;
+        (mc.units || []).forEach(u => {
+          const T = MC_TYPES[u.type] || MC_TYPES.custom; const n = Math.max(1, Math.round(mcNum(u.qty) || 1));
+          const W = mcNum(u.W), H = mcNum(u.H), D = mcNum(u.D), sh0 = mcNum(u.s), pt = mcNum(u.p), dr = Math.round(mcNum(u.dr));
+          const shutters = T.kind === 'open' || T.kind === 'lift' ? 0 : (u.sh === '' || u.sh == null ? (T.kind === 'sliding' ? Math.max(2, Math.round(W / 3)) : Math.max(1, Math.round(W / C.shutterW))) : Math.round(mcNum(u.sh)));
+          const carcass = 2 * H * D + 2 * W * D + sh0 * W * D + pt * H * D;
+          const shutterArea = shutters ? W * H : 0;
+          const back = u.back === false ? 0 : W * H;
+          const exposed = Math.min(2, Math.round(mcNum(u.exp))) * H * D;
+          c18 += carcass * n; s18 += (T.kind === 'lift' ? W * D : shutterArea) * n; b8 += back * n; d12 += dr * 4 * n;
+          outer += (shutterArea + exposed + (T.kind === 'lift' ? W * D : 0)) * n;
+          liner += Math.max(0, carcass * 2 + shutterArea + back - exposed) * n;
+          const shW = shutters ? W / shutters : 0;
+          edge += (shutters * 2 * (H + shW) + sh0 * W + 2 * H + 2 * W + pt * H + dr * 2 * (W / Math.max(1, pt + 1) + 0.8)) * n;
+          if (T.kind === 'hinged' && shutters) hinges += shutters * (H <= 3 ? 2 : H <= 5 ? 3 : H <= 7 ? 4 : 5) * n;
+          if (T.kind === 'sliding') tracks += n;
+          if (T.kind === 'lift') lifts += n;
+          handles += (shutters + dr) * n; channels += dr * n;
+          if (T.rod) rods += Math.max(1, Math.round(W / 3)) * n;
+        });
+        const w = 1 + C.plyWaste / 100, sh = C.sheet || 32;
+        const sheets = a => Math.ceil(a * w / sh);
+        add('Plywood', 'ply18c', 'Plywood 18 mm (carcass) — BWP / MR', sheets(c18), 'sheets', `${Math.round(c18)} sq ft + ${C.plyWaste}% wastage`);
+        add('Plywood', 'ply18s', 'Plywood 18 mm (shutters / bed top)', sheets(s18), 'sheets', `${Math.round(s18)} sq ft`);
+        add('Plywood', 'ply12', 'Plywood 12 mm (drawer boxes)', sheets(d12), 'sheets', `${Math.round(d12)} sq ft`);
+        add('Plywood', 'ply8', 'Plywood 8 mm (back panels)', sheets(b8), 'sheets', `${Math.round(b8)} sq ft`);
+        add('Laminate', 'lam1', 'Laminate 1 mm (outer finish)', sheets(outer), 'sheets', `${Math.round(outer)} sq ft — shutters & exposed sides`);
+        add('Laminate', 'liner', 'Liner laminate 0.8 mm (inside)', sheets(liner), 'sheets', `${Math.round(liner)} sq ft`);
+        add('Laminate', 'edge', 'Edge band tape', Math.ceil(edge * 1.1), 'rft', 'shutter, shelf & carcass edges');
+        const totSheets = sheets(c18) + sheets(s18) + sheets(d12) + sheets(b8);
+        add('Hardware', 'hinge', 'Soft-close hinges', hinges, 'nos', '2–5 per shutter by height');
+        add('Hardware', 'handle', 'Handles / profile handles', handles, 'nos', 'one per shutter & drawer');
+        add('Hardware', 'channel', 'Telescopic drawer channels', channels, 'pairs');
+        add('Hardware', 'rod', 'Wardrobe hanging rods + brackets', rods, 'nos');
+        add('Hardware', 'track', 'Sliding wardrobe track & roller sets', tracks, 'sets');
+        add('Hardware', 'lift', 'Bed lift mechanism (hydraulic)', lifts, 'sets');
+        add('Hardware', 'glue', 'Adhesive (Fevicol SH / Heatx)', Math.ceil(totSheets * 0.5), 'kg', '≈ ½ kg per ply sheet');
+        add('Hardware', 'screws', 'Screws, nails & small fittings', totSheets ? 1 : 0, 'lot');
+        // rooms → paint, ceiling, floor, lights, wallpaper
+        let wall = 0, ceilPaint = 0, gyp = 0, pop = 0, perim = 0, cove = 0, wp = 0, adh = 0, groutA = 0, skirt = 0, down = 0;
+        const tiles = {};
+        (mc.rooms || []).forEach(r => {
+          const Lr = mcNum(r.L), Wr = mcNum(r.W), Hr = mcNum(r.H) || 10, area = Lr * Wr, per = 2 * (Lr + Wr);
+          if (!area) return;
+          const walls = Math.max(0, per * Hr - mcNum(r.doors) * C.door - mcNum(r.windows) * C.window);
+          if (r.paint) wall += walls;
+          if (r.ceilPaint) ceilPaint += area;
+          if (r.fc && r.fc !== 'none') {
+            const b = Math.min(mcNum(r.band) || 2, Math.min(Lr, Wr) / 2);
+            const fcA = r.fc === 'band' ? area - Math.max(0, Lr - 2 * b) * Math.max(0, Wr - 2 * b) : area;
+            const inner = r.fc === 'band' ? 2 * (Math.max(0, Lr - 2 * b) + Math.max(0, Wr - 2 * b)) : 0;
+            if (r.fcType === 'pop') pop += fcA; else gyp += fcA;
+            perim += per + inner;
+            if (r.cove) cove += r.fc === 'band' ? inner : per;
+          }
+          if (r.floor && r.floor !== 'none') {
+            tiles[r.floor] = (tiles[r.floor] || 0) + area;
+            if (r.floor !== 'wood') { adh += area; groutA += area; }
+            if (r.skirting) skirt += Math.max(0, per - mcNum(r.doors) * 3);
+          }
+          if (r.light && r.light !== 'none') {
+            down += Math.max(1, Math.round(area / (MC_LUX[r.light] || MC_LUX.living)[1]));
+          }
+          wp += mcNum(r.wp);
+        });
+        const paintA = wall + ceilPaint;
+        if (paintA) {
+          const putty = Math.ceil(paintA / C.putty); add('Paint', 'putty', 'Wall putty (2 coats)', putty, 'kg', `${Math.round(paintA)} sq ft · bags: ${mcPacks(putty, [40, 20, 5])} kg`);
+          const pr = Math.ceil(paintA / C.primer); add('Paint', 'primer', 'Primer (1 coat)', pr, 'L', `tins: ${mcPacks(pr, [20, 10, 4, 1])} L`);
+          if (wall) { const em = Math.ceil(wall * C.coats / C.emulsion); add('Paint', 'emulsion', `Wall emulsion (${C.coats} coats)`, em, 'L', `${Math.round(wall)} sq ft walls · tins: ${mcPacks(em, [20, 10, 4, 1])} L`); }
+          if (ceilPaint) { const ce = Math.ceil(ceilPaint * C.coats / C.emulsion); add('Paint', 'ceilEmul', `Ceiling white (${C.coats} coats)`, ce, 'L', `${Math.round(ceilPaint)} sq ft ceilings · tins: ${mcPacks(ce, [20, 10, 4, 1])} L`); }
+        }
+        const fcA = gyp + pop, fw = 1 + C.fcWaste / 100;
+        if (fcA) {
+          if (gyp) add('False ceiling', 'gyp', 'Gypsum board 12.5 mm (6×4 ft)', Math.ceil(gyp * fw / (C.board || 24)), 'boards', `${Math.round(gyp)} sq ft`);
+          if (pop) { add('False ceiling', 'pop', 'POP (plaster of Paris) 25 kg', Math.ceil(pop * fw / C.popBag), 'bags', `${Math.round(pop)} sq ft`); add('False ceiling', 'mesh', 'Chicken mesh', Math.ceil(pop * 1.1), 'sq ft'); }
+          add('False ceiling', 'perim', 'GI perimeter channel (12 ft)', Math.ceil(perim * 1.05 / 12), 'nos', `${Math.round(perim)} rft of edges`);
+          add('False ceiling', 'ceilsec', 'GI ceiling section (12 ft, @ 1.5 ft)', Math.ceil(fcA / 1.5 / 12 * 1.1), 'nos');
+          add('False ceiling', 'inter', 'GI intermediate channel (12 ft, @ 4 ft)', Math.ceil(fcA / 4 / 12 * 1.1), 'nos');
+          add('False ceiling', 'clip', 'Connecting clips', Math.ceil(fcA / 6), 'nos');
+          add('False ceiling', 'cleat', 'Soffit cleats + anchor fasteners', Math.ceil(fcA / 16), 'sets');
+          if (gyp) { const bd = Math.ceil(gyp * fw / (C.board || 24)); add('False ceiling', 'fcscrew', 'Drywall screws 25 mm', bd * 30, 'nos'); add('False ceiling', 'tape', 'Jointing tape', bd * 10, 'rft'); add('False ceiling', 'compound', 'Jointing compound', Math.ceil(gyp * 0.035), 'kg'); }
+        }
+        Object.entries(tiles).forEach(([k, a]) => { const [nm, perBox] = MC_TILES[k] || MC_TILES['600x600']; add('Flooring & tiles', 'tile_' + k, nm, Math.ceil(a * (1 + C.tileWaste / 100) / perBox), 'boxes', `${Math.round(a)} sq ft + ${C.tileWaste}% · ${perBox} sq ft/box`); });
+        if (adh) add('Flooring & tiles', 'adhesive', 'Tile adhesive (20 kg)', Math.ceil(adh / C.adhesive), 'bags');
+        if (groutA) add('Flooring & tiles', 'grout', 'Tile grout / epoxy', Math.ceil(groutA / C.grout), 'kg');
+        if (skirt) add('Flooring & tiles', 'skirting', 'Skirting (4 in)', Math.ceil(skirt * 1.05), 'rft');
+        if (down) add('Lights', 'downlight', 'LED downlights / COB (12 W)', down, 'nos', 'one per 20–30 sq ft by room');
+        if (cove) { const rolls = Math.ceil(cove / (C.strip || 16)); add('Lights', 'strip', 'LED cove strip (5 m roll)', rolls, 'rolls', `${Math.round(cove)} rft cove`); add('Lights', 'profile', 'Aluminium profile for strip', Math.ceil(cove), 'rft'); add('Lights', 'driver', 'LED driver / SMPS', Math.ceil(rolls / 2), 'nos'); }
+        if (wp) add('Wallpaper', 'wallpaper', 'Wallpaper roll (≈ 57 sq ft)', Math.ceil(wp * 1.1 / (C.wpRoll || 50)), 'rolls', `${Math.round(wp)} sq ft`);
+        return L;
+      }
+      function renderMatCalc() {
+        const box = document.getElementById('matcalc-root'); if (!box) return;
+        const mc = mcCur(); const C = Object.assign(mcDefCfg(), mc.cfg); const money = getCurrentPermissions().canSeeMoney;
+        const lines = mcCompute(mc); const R = mcRates();
+        const tab = mc.tab || 'rooms';
+        const saved = (state.matCalcs || []).slice().sort((a, b) => String(b.savedAt || '').localeCompare(String(a.savedAt || '')));
+        const tabs = [['rooms', 'Rooms', mc.rooms.length], ['furniture', 'Furniture → ply, laminate, hardware', mc.units.length], ['paint', 'Paint'], ['ceiling', 'False ceiling'], ['floor', 'Flooring & tiles'], ['lights', 'Lights'], ['wall', 'Wallpaper'], ['cfg', 'Assumptions']];
+        const roomPick = (r, body) => `<tr><td class="w-name"><strong>${escapeHtml(r.name || 'Room')}</strong><div class="hub-muted" style="font-size:11.5px;">${mcNum(r.L)} × ${mcNum(r.W)} ft</div></td>${body}</tr>`;
+        const noRooms = '<div class="hub-muted" style="padding:10px 0;">Add rooms first (Rooms tab) — their sizes are used here.</div>';
+        const ck = (r, k) => `<input type="checkbox" data-mcr="${r.id}" data-k="${k}" ${r[k] ? 'checked' : ''} />`;
+        const sel = (r, k, opts) => `<select class="select" data-mcr="${r.id}" data-k="${k}">${opts.map(([v, l]) => `<option value="${v}" ${(r[k] || opts[0][0]) === v ? 'selected' : ''}>${escapeHtml(l)}</option>`).join('')}</select>`;
+        const num = (r, k, ph, attr) => `<input class="input" type="number" min="0" step="0.1" inputmode="decimal" ${attr || 'data-mcr'}="${r.id}" data-k="${k}" value="${r[k] === '' || r[k] == null ? '' : escapeHtml(r[k])}" placeholder="${ph || ''}" />`;
+        let body = '';
+        if (tab === 'rooms') body = `
+          <div class="mc-scroll"><table class="mc-table"><thead><tr><th>Room</th><th>L (ft)</th><th>W (ft)</th><th>H (ft)</th><th>Doors</th><th>Windows</th><th>Area</th><th></th></tr></thead><tbody>
+          ${mc.rooms.map(r => `<tr><td><input class="input w-name" data-mcr="${r.id}" data-k="name" value="${escapeHtml(r.name || '')}" placeholder="e.g. Master bedroom" /></td><td>${num(r, 'L')}</td><td>${num(r, 'W')}</td><td>${num(r, 'H', '10')}</td><td>${num(r, 'doors')}</td><td>${num(r, 'windows')}</td><td class="tabular" style="white-space:nowrap;">${Math.round(mcNum(r.L) * mcNum(r.W))} sq ft</td><td><button type="button" class="btn btn-outline btn-sm pay-del" data-mc-delroom="${r.id}" aria-label="Remove room">✕</button></td></tr>`).join('')}
+          </tbody></table></div>
+          <div class="pf-actions"><button type="button" class="btn btn-outline btn-sm" data-mc-addroom>+ Add room</button>${['Living', 'Kitchen', 'Master bedroom', 'Bedroom 2', 'Bathroom', 'Passage'].map(n => `<button type="button" class="btn btn-outline btn-sm" data-mc-addroom="${n}">+ ${n}</button>`).join('')}</div>
+          <div class="mc-note">Sizes in feet. Height is the floor-to-ceiling height (10 ft if empty). Doors and windows are subtracted from wall paint.</div>`;
+        else if (tab === 'furniture') body = `
+          <div class="mc-scroll"><table class="mc-table"><thead><tr><th>Unit</th><th>Qty</th><th>W</th><th>H</th><th>D (ft)</th><th>Shelves</th><th>Partitions</th><th>Shutters</th><th>Drawers</th><th>Exposed sides</th><th>Back</th><th></th></tr></thead><tbody>
+          ${mc.units.map(u => `<tr><td><select class="select w-name" data-mcu="${u.id}" data-k="type">${Object.entries(MC_TYPES).map(([k, t]) => `<option value="${k}" ${u.type === k ? 'selected' : ''}>${escapeHtml(t.label)}</option>`).join('')}</select><input class="input" style="margin-top:4px;" data-mcu="${u.id}" data-k="name" value="${escapeHtml(u.name || '')}" placeholder="where (e.g. Master bedroom)" /></td>
+            <td>${num(u, 'qty', '1', 'data-mcu')}</td><td>${num(u, 'W', '', 'data-mcu')}</td><td>${num(u, 'H', '', 'data-mcu')}</td><td>${num(u, 'D', '', 'data-mcu')}</td><td>${num(u, 's', '', 'data-mcu')}</td><td>${num(u, 'p', '', 'data-mcu')}</td><td>${num(u, 'sh', 'auto', 'data-mcu')}</td><td>${num(u, 'dr', '', 'data-mcu')}</td><td>${num(u, 'exp', '0', 'data-mcu')}</td>
+            <td><input type="checkbox" data-mcu="${u.id}" data-k="back" ${u.back !== false ? 'checked' : ''} /></td><td><button type="button" class="btn btn-outline btn-sm pay-del" data-mc-delunit="${u.id}" aria-label="Remove">✕</button></td></tr>`).join('')}
+          </tbody></table></div>
+          <div class="pf-actions">${Object.entries(MC_TYPES).map(([k, t]) => `<button type="button" class="btn btn-outline btn-sm" data-mc-addunit="${k}">+ ${escapeHtml(t.label)}</button>`).join('')}</div>
+          <div class="mc-note">Sizes in feet (W = width, H = height, D = depth). Shutters: leave “auto” for one shutter per ${C.shutterW} ft. Exposed sides (0–2) get outer laminate. Carcass 18 mm, shutters 18 mm, back 8 mm, drawer boxes 12 mm; sheets of ${C.sheet} sq ft with ${C.plyWaste}% wastage.</div>`;
+        else if (tab === 'paint') body = mc.rooms.length ? `<div class="mc-scroll"><table class="mc-table"><thead><tr><th>Room</th><th>Paint walls</th><th>Paint ceiling</th><th>Wall area</th></tr></thead><tbody>${mc.rooms.map(r => roomPick(r, `<td>${ck(r, 'paint')}</td><td>${ck(r, 'ceilPaint')}</td><td class="tabular">${Math.round(Math.max(0, 2 * (mcNum(r.L) + mcNum(r.W)) * (mcNum(r.H) || 10) - mcNum(r.doors) * C.door - mcNum(r.windows) * C.window))} sq ft</td>`)).join('')}</tbody></table></div>
+          <div class="pf-actions"><button type="button" class="btn btn-outline btn-sm" data-mc-all="paint">All rooms: walls</button><button type="button" class="btn btn-outline btn-sm" data-mc-all="ceilPaint">All rooms: ceilings</button></div><div class="mc-note">Putty 2 coats (${C.putty} sq ft/kg), primer 1 coat (${C.primer} sq ft/L), emulsion ${C.coats} coats (${C.emulsion} sq ft/L/coat). Change these under Assumptions.</div>` : noRooms;
+        else if (tab === 'ceiling') body = mc.rooms.length ? `<div class="mc-scroll"><table class="mc-table"><thead><tr><th>Room</th><th>False ceiling</th><th>Border width (ft)</th><th>Material</th><th>Cove light</th></tr></thead><tbody>${mc.rooms.map(r => roomPick(r, `<td>${sel(r, 'fc', [['none', 'None'], ['full', 'Full ceiling'], ['band', 'Border / peripheral']])}</td><td>${r.fc === 'band' ? num(r, 'band', '2') : '<span class="hub-muted">—</span>'}</td><td>${sel(r, 'fcType', [['gypsum', 'Gypsum board'], ['pop', 'POP']])}</td><td>${ck(r, 'cove')}</td>`)).join('')}</tbody></table></div><div class="mc-note">GI frame: ceiling sections @ 1.5 ft, intermediate channels @ 4 ft, perimeter channel on every edge. Gypsum boards ${C.board} sq ft each with ${C.fcWaste}% wastage. Cove light runs along the ceiling edge.</div>` : noRooms;
+        else if (tab === 'floor') body = mc.rooms.length ? `<div class="mc-scroll"><table class="mc-table"><thead><tr><th>Room</th><th>Flooring</th><th>Skirting</th></tr></thead><tbody>${mc.rooms.map(r => roomPick(r, `<td>${sel(r, 'floor', [['none', 'None'], ...Object.entries(MC_TILES).map(([k, [l]]) => [k, l])])}</td><td>${ck(r, 'skirting')}</td>`)).join('')}</tbody></table></div><div class="mc-note">Tile boxes include ${C.tileWaste}% wastage. Adhesive: one 20 kg bag per ${C.adhesive} sq ft. Grout: 1 kg per ${C.grout} sq ft.</div>` : noRooms;
+        else if (tab === 'lights') body = mc.rooms.length ? `<div class="mc-scroll"><table class="mc-table"><thead><tr><th>Room</th><th>Room type (brightness)</th><th>Downlights</th></tr></thead><tbody>${mc.rooms.map(r => { const lux = (MC_LUX[r.light] || [0, 0])[1]; const a = mcNum(r.L) * mcNum(r.W); return roomPick(r, `<td>${sel(r, 'light', [['none', 'No downlights'], ...Object.entries(MC_LUX).map(([k, [l, x]]) => [k, `${l} (1 per ${x} sq ft)`])])}</td><td class="tabular">${r.light && r.light !== 'none' && a ? Math.max(1, Math.round(a / lux)) : '—'}</td>`); }).join('')}</tbody></table></div><div class="mc-note">Downlights (12 W) from room size: one per 20–30 sq ft depending on the room. Cove strips come from the False ceiling tab.</div>` : noRooms;
+        else if (tab === 'wall') body = mc.rooms.length ? `<div class="mc-scroll"><table class="mc-table"><thead><tr><th>Room</th><th>Wallpaper area (sq ft)</th></tr></thead><tbody>${mc.rooms.map(r => roomPick(r, `<td>${num(r, 'wp', 'sq ft')}</td>`)).join('')}</tbody></table></div><div class="mc-note">Enter the wall area to cover (width × height). Rolls ≈ 57 sq ft, ${C.wpRoll} sq ft usable after pattern matching.</div>` : noRooms;
+        else if (tab === 'cfg') body = `<div class="mc-cfg">${MC_CFG.map(([k, l]) => `<label>${escapeHtml(l)}<input class="input" type="number" min="0" step="0.1" data-mccfg="${k}" value="${escapeHtml(C[k])}" /></label>`).join('')}</div><div class="pf-actions"><button type="button" class="btn btn-outline btn-sm" data-mc-cfgreset>Reset to standard values</button></div><div class="mc-note">These are common Pune site thumb-rules. Change them to match your brands and your carpenter's way of working; they are saved with this calculation.</div>`;
+        const groups = [...new Set(lines.map(l => l.sec))];
+        const total = lines.reduce((a, l) => a + (mcNum(R[l.key]) * l.qty), 0);
+        box.innerHTML = `
+          <div class="card">
+            <div class="mc-top">
+              <input class="input" id="mc-name" placeholder="Name this calculation (e.g. Chitale 3BHK — material)" value="${escapeHtml(mc.name || '')}" />
+              <select class="select" id="mc-client" style="max-width:260px;"><option value="">— no client —</option>${(state.clients || []).map(c => `<option value="${c.id}" ${mc.clientId === c.id ? 'selected' : ''}>${escapeHtml(c.name)}</option>`).join('')}</select>
+              <button type="button" class="btn btn-primary btn-sm" data-mc-save>Save</button>
+              <button type="button" class="btn btn-outline btn-sm" data-mc-new>New</button>
+              ${saved.length ? `<select class="select" id="mc-open" style="max-width:240px;"><option value="">Open saved (${saved.length})…</option>${saved.map(x => `<option value="${x.id}">${escapeHtml(x.name || 'Untitled')}${x.clientId ? ' · ' + escapeHtml((clientById(x.clientId) || {}).name || '') : ''}</option>`).join('')}</select>` : ''}
+            </div>
+            <div class="mc-tabs">${tabs.map(([k, l, n]) => `<button type="button" class="${tab === k ? 'on' : ''}" data-mc-tab="${k}">${escapeHtml(l)}${n != null ? `<small>${n}</small>` : ''}</button>`).join('')}</div>
+            ${body}
+          </div>
+          <div class="card mc-list" style="margin-top:16px;">
+            <div class="hub-card-title" style="display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap;"><span>Material list</span>
+              <span style="display:flex; gap:6px; flex-wrap:wrap;">${lines.length ? `<button type="button" class="btn btn-outline btn-sm" data-mc-wa>WhatsApp list</button><button type="button" class="btn btn-outline btn-sm" data-mc-pdf>PDF</button>` : ''}</span></div>
+            ${lines.length ? groups.map(g => `<div class="mc-grp">${escapeHtml(g)}</div>${lines.filter(l => l.sec === g).map(l => `<div class="mc-row${money ? '' : ' norate'}"><span><strong>${escapeHtml(l.name)}</strong>${l.note ? `<small>${escapeHtml(l.note)}</small>` : ''}</span><span class="q">${l.qty.toLocaleString('en-IN')} ${escapeHtml(mcUnit(l))}</span>${money ? `<input class="input tabular" type="number" min="0" inputmode="decimal" data-mcrate="${l.key}" value="${R[l.key] || ''}" placeholder="₹ / ${escapeHtml(l.unit.replace(/s$/, ''))}" title="Rate per ${escapeHtml(l.unit)} (remembered)" /><span class="amt" data-mcamt="${l.key}">${R[l.key] ? formatINR(R[l.key] * l.qty) : '—'}</span>` : ''}</div>`).join('')}`).join('')
+              + (money ? `<div class="mc-total"><span>Estimated material cost</span><span id="mc-total">${formatINR(total)}</span></div><div class="mc-note">Type a rate once — it is remembered for next time. Leave empty to skip.</div>` : '')
+              : '<div class="hub-muted" style="padding:10px 0;">Add rooms and furniture above — the list fills in as you type.</div>'}
+          </div>`;
+      }
+      function mcRefreshList() {
+        // update only the list while typing in the tables (keeps the cursor where it is)
+        const ae = document.activeElement; const id = ae && ae.dataset ? (ae.dataset.mcr || ae.dataset.mcu || ae.dataset.mccfg) : null; const k = ae && ae.dataset ? ae.dataset.k : null; const pos = ae && typeof ae.selectionStart === 'number' ? ae.selectionStart : null;
+        renderMatCalc();
+        if (id) { const el = document.querySelector(`[data-mcr="${id}"][data-k="${k}"], [data-mcu="${id}"][data-k="${k}"], [data-mccfg="${id}"]`); if (el) { el.focus(); try { if (pos != null) el.setSelectionRange(pos, pos); } catch (e) { /* number inputs */ } } }
+      }
+      let mcTimer = null;
+      function mcChanged(now) { clearTimeout(mcTimer); mcTimer = setTimeout(() => { commitState(); mcRefreshList(); }, now ? 0 : 250); }
+      document.addEventListener('input', e => {
+        const t = e.target; if (!t.closest || !t.closest('#matcalc-root')) return;
+        const mc = mcCur();
+        if (t.id === 'mc-name') { mc.name = t.value; commitState(); return; }
+        if (t.dataset.mcr) { const r = mc.rooms.find(x => x.id === t.dataset.mcr); if (!r) return; r[t.dataset.k] = t.type === 'checkbox' ? t.checked : t.value; mcChanged(); return; }
+        if (t.dataset.mcu) { const u = mc.units.find(x => x.id === t.dataset.mcu); if (!u) return; u[t.dataset.k] = t.type === 'checkbox' ? t.checked : t.value; mcChanged(); return; }
+        if (t.dataset.mccfg) { mc.cfg[t.dataset.mccfg] = Number(t.value) || 0; mcChanged(); return; }
+        if (t.dataset.mcrate) {
+          const R = mcRates(); R[t.dataset.mcrate] = Number(t.value) || 0; commitState();
+          const lines = mcCompute(mc); const l = lines.find(x => x.key === t.dataset.mcrate); const a = document.querySelector(`[data-mcamt="${t.dataset.mcrate}"]`); if (a && l) a.textContent = R[l.key] ? formatINR(R[l.key] * l.qty) : '—';
+          const tot = document.getElementById('mc-total'); if (tot) tot.textContent = formatINR(lines.reduce((s2, x) => s2 + mcNum(R[x.key]) * x.qty, 0));
+        }
+      });
+      document.addEventListener('change', e => {
+        const t = e.target; if (!t.closest || !t.closest('#matcalc-root')) return;
+        const mc = mcCur();
+        if (t.id === 'mc-client') { mc.clientId = t.value; commitState(); return; }
+        if (t.id === 'mc-open') { const x = (state.matCalcs || []).find(y => y.id === t.value); if (x) { state.matCalc = JSON.parse(JSON.stringify(x)); commitState(); renderMatCalc(); showToast(`Opened “${x.name || 'Untitled'}”`); } return; }
+        if ((t.dataset.mcr || t.dataset.mcu) && (t.tagName === 'SELECT' || t.type === 'checkbox')) {
+          const list = t.dataset.mcr ? mc.rooms : mc.units; const o = list.find(x => x.id === (t.dataset.mcr || t.dataset.mcu)); if (!o) return;
+          o[t.dataset.k] = t.type === 'checkbox' ? t.checked : t.value;
+          if (t.dataset.mcu && t.dataset.k === 'type') { const T = MC_TYPES[t.value]; Object.assign(o, { W: T.W, H: T.H, D: T.D, s: T.s, p: T.p, dr: T.dr, sh: '' }); }
+          if (t.dataset.mcr && t.dataset.k === 'fc' && t.value === 'band' && !o.band) o.band = 2;
+          mcChanged(true);
+        }
+      });
+      document.addEventListener('click', async e => {
+        const t = e.target; if (!t.closest('#matcalc-root')) return;
+        const mc = mcCur();
+        const tb = t.closest('[data-mc-tab]'); if (tb) { mc.tab = tb.dataset.mcTab; commitState(); renderMatCalc(); return; }
+        const ar = t.closest('[data-mc-addroom]'); if (ar) { const r = { id: uid('mr'), name: ar.dataset.mcAddroom || '', L: '', W: '', H: '', doors: 1, windows: ar.dataset.mcAddroom === 'Passage' ? 0 : 1, paint: true, ceilPaint: true, fc: 'none', fcType: 'gypsum', floor: 'none', light: /kitchen/i.test(ar.dataset.mcAddroom || '') ? 'kitchen' : /bath/i.test(ar.dataset.mcAddroom || '') ? 'bath' : /bed/i.test(ar.dataset.mcAddroom || '') ? 'bedroom' : /passage/i.test(ar.dataset.mcAddroom || '') ? 'passage' : 'living' }; mc.rooms.push(r); commitState(); renderMatCalc(); document.querySelector(`[data-mcr="${r.id}"][data-k="${r.name ? 'L' : 'name'}"]`)?.focus(); return; }
+        const dr = t.closest('[data-mc-delroom]'); if (dr) { mc.rooms = mc.rooms.filter(x => x.id !== dr.dataset.mcDelroom); commitState(); renderMatCalc(); return; }
+        const au = t.closest('[data-mc-addunit]'); if (au) { const T = MC_TYPES[au.dataset.mcAddunit]; mc.units.push({ id: uid('mu'), type: au.dataset.mcAddunit, name: '', qty: 1, W: T.W, H: T.H, D: T.D, s: T.s, p: T.p, sh: '', dr: T.dr, exp: 0, back: true }); mc.tab = 'furniture'; commitState(); renderMatCalc(); return; }
+        const du = t.closest('[data-mc-delunit]'); if (du) { mc.units = mc.units.filter(x => x.id !== du.dataset.mcDelunit); commitState(); renderMatCalc(); return; }
+        const al = t.closest('[data-mc-all]'); if (al) { const k = al.dataset.mcAll; const on = !mc.rooms.every(r => r[k]); mc.rooms.forEach(r => { r[k] = on; }); commitState(); renderMatCalc(); return; }
+        if (t.closest('[data-mc-cfgreset]')) { mc.cfg = mcDefCfg(); commitState(); renderMatCalc(); showToast('Standard values restored'); return; }
+        if (t.closest('[data-mc-new]')) { if ((mc.rooms.length || mc.units.length) && !await appConfirm('Start a new calculation?\n\nSave this one first if you want to keep it.', { ok: 'New calculation', danger: false })) return; state.matCalc = mcNew(); commitState(); renderMatCalc(); return; }
+        if (t.closest('[data-mc-save]')) {
+          if (!mc.name) mc.name = mc.clientId ? `${(clientById(mc.clientId) || {}).name || 'Client'} — material` : `Material calculation ${fmtDay(getDateOffset(0))}`;
+          if (!Array.isArray(state.matCalcs)) state.matCalcs = [];
+          const copy = JSON.parse(JSON.stringify(mc)); copy.savedAt = new Date().toISOString(); copy.by = state.activeStaffEmail;
+          const i2 = state.matCalcs.findIndex(x => x.id === mc.id); if (i2 >= 0) state.matCalcs[i2] = copy; else state.matCalcs.push(copy);
+          commitState(); renderMatCalc(); showToast(`Saved “${mc.name}”`); return;
+        }
+        if (t.closest('[data-mc-wa]')) {
+          const lines = mcCompute(mc); const groups = [...new Set(lines.map(l => l.sec))];
+          const txt = `${mc.name || 'Material list'}${mc.clientId ? ' — ' + ((clientById(mc.clientId) || {}).name || '') : ''}\n` + groups.map(g => `\n*${g}*\n` + lines.filter(l => l.sec === g).map(l => `• ${l.name}: ${l.qty} ${mcUnit(l)}`).join('\n')).join('\n') + `\n\n– ${(state.studioProfile || {}).name || ''}`;
+          window.open(`https://wa.me/?text=${encodeURIComponent(txt)}`, '_blank', 'noopener'); return;
+        }
+        if (t.closest('[data-mc-pdf]')) {
+          const lines = mcCompute(mc); const R = mcRates(); const money = getCurrentPermissions().canSeeMoney && lines.some(l => R[l.key]);
+          const groups = [...new Set(lines.map(l => l.sec))]; const rows = [];
+          groups.forEach(g => { rows.push({ group: g }); lines.filter(l => l.sec === g).forEach(l => { const c2 = [{ main: l.name, sub: l.note }, `${l.qty.toLocaleString('en-IN')} ${mcUnit(l)}`]; if (money) c2.push(R[l.key] ? formatINR(R[l.key]) : '—', R[l.key] ? formatINR(R[l.key] * l.qty) : '—'); rows.push({ cells: c2 }); }); });
+          const cols = money ? [{ label: 'Material', w: 104 }, { label: 'Qty', w: 30, align: 'right' }, { label: 'Rate', w: 24, align: 'right' }, { label: 'Amount', w: 28, align: 'right' }] : [{ label: 'Material', w: 146 }, { label: 'Qty', w: 40, align: 'right' }];
+          const blocks = [];
+          if (mc.rooms.length) blocks.push({ type: 'text', text: 'Rooms: ' + mc.rooms.map(r => `${r.name || 'Room'} ${mcNum(r.L)}×${mcNum(r.W)} ft`).join(' · ') });
+          if (mc.units.length) blocks.push({ type: 'text', text: 'Furniture: ' + mc.units.map(u => `${(MC_TYPES[u.type] || MC_TYPES.custom).label}${u.name ? ' (' + u.name + ')' : ''} ${mcNum(u.W)}×${mcNum(u.H)}×${mcNum(u.D)} ft${mcNum(u.qty) > 1 ? ' ×' + mcNum(u.qty) : ''}`).join(' · ') });
+          blocks.push({ type: 'table', cols, rows });
+          if (money) blocks.push({ type: 'totals', rows: [['Estimated material cost', formatINR(lines.reduce((a, l) => a + mcNum(R[l.key]) * l.qty, 0)), { bold: true, fill: '#F8E9DF', color: '#A44A22' }]] });
+          blocks.push({ type: 'text', text: 'Quantities are estimates from standard thumb-rules including wastage; confirm with site measurement before ordering.' });
+          const c = clientById(mc.clientId) || {};
+          openSpecPreview({ title: 'MATERIAL ESTIMATE', docTitle: `Material estimate — ${mc.name || c.name || ''}`, filename: `Material_${String(mc.name || c.name || 'estimate').replace(/[^\w]+/g, '_')}.html`,
+            info: { leftLabel: c.name ? 'Project' : 'Calculation', leftName: c.name || mc.name || 'Material estimate', leftSub: c.address || '', rightLabel: 'Details', rightLines: [mc.name || '', `Date: ${fmtDay(getDateOffset(0))}`].filter(Boolean) }, blocks, signatures: [] });
+        }
+      });
+
       // ===== Project archive (ZIP) and import from the master file =====
       const JSZIP_SOURCES = ['https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js', 'https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js'];
       function loadJsZip() {
@@ -13269,6 +13585,7 @@
         syncBoqBackToClient();
         if (state.activeTab === 'catalog') renderCatalogView();
         if (state.activeTab === 'quickboq') renderQuickBoq();
+        if (state.activeTab === 'matcalc' && typeof renderMatCalc === 'function') renderMatCalc();
         if (state.activeTab === 'boq') renderBoqBuilder();
         if (state.activeTab === 'billing') renderBilling();
         if (state.activeTab === 'payments') renderPayments();
