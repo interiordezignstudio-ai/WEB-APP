@@ -2726,6 +2726,26 @@
     .mt-edit .input, .mt-edit .select { width:auto; min-height:34px; padding:5px 8px; font-size:13px; }
     html[data-theme="dark"] .mt-star.on { background:#33281B; border-color:#5A4127; color:#E6BE8F; }
     @media (max-width: 700px) { .mt-row { flex-wrap: wrap; } .mt-acts { width:100%; justify-content:flex-start; padding-left:29px; } }
+    /* Morning summary */
+    .mm-sec { margin-top:14px; }
+    .mm-sec h4 { font-size:10.5px; letter-spacing:.14em; text-transform:uppercase; color: var(--text-muted); font-weight:600; margin:0 0 4px; }
+    .mm-sec h4.late { color: var(--accent-rose); }
+    .mm-row { display:flex; gap:10px; align-items:center; padding:7px 0; border-bottom:1px solid var(--border-subtle); font-size:14px; }
+    .mm-row:last-child { border-bottom:0; }
+    .mm-row input { width:18px; height:18px; flex:0 0 18px; cursor:pointer; }
+    .mm-row .tm { min-width:64px; font-size:12.5px; color: var(--text-muted); font-variant-numeric: tabular-nums; }
+    .mm-row .tm.late { color: var(--accent-rose); font-weight:600; }
+    .mm-row.done span.tt { text-decoration: line-through; color: var(--text-light); }
+    .mm-row .tt { flex:1; min-width:0; overflow-wrap:anywhere; }
+    .mm-row .sub { color: var(--text-muted); font-size:12.5px; }
+    .mm-stats { display:flex; gap:8px; flex-wrap:wrap; }
+    .mm-stat { flex:1 1 90px; border:1px solid var(--border-subtle); border-radius:14px; padding:10px 12px; background: var(--bg-card); }
+    .mm-stat b { display:block; font-size:22px; font-weight:700; line-height:1.1; }
+    .mm-stat small { color: var(--text-muted); font-size:12px; }
+    .mm-stat.late b { color: var(--accent-rose); }
+    @media (max-width: 520px) { .mm-stat { flex:1 1 calc(50% - 4px); } }
+    .mm-set { display:flex; gap:8px; flex-wrap:wrap; align-items:center; font-size:13px; }
+    .mm-set .input { width:auto; min-height:34px; padding:5px 8px; font-size:13px; }
     /* Trash */
     .trash-row { display:flex; gap:12px; align-items:center; padding:12px 0; border-bottom:1px solid var(--border-subtle); flex-wrap:wrap; }
     .trash-row:last-child { border-bottom:0; }
@@ -3456,6 +3476,7 @@
               <h1 class="page-title">Tasks &amp; Reminders</h1>
               <p class="page-sub">Everything you have to remember — with a time, repeat and a reminder on your phone</p>
             </div>
+            <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;"><button type="button" class="btn btn-outline" data-morning-open>☀️ Today's summary</button></div>
           </div>
           <div id="tasks-root"></div>
         </section>
@@ -4184,6 +4205,12 @@
     <div class="modal-box">
       <div class="modal-header"><h3 class="font-serif" style="font-size:22px; font-weight:700;">Onboard as client</h3><button class="btn btn-outline btn-sm" data-close-modal="modal-onboard-est">✕</button></div>
       <div id="onboard-est-body"></div>
+    </div>
+  </div>
+  <div class="modal-backdrop" id="modal-morning">
+    <div class="modal-box">
+      <div class="modal-header"><h3 class="font-serif" style="font-size:22px; font-weight:700;" id="morning-title">Good morning</h3><button class="btn btn-outline btn-sm" data-close-modal="modal-morning">✕</button></div>
+      <div id="morning-body"></div>
     </div>
   </div>
   <div class="modal-backdrop" id="modal-taskphone">
@@ -10853,6 +10880,7 @@
             ${groups.filter(([, l]) => l.length).map(([h, l, cls]) => `<div class="mt-group"><h4 class="${cls}">${h} <span style="opacity:.7;">${l.length}</span></h4>${l.map(mtRow).join('')}</div>`).join('') || '<div class="hub-muted" style="padding:16px 0; text-align:center;">Nothing pending 🎉 — add something above.</div>'}
             ${done.length ? `<div class="mt-group"><h4><button type="button" class="wa-linkbtn" data-mt-showdone style="font-size:10.5px; letter-spacing:.14em; text-transform:uppercase;">${mtUI.showDone ? '▾' : '▸'} Done ${done.length}</button></h4>${mtUI.showDone ? done.map(mtRow).join('') : ''}</div>` : ''}
           </div>
+          ${morningSettingsHtml()}
           <div class="hub-muted" style="font-size:12.5px; margin-top:10px;">The app pops up a reminder at the time (and a phone notification if “Notifications on this device” is on). For alerts when the app is closed, use 📲 — iPhone Reminders or Google Calendar.</div>`;
       }
       function mtAdd() {
@@ -10895,6 +10923,159 @@
         if (sv) { const tk = state.tasks.find(x => x.id === sv.dataset.mtSave); if (!tk) return; const g = id => document.getElementById(id).value; const title = g('mte-title').trim(); if (!title) return; Object.assign(tk, { title, dueDate: g('mte-date'), dueTime: g('mte-time'), repeat: g('mte-repeat'), clientId: g('mte-client'), assigneeEmail: g('mte-who') }); mtUI.editId = null; commitState(); renderMyTasks(); updateTaskBadge(); if (tk.gcalId) taskGoogleSync(tk); showToast('Saved'); return; }
         const dl = t.closest('[data-mt-del]');
         if (dl) { const tk = state.tasks.find(x => x.id === dl.dataset.mtDel); if (!tk) return; if (!await appConfirm(`Delete “${tk.title}”?\n\nIt stays in Trash for 30 days.`)) return; state.tasks = state.tasks.filter(x => x.id !== tk.id); commitState(); renderMyTasks(); updateTaskBadge(); showToast('Task deleted'); }
+      });
+
+
+      // ===== Daily morning summary =====
+      const MORNING_KEY = 'ids_morning';
+      function morningPrefs() { let v = {}; try { v = JSON.parse(localStorage.getItem(MORNING_KEY) || '{}') || {}; } catch (e) { /* ignore */ } return Object.assign({ on: true, time: '09:00', last: '' }, v); }
+      function saveMorningPrefs(v) { try { localStorage.setItem(MORNING_KEY, JSON.stringify(v)); } catch (e) { /* ignore */ } }
+      function morningData() {
+        const me = getCurrentStaff(); const admin = me.role === 'Principal / Admin';
+        const today = getDateOffset(0); const now = Date.now();
+        const mine = (state.tasks || []).filter(t => !t.done && taskIsMine(t));
+        const byTime = (a, b) => (a.dueTime || '99').localeCompare(b.dueTime || '99');
+        const overdue = mine.filter(t => t.dueDate && t.dueDate < today).sort((a, b) => a.dueDate.localeCompare(b.dueDate));
+        const todays = mine.filter(t => t.dueDate === today).sort(byTime);
+        const doneToday = (state.tasks || []).filter(t => taskIsMine(t) && ((t.done && String(t.doneAt || '').slice(0, 10) === today) || (t.repeat && (t.doneLog || []).some(x => String(x).slice(0, 10) === today))));
+        const important = mine.filter(t => t.star && !(t.dueDate && t.dueDate <= today));
+        let meetings = [], calls = [];
+        try {
+          myReminderLeads().forEach(l => {
+            (l.meetings || []).filter(m => m.status === 'scheduled' && String(m.start || '').slice(0, 10) === today).forEach(m => meetings.push({ l, m }));
+            const nx = leadNext(l);
+            if (nx && nx.at && nx.type !== 'meeting' && nx.at.slice(0, 10) <= today) calls.push({ l, nx });
+          });
+        } catch (e) { /* leads not available for this person */ }
+        meetings.sort((a, b) => String(a.m.start).localeCompare(String(b.m.start)));
+        calls.sort((a, b) => String(a.nx.at).localeCompare(String(b.nx.at)));
+        const posts = (state.posts || []).filter(x => x.date === today && x.status !== 'Posted' && x.status !== 'Idea' && (x.ownerEmail ? x.ownerEmail === me.email : admin));
+        return { me, today, overdue, todays, doneToday, important, meetings, calls, posts, now };
+      }
+      const hm12 = t => t ? new Date(`2000-01-01T${t}`).toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit' }) : '';
+      function morningGreeting() { const h = new Date().getHours(); return h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening'; }
+      function morningText(d) {
+        const L = [`${morningGreeting()} ${String(d.me.name || '').split(' ')[0]} — ${new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'short' })}`];
+        const sec = (h, rows) => { if (rows.length) L.push('', `*${h}*`, ...rows); };
+        sec(`Overdue (${d.overdue.length})`, d.overdue.map(t => `• ${t.title} — ${fmtDay(t.dueDate)}`));
+        sec(`Today's tasks (${d.todays.length})`, d.todays.map(t => `• ${t.dueTime ? hm12(t.dueTime) + ' ' : ''}${t.title}${clientById(t.clientId) ? ' (' + clientById(t.clientId).name + ')' : ''}`));
+        sec('Meetings', d.meetings.map(({ l, m }) => `• ${hm12(String(m.start).slice(11, 16))} ${l.name}${m.location ? ' — ' + m.location : ''}`));
+        sec('Calls / follow-ups', d.calls.map(({ l, nx }) => `• ${nx.label || 'Call'}: ${l.name}${l.phone ? ' ' + l.phone : ''}`));
+        sec('Posts', d.posts.map(x => `• ${x.title}`));
+        sec('Important', d.important.map(t => `• ${t.title}`));
+        if (L.length === 1) L.push('', 'Nothing scheduled today.');
+        return L.join('\n');
+      }
+      function morningSettingsHtml() {
+        const m = morningPrefs();
+        return `<div class="card mm-set" style="margin-top:14px;">
+          <span>☀️ <b>Morning summary</b></span>
+          <label style="display:flex; gap:6px; align-items:center;"><input type="checkbox" data-morning-on ${m.on ? 'checked' : ''}/> Show at</label>
+          <input class="input" type="time" data-morning-time value="${escapeHtml(m.time)}" ${m.on ? '' : 'disabled'} />
+          <span class="hub-muted">on this device, the first time you open the app each day</span>
+          <span style="flex:1;"></span>
+          <button type="button" class="btn btn-outline btn-sm" data-morning-open>Show now</button>
+          <button type="button" class="btn btn-outline btn-sm" data-morning-phone>📲 Daily alert on phone</button>
+        </div>`;
+      }
+      function renderMorning() {
+        const box = document.getElementById('morning-body'); if (!box) return;
+        const d = morningData();
+        document.getElementById('morning-title').textContent = `${morningGreeting()}, ${String(d.me.name || '').split(' ')[0] || 'there'}`;
+        const trow = (t, late) => `<label class="mm-row${t.done ? ' done' : ''}"><input type="checkbox" data-mm-done="${t.id}" ${t.done ? 'checked' : ''}/><span class="tm${late ? ' late' : ''}">${late ? escapeHtml(fmtDay(t.dueDate).replace(/ \d{4}$/, '')) : t.dueTime ? escapeHtml(hm12(t.dueTime)) : 'Any time'}</span><span class="tt">${t.star ? '⭐ ' : ''}${escapeHtml(t.title)}${clientById(t.clientId) ? ` <span class="sub">· ${escapeHtml(clientById(t.clientId).name)}</span>` : ''}${t.repeat ? ' <span class="sub">🔁</span>' : ''}</span></label>`;
+        const sec = (h, rows, cls) => rows.length ? `<div class="mm-sec"><h4 class="${cls || ''}">${h}</h4>${rows.join('')}</div>` : '';
+        const left = d.todays.length + d.overdue.length;
+        box.innerHTML = `
+          <div class="hub-muted" style="margin-bottom:10px;">${escapeHtml(new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long' }))}</div>
+          <div class="mm-stats">
+            <div class="mm-stat"><b>${d.todays.length}</b><small>tasks today</small></div>
+            <div class="mm-stat ${d.overdue.length ? 'late' : ''}"><b>${d.overdue.length}</b><small>overdue</small></div>
+            <div class="mm-stat"><b>${d.meetings.length}</b><small>meetings</small></div>
+            <div class="mm-stat"><b>${d.calls.length}</b><small>calls to make</small></div>
+          </div>
+          ${sec('Overdue', d.overdue.map(t => trow(t, true)), 'late')}
+          ${sec("Today's tasks", d.todays.map(t => trow(t, false)))}
+          ${sec('Meetings', d.meetings.map(({ l, m }) => `<div class="mm-row"><span class="tm">${escapeHtml(hm12(String(m.start).slice(11, 16)))}</span><span class="tt">${escapeHtml(l.name)}${m.location ? ` <span class="sub">· ${escapeHtml(m.location)}</span>` : ''}</span><button type="button" class="btn btn-outline btn-sm" data-mm-lead="${l.id}">Open</button></div>`))}
+          ${sec('Calls & follow-ups', d.calls.map(({ l, nx }) => `<div class="mm-row"><span class="tm${nx.at.slice(0, 10) < d.today ? ' late' : ''}">${nx.at.slice(0, 10) < d.today ? 'Overdue' : escapeHtml(hm12(nx.at.slice(11, 16)))}</span><span class="tt">${escapeHtml(nx.label || 'Call')}: ${escapeHtml(l.name)}${l.phone ? ` <span class="sub">· ${escapeHtml(l.phone)}</span>` : ''}</span><button type="button" class="btn btn-outline btn-sm" data-mm-lead="${l.id}">Open</button></div>`))}
+          ${sec('Social posts today', d.posts.map(x => `<div class="mm-row"><span class="tm">${x.time ? escapeHtml(hm12(x.time)) : 'Today'}</span><span class="tt">${escapeHtml(x.title)}</span></div>`))}
+          ${sec('⭐ Important (no date yet / later)', d.important.map(t => trow(t, false)))}
+          ${sec('Done today ✓', d.doneToday.slice(0, 8).map(t => `<div class="mm-row done"><span class="tm">✓</span><span class="tt">${escapeHtml(t.title)}</span></div>`))}
+          ${!left && !d.meetings.length && !d.calls.length && !d.posts.length ? '<div class="hub-muted" style="padding:18px 0; text-align:center;">Nothing scheduled for today 🎉</div>' : ''}
+          <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:18px;">
+            <button type="button" class="btn btn-primary" data-mm-tasks>Open Tasks</button>
+            <button type="button" class="btn btn-outline" data-mm-wa>Send to my WhatsApp</button>
+            <button type="button" class="btn btn-outline" data-mm-copy>Copy</button>
+          </div>`;
+      }
+      function openMorning() { renderMorning(); openModal('modal-morning'); }
+      // once a day, at or after the chosen time, the first time the app is open
+      function checkMorning() {
+        if (typeof state === 'undefined' || !state.tasks) return;
+        const m = morningPrefs(); if (!m.on) return;
+        const today = getDateOffset(0); if (m.last === today) return;
+        const nowHM = hmT(new Date()); if (nowHM < (m.time || '09:00')) return;
+        if (nowHM >= '21:00') { m.last = today; saveMorningPrefs(m); return; } // too late in the day to be useful
+        m.last = today; saveMorningPrefs(m);
+        const d = morningData();
+        if (appInBackground() && leadAlertPrefs().system) {
+          const n = d.todays.length; const o = d.overdue.length;
+          sysNotify(`${morningGreeting()} — ${n} task${n === 1 ? '' : 's'} today`, [o ? `${o} overdue` : '', d.meetings.length ? `${d.meetings.length} meeting${d.meetings.length > 1 ? 's' : ''}` : '', d.todays.slice(0, 3).map(t => t.title).join(', ')].filter(Boolean).join(' · '), 'ids-morning', { morning: 1 });
+          window.__idsMorningPending = true; // show the card when they come back
+        } else openMorning();
+      }
+      document.addEventListener('visibilitychange', () => { if (!document.hidden && window.__idsMorningPending) { window.__idsMorningPending = false; setTimeout(openMorning, 300); } });
+      setInterval(() => { try { checkMorning(); } catch (e) { /* ignore */ } }, 60000);
+      setTimeout(() => { try { checkMorning(); } catch (e) { /* ignore */ } }, 3200);
+      // daily repeating calendar alert that opens the summary (works with the app closed)
+      function morningLink() { return (typeof siteBase === 'function' ? siteBase() : location.href.split('?')[0]) + '?morning=1'; }
+      async function morningToPhone() {
+        const m = morningPrefs(); const start = `${getDateOffset(m.last === getDateOffset(0) || hmT(new Date()) > m.time ? 1 : 0)}T${m.time || '09:00'}`;
+        const title = '☀️ Today’s tasks — Interior Dezign Studio';
+        const desc = `Open your summary: ${morningLink()}`;
+        if (calendarAuto()) {
+          try {
+            await getCloudToken(true);
+            await gApi('https://www.googleapis.com/calendar/v3/calendars/primary/events', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ summary: title, description: desc, start: { dateTime: `${start}:00`, timeZone: 'Asia/Kolkata' }, end: { dateTime: `${addMinutesLocal(start, 10)}:00`, timeZone: 'Asia/Kolkata' }, recurrence: ['RRULE:FREQ=DAILY'], reminders: { useDefault: false, overrides: [{ method: 'popup', minutes: 0 }] } }) });
+            showToast(`Daily ${m.time} alert added to Google Calendar`); return;
+          } catch (err) { /* fall through */ }
+        }
+        const choice = await appConfirm('Add a daily alert at ' + m.time + ' that opens this summary?\n\nOK = Google Calendar · Cancel = iPhone / other calendar', { ok: 'Google Calendar' });
+        if (choice) {
+          const q = new URLSearchParams({ action: 'TEMPLATE', text: title, dates: `${calCompact(start)}/${calCompact(addMinutesLocal(start, 10))}`, details: desc, ctz: 'Asia/Kolkata', recur: 'RRULE:FREQ=DAILY' });
+          const u = `https://calendar.google.com/calendar/render?${q.toString()}`; window.__idsLastOpen = u; window.open(u, '_blank', 'noopener'); return;
+        }
+        const esc = v => String(v).replace(/[\\;,]/g, x => '\\' + x).replace(/\n/g, '\\n');
+        const ics = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Interior Dezign Studio//OS//EN', 'BEGIN:VEVENT', `UID:morning-${Date.now()}@ids`, `DTSTAMP:${new Date().toISOString().replace(/[-:]/g, '').replace(/\.\d+/, '')}`,
+          `DTSTART;TZID=Asia/Kolkata:${calCompact(start)}`, `DTEND;TZID=Asia/Kolkata:${calCompact(addMinutesLocal(start, 10))}`, 'RRULE:FREQ=DAILY', `SUMMARY:${esc(title)}`, `DESCRIPTION:${esc(desc)}`, `URL:${morningLink()}`,
+          'BEGIN:VALARM', 'ACTION:DISPLAY', `DESCRIPTION:${esc(title)}`, 'TRIGGER:-PT0M', 'END:VALARM', 'END:VEVENT', 'END:VCALENDAR'].join('\r\n');
+        const blob = new Blob([ics], { type: 'text/calendar;charset=utf-8' });
+        if (isAppleTouch()) { const url = URL.createObjectURL(blob); window.open(url, '_blank') || (location.href = url); setTimeout(() => URL.revokeObjectURL(url), 60000); }
+        else deliverAnyFile(blob, 'morning_summary.ics');
+        showToast('Calendar event ready — open it and tap “Add”. It repeats every day.');
+      }
+      (function () {
+        let qs; try { qs = new URLSearchParams(location.search); } catch (e) { return; }
+        if (!qs.get('morning')) return;
+        try { history.replaceState(null, '', location.pathname); } catch (e) { /* ignore */ }
+        const m = morningPrefs(); m.last = getDateOffset(0); saveMorningPrefs(m);
+        setTimeout(() => { try { switchTab('tasks'); openMorning(); } catch (err) { /* ignore */ } }, 1300);
+      })();
+      document.addEventListener('change', e => {
+        const t = e.target;
+        if (t.matches('[data-morning-on]')) { const m = morningPrefs(); m.on = t.checked; saveMorningPrefs(m); const ti = document.querySelector('[data-morning-time]'); if (ti) ti.disabled = !t.checked; showToast(t.checked ? `Morning summary on — ${m.time} daily` : 'Morning summary off on this device'); }
+        if (t.matches('[data-morning-time]') && t.value) { const m = morningPrefs(); m.time = t.value; if (hmT(new Date()) < t.value) m.last = ''; saveMorningPrefs(m); showToast(`Morning summary at ${hm12(t.value)}`); }
+        const dn = t.closest && t.closest('[data-mm-done]');
+        if (dn) { const tk = (state.tasks || []).find(x => x.id === dn.dataset.mmDone); if (!tk) return; if (dn.checked) completeTask(tk); else { tk.done = false; delete tk.doneAt; } commitState(); setTimeout(() => { renderMorning(); if (state.activeTab === 'tasks') renderMyTasks(); updateTaskBadge(); }, 150); }
+      });
+      document.addEventListener('click', async e => {
+        const t = e.target;
+        if (t.closest('[data-morning-open]')) { openMorning(); return; }
+        if (t.closest('[data-morning-phone]')) { morningToPhone(); return; }
+        if (!t.closest('#modal-morning')) return;
+        if (t.closest('[data-mm-tasks]')) { closeModal('modal-morning'); switchTab('tasks'); return; }
+        const ld = t.closest('[data-mm-lead]'); if (ld) { closeModal('modal-morning'); switchTab('leads'); openLeadDetail(ld.dataset.mmLead); return; }
+        if (t.closest('[data-mm-wa]')) { const u = `https://wa.me/?text=${encodeURIComponent(morningText(morningData()))}`; window.__idsLastOpen = u; window.open(u, '_blank', 'noopener'); return; }
+        if (t.closest('[data-mm-copy]')) { const txt = morningText(morningData()); try { await navigator.clipboard.writeText(txt); showToast('Summary copied'); } catch (err) { window.prompt('Copy', txt); } }
       });
 
       // ===== Project archive (ZIP) and import from the master file =====
@@ -15599,6 +15780,7 @@
       function openFromNotification(d) {
         d = d || {};
         try {
+          if (d.morning) { window.__idsMorningPending = false; switchTab('tasks'); openMorning(); return; }
           if (d.taskId) { const t = (state.tasks || []).find(x => x.id === d.taskId); if (t) { openTaskInHub(t); return; } }
           if (d.leadId && typeof openLeadDetail === 'function' && findLead(d.leadId)) { switchTab('leads'); openLeadDetail(d.leadId); return; }
           if (d.tab) { switchTab(d.tab); if (d.tab === 'leads') closeLeadPop(); }
