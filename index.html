@@ -2634,6 +2634,16 @@
       .sc-filters::-webkit-scrollbar { display:none; }
       .sc-filters button { flex:0 0 auto; }
     }
+    /* Project archive */
+    #modal-archive { z-index: 3000 !important; }
+    .arc-steps { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+    .arc-steps li { display: flex; gap: 10px; align-items: center; font-size: 14px; }
+    .arc-steps li span { width: 22px; height: 22px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 12px; flex: 0 0 22px; background: var(--bg-sunken); color: var(--text-muted); border: 1px solid var(--border-subtle); }
+    .arc-steps li.done span { background: var(--accent-emerald); color: #FFF; border-color: transparent; }
+    .arc-steps li.now span { border-color: var(--accent-terracotta); color: var(--accent-terracotta-dark); }
+    .arc-steps li.now { font-weight: 600; }
+    .arc-bar { height: 6px; border-radius: 99px; background: var(--bg-sunken); overflow: hidden; margin: 14px 0 6px; }
+    .arc-bar i { display: block; height: 100%; background: var(--accent-terracotta); width: 0; transition: width .3s; }
     /* Trash */
     .trash-row { display:flex; gap:12px; align-items:center; padding:12px 0; border-bottom:1px solid var(--border-subtle); flex-wrap:wrap; }
     .trash-row:last-child { border-bottom:0; }
@@ -3330,7 +3340,8 @@
               <h1 class="page-title">Onboarded Clients</h1>
               <p class="page-sub">Everything for each client in one place — details, estimate, payments, tasks, notes and files</p>
             </div>
-            <button class="btn btn-primary" id="btn-hub-add-client" data-action="open-new-client">+ Add Client</button>
+            <span style="display:flex; gap:8px; flex-wrap:wrap;"><label class="btn btn-outline" title="Bring back a project from its master file (.idsproject.json)" style="cursor:pointer;">⬆ Import project<input type="file" accept=".json,application/json" hidden id="project-import-file" /></label>
+            <button class="btn btn-primary" id="btn-hub-add-client" data-action="open-new-client">+ Add Client</button></span>
           </div>
 
           <div class="hub" id="clients-render-target"></div>
@@ -4012,6 +4023,12 @@
     <div class="modal-box modal-lg">
       <div class="modal-header"><h3 class="font-serif" style="font-size:22px; font-weight:700;" id="post-title">Post</h3><button class="btn btn-outline btn-sm" data-close-modal="modal-post">✕</button></div>
       <div id="post-body"></div>
+    </div>
+  </div>
+  <div class="modal-backdrop" id="modal-archive">
+    <div class="modal-box">
+      <div class="modal-header"><h3 class="font-serif" style="font-size:22px; font-weight:700;" id="archive-title">Project archive</h3></div>
+      <div id="archive-body"></div>
     </div>
   </div>
   <div class="modal-backdrop" id="modal-trash">
@@ -6748,6 +6765,7 @@
               <button type="button" class="btn btn-outline btn-sm" data-hub-goto="tasks">+ Task</button>
               <button type="button" class="btn btn-outline btn-sm" data-hub-goto="notes">+ Site Note</button>
               ${c.driveUrl && safeHttpUrl(c.driveUrl) ? `<a class="btn btn-outline btn-sm" href="${escapeHtml(safeHttpUrl(c.driveUrl))}" target="_blank" rel="noopener">Drive Folder ↗</a>` : ''}
+              ${perms.canSeeMoney ? `<button type="button" class="btn btn-outline btn-sm" data-archive="${c.id}" title="ZIP with every PDF, an Excel workbook, photos and a master file">📦 Project archive</button>` : ''}
               ${perms.canEditClients ? `<button type="button" class="btn btn-danger-soft btn-sm" data-client-del="${c.id}" style="margin-left:auto;">Delete client</button>` : ''}
             </div>
 
@@ -7463,6 +7481,11 @@
             commitState();
             renderClients();
             showToast(`Marked ${c.status}`);
+            if (c.status === 'Completed' && getCurrentPermissions().canSeeMoney) {
+              setTimeout(async () => {
+                if (await appConfirm(`${c.name} is completed 🎉\n\nDownload the project archive now? One ZIP with every estimate, PO, bill and payment statement as PDF, an Excel workbook, all photos, and a master file you can import back into the app any time.`, { ok: 'Download archive', danger: false })) buildProjectArchive(c);
+              }, 350);
+            }
           }
           return true;
         }
@@ -9849,6 +9872,232 @@
 
 
 
+
+      // ===== Project archive (ZIP) and import from the master file =====
+      const JSZIP_SOURCES = ['https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js', 'https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js'];
+      function loadJsZip() {
+        if (window.JSZip) return Promise.resolve(true);
+        return new Promise(resolve => { let i = 0; (function next() { if (window.JSZip) return resolve(true); if (i >= JSZIP_SOURCES.length) return resolve(false); const sc = document.createElement('script'); sc.src = JSZIP_SOURCES[i++]; sc.onload = () => (window.JSZip ? resolve(true) : next()); sc.onerror = () => { sc.remove(); next(); }; document.head.appendChild(sc); })(); });
+      }
+      const arcSafe = n => String(n || '').replace(/[\\/:*?"<>|#%]+/g, '-').replace(/\s+/g, '_').replace(/_+/g, '_').slice(0, 80) || 'file';
+      function deliverAnyFile(blob, fileName) {
+        let file = null; try { file = new File([blob], fileName, { type: blob.type || 'application/octet-stream' }); } catch (e) { file = null; }
+        const dl = () => { const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = fileName; a.rel = 'noopener'; a.style.display = 'none'; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(url), 120000); };
+        if (isAppleTouch() && file && navigator.canShare && navigator.canShare({ files: [file] })) { navigator.share({ files: [file], title: fileName }).catch(err => { if (!err || err.name !== 'AbortError') dl(); }); return; }
+        dl();
+      }
+      // open a document the usual way, then make its PDF and hand back the file
+      function arcPdf(open, filename, waitMs) {
+        return new Promise(resolve => {
+          let done = false;
+          const fin = b => { if (done) return; done = true; clearTimeout(tm); resolve(b); };
+          const tm = setTimeout(() => { pdfCapture = null; downloadExactGraphicPdf._busy = false; fin(null); }, 90000);
+          try { open(); } catch (e) { fin(null); return; }
+          setTimeout(() => { pdfCapture = b => fin(b); downloadExactGraphicPdf(filename); }, waitMs || 350);
+        });
+      }
+      function arcRecords(c) {
+        const own = x => x && x.clientId === c.id;
+        const boqIds = [c.id, c.finalBoqId].filter(id => id && state.boqs && state.boqs[id]);
+        const boqs = {}; boqIds.forEach(id => { boqs[id] = state.boqs[id]; });
+        const money = (state.money || []).filter(own);
+        const pos = (state.pos || []).filter(own);
+        const siteBills = (state.siteBills || []).filter(own);
+        const vendorIds = new Set([...money, ...pos, ...siteBills].map(x => x.vendorId).concat((c.siteVendors || []).map(v => v.vendorId)).filter(Boolean));
+        return {
+          format: 'ids-project', version: 1, exportedAt: new Date().toISOString(), studio: (state.studioProfile || {}).name || '',
+          client: c, boqs,
+          invoices: (state.invoices || []).filter(own), money, selections: (state.selections || []).filter(own), pos, siteBills,
+          tasks: (state.tasks || []).filter(own), posts: (state.posts || []).filter(own),
+          leads: (state.leads || []).filter(l => l.clientId === c.id),
+          vendors: (state.vendors || []).filter(v => vendorIds.has(v.id))
+        };
+      }
+      // flat rows for Excel: simple fields only, ids turned into names, photos left out
+      function arcFlat(o, extra) {
+        const r = {};
+        Object.keys(o || {}).forEach(k => {
+          const v = o[k];
+          if (v == null || k === 'photo' || k === 'photos' || k === 'id') return;
+          if (typeof v === 'string' && v.startsWith('data:')) return;
+          if (k === 'clientId') { r.Client = (clientById(v) || {}).name || v; return; }
+          if (k === 'vendorId') { r.Vendor = (vendorById(v) || {}).name || v; return; }
+          if (k === 'vendorIds' && Array.isArray(v)) { r.Vendors = v.map(id => (vendorById(id) || {}).name || id).join(', '); return; }
+          if (/Email$/.test(k) && typeof v === 'string') { r[k.replace(/Email$/, '')] = (typeof staffName === 'function' && staffName(v)) || v; return; }
+          if (Array.isArray(v)) { if (v.every(x => typeof x !== 'object')) r[k.replace(/([a-z])([A-Z])/g, '$1 $2').replace(/^./, ch => ch.toUpperCase())] = v.join(', '); return; }
+          if (typeof v === 'object') return;
+          r[k.replace(/([a-z])([A-Z])/g, '$1 $2').replace(/^./, ch => ch.toUpperCase())] = v;
+        });
+        return Object.assign(r, extra || {});
+      }
+      function arcSheets(c, R) {
+        const sheets = [];
+        const f = getClientFinance(c);
+        sheets.push(['Summary', [
+          { Field: 'Client', Value: c.name }, { Field: 'Phone', Value: c.phone || '' }, { Field: 'Email', Value: c.email || '' }, { Field: 'Site address', Value: c.address || '' },
+          { Field: 'Scope', Value: c.scope || '' }, { Field: 'Status', Value: c.status || '' }, { Field: 'Contract value', Value: f.contract || 0 },
+          { Field: 'Received from client', Value: moneySum(R.money.filter(m => m.dir === 'in')) }, { Field: 'Paid to vendors & labour', Value: moneySum(R.money.filter(m => m.dir === 'out')) },
+          { Field: 'Balance due from client', Value: Math.max(0, (f.contract || 0) - clientReceived(c.id)) }, { Field: 'Archive made on', Value: fmtDay(getDateOffset(0)) }
+        ]]);
+        Object.entries(R.boqs).forEach(([id, boq]) => {
+          ['A', 'B', 'C'].forEach(k => {
+            const v = boq.versions && boq.versions[k]; if (!v) return;
+            const rows = [];
+            (v.rooms || []).forEach(rm => (rm.items || []).forEach((it, i) => rows.push({ Room: rm.name, '#': i + 1, Description: it.desc || '', Length: it.len || '', Height: it.ht || '', Qty: Number(it.qty) || 0, Unit: it.unit || '', Rate: Number(it.rate) || 0, Amount: Math.round((Number(it.qty) || 0) * (Number(it.rate) || 0) * 100) / 100 })));
+            if (!rows.length) return;
+            const sm = computeVersionSummary(v);
+            rows.push({}, { Description: 'Sub-total', Amount: sm.subtotal }, { Description: 'Design fee', Amount: sm.designFee || 0 }, { Description: 'Execution fee', Amount: sm.execFee || 0 }, { Description: 'GST', Amount: (sm.cgst || 0) + (sm.sgst || 0) }, { Description: 'Grand total', Amount: sm.grandTotal });
+            sheets.push([`${id === c.finalBoqId && id !== c.id ? 'Final ' : ''}Estimate ${k}${boq.approvedVersion === k ? ' (approved)' : ''}`.slice(0, 31), rows]);
+          });
+        });
+        sheets.push(['Payments', R.money.slice().sort((a, b) => String(a.date).localeCompare(String(b.date))).map(m => ({ Date: m.date, Direction: m.dir === 'in' ? 'Received' : 'Paid out', Amount: Number(m.amount) || 0, 'Paid to / from': m.dir === 'in' ? c.name : ((vendorById(m.vendorId) || {}).name || ''), For: m.dir === 'in' ? [m.kind, m.milestone].filter(Boolean).join(' · ') : (m.work || ''), Category: m.category || '', Mode: m.mode || '', Reference: m.ref || '', Note: m.note || '', Photos: (m.photos || []).length || '' }))]);
+        const poRows = []; R.pos.forEach(p2 => { const t = poTotals(p2); (p2.items || []).forEach((it, i) => poRows.push({ 'PO No': p2.poNo, Date: p2.date, Vendor: (vendorById(p2.vendorId) || {}).name || '', Category: p2.category || '', Status: p2.status || '', '#': i + 1, Item: it.name, Description: it.desc || '', Qty: Number(it.qty) || 0, Unit: it.unit || '', Rate: Number(it.rate) || 0, Amount: (Number(it.qty) || 0) * (Number(it.rate) || 0), 'PO total (incl. GST)': i === 0 ? t.total : '', Paid: i === 0 ? t.paid : '' })); });
+        sheets.push(['Purchase orders', poRows]);
+        sheets.push(['GST bills', R.invoices.map(x => arcFlat(x))]);
+        const sbRows = []; R.siteBills.forEach(b => { const t = sbTotals(b); (b.items || []).forEach((it, i) => sbRows.push({ 'Bill No': b.billNo, Date: b.date, Title: b.title || '', Vendor: (vendorById(b.vendorId) || {}).name || '', '#': i + 1, Work: it.desc || '', Room: it.room || '', Qty: sbQty(it), Unit: it.unit || '', 'Labour rate': Number(it.labourRate) || 0, 'Client rate': Number(it.clientRate) || 0, 'Labour total': i === 0 ? t.labour : '', 'Client total': i === 0 ? t.client : '' })); });
+        sheets.push(['Site bills', sbRows]);
+        sheets.push(['Selections', R.selections.map(x => arcFlat(x))]);
+        sheets.push(['Timeline', (c.timeline || []).map(x => arcFlat(x))]);
+        sheets.push(['Tasks', R.tasks.map(x => arcFlat(x))]);
+        sheets.push(['Site notes', (c.notes || []).map(x => arcFlat(x))]);
+        sheets.push(['Links', (c.links || []).map(x => arcFlat(x))]);
+        if ((c.linkSets || []).length) sheets.push(['Link bundles', c.linkSets.map(ls => ({ Bundle: ls.name, Links: (ls.linkIds || []).map(id => { const l = (c.links || []).find(x => x.id === id); return l ? `${l.label} — ${l.url}` : ''; }).filter(Boolean).join('\n') }))]);
+        if ((c.checklist || []).length) sheets.push(['Checklist', c.checklist.map(x => arcFlat(x))]);
+        if ((c.siteVendors || []).length) sheets.push(['Vendors on site', c.siteVendors.map(x => arcFlat(x))]);
+        if (R.vendors.length) sheets.push(['Vendors', R.vendors.map(x => arcFlat(x))]);
+        return sheets.filter(([, rows]) => rows && rows.length);
+      }
+      function projectSummarySpec(c) {
+        const cols = (labels, ws) => labels.map((l, i) => ({ label: l, w: ws[i] }));
+        const blocks = [];
+        const tl = c.timeline || [];
+        if (tl.length) { blocks.push({ type: 'heading', text: 'Timeline' }); blocks.push({ type: 'table', cols: cols(['Phase', 'Start', 'End', 'Status'], [86, 32, 32, 36]), rows: tl.map(ph => ({ cells: [{ main: ph.name, sub: ph.note || '' }, fmtDay(ph.start), fmtDay(ph.end), ph.status || 'Not started'] })) }); }
+        const tasks = (state.tasks || []).filter(t => t.clientId === c.id);
+        if (tasks.length) { blocks.push({ type: 'heading', text: 'Tasks' }); blocks.push({ type: 'table', cols: cols(['Task', 'Assigned to', 'Due', 'Done'], [92, 44, 30, 20]), rows: tasks.map(t => ({ cells: [t.title, (typeof staffName === 'function' && staffName(t.assigneeEmail)) || t.assigneeEmail || '', fmtDay(t.dueDate), t.done ? 'Yes' : 'No'] })) }); }
+        const notes = c.notes || [];
+        if (notes.length) { blocks.push({ type: 'heading', text: 'Site notes' }); blocks.push({ type: 'table', cols: cols(['Date', 'Type', 'Note'], [28, 30, 128]), rows: notes.map(n => ({ cells: [fmtDay(n.date), n.type || '', n.text || ''] })) }); }
+        const ck = c.checklist || [];
+        if (ck.length) { blocks.push({ type: 'heading', text: 'Quality checklist' }); blocks.push({ type: 'table', cols: cols(['Stage', 'Check', 'Done'], [40, 126, 20]), rows: ck.map(x => ({ cells: [x.stage || '', x.text || '', x.done ? 'Yes' : 'No'] })) }); }
+        const links = c.links || [];
+        if (links.length || c.driveUrl) { blocks.push({ type: 'heading', text: 'Files & links' }); blocks.push({ type: 'table', cols: cols(['Name', 'Link'], [60, 126]), rows: (c.driveUrl ? [{ label: 'Drive folder', url: c.driveUrl }] : []).concat(links).map(l => ({ cells: [l.label || '', l.url || ''] })) }); }
+        if (!blocks.length) blocks.push({ type: 'text', text: 'No timeline, tasks, notes or links were recorded for this project.' });
+        return { title: 'PROJECT SUMMARY', docTitle: `Project summary — ${c.name}`, filename: `Project_Summary_${arcSafe(c.name)}.html`,
+          info: { leftLabel: 'Client', leftName: c.name, leftSub: [c.address, c.phone].filter(Boolean).join(' · '), rightLabel: 'Project', rightLines: [c.scope || '', `Status: ${c.status || ''}`, `Date: ${fmtDay(getDateOffset(0))}`].filter(Boolean) },
+          blocks, signatures: [] };
+      }
+      function renderArchiveProgress(steps, cur, note, pct) {
+        const box = document.getElementById('archive-body'); if (!box) return;
+        box.innerHTML = `<ul class="arc-steps">${steps.map((st, i) => `<li class="${i < cur ? 'done' : i === cur ? 'now' : ''}"><span>${i < cur ? '✓' : i + 1}</span>${escapeHtml(st)}</li>`).join('')}</ul>
+          <div class="arc-bar"><i style="width:${Math.round(pct || 0)}%"></i></div><div class="hub-muted" style="font-size:12.5px;">${escapeHtml(note || 'Please keep this screen open…')}</div>`;
+      }
+      let archiveBusy = false;
+      async function buildProjectArchive(c) {
+        if (archiveBusy) return; archiveBusy = true;
+        const steps = ['Estimates', 'Purchase orders', 'GST & site bills', 'Payments, selections & summary', 'Excel workbook & photos', 'Master file & ZIP'];
+        document.getElementById('archive-title').textContent = `Project archive · ${c.name}`;
+        renderArchiveProgress(steps, 0, 'Loading…', 2); openModal('modal-archive');
+        const keep = { boqClient: state.activeBoqClientId, selF: state.selF ? JSON.stringify(state.selF[c.id] || null) : 'null', boqVer: {} };
+        const R = arcRecords(c);
+        Object.entries(R.boqs).forEach(([id, b]) => { keep.boqVer[id] = b.activeVersion; });
+        try {
+          const ok = await loadJsZip();
+          if (!ok) { closeModal('modal-archive'); deliverAnyFile(new Blob([JSON.stringify(R)], { type: 'application/json' }), `${arcSafe(c.name)}_MASTER.idsproject.json`); showToast('No internet for the ZIP tool — downloaded the master file only'); return; }
+          const zip = new JSZip();
+          const root = zip.folder(`${arcSafe(c.name)}_Project_Archive_${getDateOffset(0)}`);
+          const missed = [];
+          const pdfs = [];
+          // which documents
+          Object.entries(R.boqs).forEach(([id, b]) => {
+            const label = id === c.finalBoqId && id !== c.id ? 'Final_Estimate' : 'Estimate';
+            ['A', 'B', 'C'].forEach(k => { const v = b.versions && b.versions[k]; if (v && (v.rooms || []).some(r => (r.items || []).length)) pdfs.push({ step: 0, path: `01_Estimates/${label}_Option_${k}${b.approvedVersion === k ? '_APPROVED' : ''}.pdf`, open: () => { state.activeBoqClientId = id; b.activeVersion = k; currentPrintDocType = 'boq'; openPrintSheetPreview('Estimate', 'Estimate.html', buildBoqPreviewHtml(), false); } }); });
+            if (['A', 'B', 'C'].filter(k => b.versions && b.versions[k] && (b.versions[k].rooms || []).some(r => (r.items || []).length)).length > 1) pdfs.push({ step: 0, path: `01_Estimates/${label}_3_Option_Comparison.pdf`, open: () => { state.activeBoqClientId = id; currentPrintDocType = 'comparison'; openPrintSheetPreview('Comparison', 'Comparison.html', buildThreeVersionComparisonHtml(b), false); } });
+          });
+          R.pos.forEach(p2 => pdfs.push({ step: 1, path: `02_Purchase_Orders/${arcSafe(p2.poNo)}_${arcSafe((vendorById(p2.vendorId) || {}).name || 'Vendor')}.pdf`, open: () => openSpecPreview(poSpec(p2)), wait: (p2.items || []).some(it => it.photo) ? 900 : 350 }));
+          R.invoices.forEach(inv => pdfs.push({ step: 2, path: `03_GST_Bills/${arcSafe(inv.invoiceNo)}.pdf`, open: () => { currentPrintDocType = 'invoice'; currentPrintInvoiceId = inv.id; openPrintSheetPreview('Tax Invoice', 'Invoice.html', buildInvoicePreviewHtml(inv), false); } }));
+          R.siteBills.forEach(b => ['client', 'labour'].forEach(side => pdfs.push({ step: 2, path: `04_Site_Bills/${arcSafe(b.billNo)}_${side === 'client' ? 'Client' : 'Labour'}.pdf`, open: () => openSiteBillPrint(b.id, side), wait: 600 })));
+          if (R.money.length) pdfs.push({ step: 3, path: `05_Payments/Payment_Statement_${arcSafe(c.name)}.pdf`, open: () => openSpecPreview(paymentStatementSpec(R.money, { client: c }, periodText(R.money, 'All payments'))) });
+          if (R.selections.length) pdfs.push({ step: 3, path: `06_Selections/Selections_${arcSafe(c.name)}.pdf`, open: () => { state.selF = state.selF || {}; state.selF[c.id] = {}; openSpecPreview(selectionSpec(c)); }, wait: R.selections.some(x => x.photo) ? 1200 : 350 });
+          pdfs.push({ step: 3, path: `07_Timeline_Tasks_Notes_Links/Project_Summary_${arcSafe(c.name)}.pdf`, open: () => openSpecPreview(projectSummarySpec(c)) });
+          for (let i = 0; i < pdfs.length; i++) {
+            const d = pdfs[i];
+            renderArchiveProgress(steps, d.step, `PDF ${i + 1} of ${pdfs.length}: ${d.path.split('/').pop()}`, 4 + 70 * i / pdfs.length);
+            const blob = await arcPdf(d.open, d.path.split('/').pop().replace(/\.pdf$/, '.html'), d.wait);
+            if (blob) root.file(d.path, blob); else missed.push(d.path);
+          }
+          closeModal('modal-print-preview');
+          // Excel workbook (or CSV files if the Excel tool cannot load)
+          renderArchiveProgress(steps, 4, 'Making the Excel workbook…', 78);
+          const sheets = arcSheets(c, R);
+          if (await loadXlsxLib()) {
+            const wb = XLSX.utils.book_new(); const used = new Set();
+            sheets.forEach(([name, rows]) => { let n = name.replace(/[\\/?*[\]:]/g, '-').slice(0, 31); while (used.has(n)) n = n.slice(0, 28) + '_' + used.size; used.add(n); const ws = XLSX.utils.json_to_sheet(rows); const keys = Object.keys(rows.reduce((a, r) => Object.assign(a, r), {})); ws['!cols'] = keys.map(k => ({ wch: Math.min(60, Math.max(10, k.length + 2, ...rows.map(r => String(r[k] == null ? '' : r[k]).length + 1))) })); XLSX.utils.book_append_sheet(wb, ws, n); });
+            root.file(`${arcSafe(c.name)}_Project_Workbook.xlsx`, XLSX.write(wb, { bookType: 'xlsx', type: 'array' }));
+          } else {
+            const csv = rows => { const keys = Object.keys(rows.reduce((a, r) => Object.assign(a, r), {})); const q = v => `"${String(v == null ? '' : v).replace(/"/g, '""')}"`; return '﻿' + [keys.map(q).join(','), ...rows.map(r => keys.map(k => q(r[k])).join(','))].join('\r\n'); };
+            sheets.forEach(([name, rows]) => root.file(`Excel_CSV/${arcSafe(name)}.csv`, csv(rows)));
+            missed.push('Excel workbook (made CSV files instead — no internet for the Excel tool)');
+          }
+          // photos
+          renderArchiveProgress(steps, 4, 'Adding photos…', 86);
+          const addPhoto = (folder, name, url) => { const m = String(url || '').match(/^data:image\/(\w+);base64,(.+)$/); if (!m) return; root.file(`08_Photos/${folder}/${arcSafe(name)}.${m[1] === 'jpeg' ? 'jpg' : m[1]}`, m[2], { base64: true }); };
+          R.selections.forEach((x, i) => addPhoto('Selections', `${i + 1}_${x.category || ''}_${x.name || ''}`, x.photo));
+          R.pos.forEach(p2 => (p2.items || []).forEach((it, i) => addPhoto('Purchase_orders', `${p2.poNo}_${i + 1}_${it.name || ''}`, it.photo)));
+          R.siteBills.forEach(b => (b.items || []).forEach((it, i) => (it.photos || []).forEach((ph, j) => addPhoto('Site_bills', `${b.billNo}_${i + 1}_${j + 1}_${it.desc || ''}`, ph))));
+          R.money.forEach(m => (m.photos || []).forEach((ph, j) => addPhoto('Payment_receipts', `${m.date}_${m.dir === 'in' ? 'received' : 'paid'}_${m.amount}_${j + 1}`, ph)));
+          // master file + read-me
+          renderArchiveProgress(steps, 5, 'Packing the ZIP…', 92);
+          root.file(`${arcSafe(c.name)}_MASTER.idsproject.json`, JSON.stringify(R));
+          const fin = getClientFinance(c);
+          root.file('00_READ_ME.txt', [
+            `${(state.studioProfile || {}).name || 'Studio'} — project archive`, `Client: ${c.name}`, `Site: ${c.address || ''}`, `Made on: ${fmtDay(getDateOffset(0))}`, '',
+            'What is inside:', '  01_Estimates — every option as PDF (and the 3-option comparison)', '  02_Purchase_Orders — one PDF per PO', '  03_GST_Bills, 04_Site_Bills — bills as PDF',
+            '  05_Payments — payment statement (money in & out)', '  06_Selections — selections with photos', '  07_Timeline_Tasks_Notes_Links — project summary PDF', '  08_Photos — all photos',
+            `  ${arcSafe(c.name)}_Project_Workbook.xlsx — everything in Excel, one sheet each`, '',
+            `MASTER FILE: ${arcSafe(c.name)}_MASTER.idsproject.json`, '  Open the app → Onboarded Clients → "Import project" and choose this file.', '  The whole project comes back — estimates, payments, POs, bills, selections, timeline, tasks, notes and links — ready to use and edit.', '',
+            `Contract value: ${formatINR(fin.contract || 0)}   Received: ${formatINR(clientReceived(c.id))}`,
+            missed.length ? `\nNot included: ${missed.join('; ')}` : ''
+          ].join('\r\n'));
+          const blob = await zip.generateAsync({ type: 'blob', compression: 'DEFLATE', compressionOptions: { level: 6 } }, meta => renderArchiveProgress(steps, 5, 'Packing the ZIP…', 92 + meta.percent * 0.08));
+          renderArchiveProgress(steps, 6, missed.length ? `Done. Not included: ${missed.join(', ')}` : 'Done.', 100);
+          deliverAnyFile(blob, `${arcSafe(c.name)}_Project_Archive_${getDateOffset(0)}.zip`);
+          setTimeout(() => closeModal('modal-archive'), 900);
+          showToast(`Project archive ready · ${(blob.size / 1048576).toFixed(1)} MB${missed.length ? ` · ${missed.length} item${missed.length === 1 ? '' : 's'} skipped` : ''}`);
+        } catch (err) {
+          console.error(err); closeModal('modal-archive'); showToast('Could not make the archive: ' + (err.message || err));
+        } finally {
+          pdfCapture = null; archiveBusy = false;
+          state.activeBoqClientId = keep.boqClient;
+          Object.entries(keep.boqVer).forEach(([id, v]) => { if (state.boqs[id]) state.boqs[id].activeVersion = v; });
+          const sf = JSON.parse(keep.selF); if (state.selF) { if (sf) state.selF[c.id] = sf; else delete state.selF[c.id]; }
+          closeModal('modal-print-preview');
+        }
+      }
+      async function importProjectFile(file) {
+        let d; try { d = JSON.parse(await file.text()); } catch (e) { showToast('That file is not a project master file'); return; }
+        if (!d || d.format !== 'ids-project' || !d.client || !d.client.id) { showToast('That file is not a project master file (.idsproject.json)'); return; }
+        const cid = d.client.id; const exists = (state.clients || []).some(x => x.id === cid);
+        const counts = [[Object.keys(d.boqs || {}).length, 'estimate'], [(d.money || []).length, 'payment'], [(d.pos || []).length, 'PO'], [(d.invoices || []).length + (d.siteBills || []).length, 'bill'], [(d.selections || []).length, 'selection'], [(d.tasks || []).length, 'task']].filter(([n]) => n).map(([n, w]) => `${n} ${w}${n === 1 ? '' : 's'}`).join(', ');
+        const when = d.exportedAt ? fmtDay(String(d.exportedAt).slice(0, 10)) : '';
+        if (!await appConfirm(exists ? `Replace “${d.client.name}” with the copy from ${when}?\n\nThe project in the app is replaced by the one in the file (${counts}).` : `Bring back “${d.client.name}”?\n\nFrom the archive of ${when}: ${counts || 'project details'}, plus timeline, notes and links.`, { ok: exists ? 'Replace project' : 'Import project', danger: exists })) return;
+        const before = JSON.stringify(state);
+        const linked = ['invoices', 'money', 'selections', 'pos', 'siteBills', 'tasks', 'posts'];
+        linked.forEach(k => {
+          const list = Array.isArray(d[k]) ? d[k] : []; const ids = new Set(list.map(x => x.id));
+          if (!Array.isArray(state[k])) state[k] = [];
+          state[k] = state[k].filter(x => !ids.has(x.id) && x.clientId !== cid).concat(list);
+        });
+        (d.leads || []).forEach(l => { if (!Array.isArray(state.leads)) state.leads = []; const i = state.leads.findIndex(x => x.id === l.id); if (i >= 0) state.leads[i] = l; else state.leads.push(l); });
+        (d.vendors || []).forEach(v => { if (!Array.isArray(state.vendors)) state.vendors = []; if (!state.vendors.some(x => x.id === v.id)) state.vendors.push(v); });
+        state.boqs = state.boqs || {}; Object.assign(state.boqs, d.boqs || {});
+        const i = state.clients.findIndex(x => x.id === cid); if (i >= 0) state.clients[i] = d.client; else state.clients.push(d.client);
+        state.activeClientId = cid; state.hubOpen = true; state.hubTab = 'overview'; state.hubFilter = 'All';
+        commitState(); switchTab('clients'); renderAll();
+        showToast(`${d.client.name} ${exists ? 'replaced from the archive' : 'imported'}`);
+        setTimeout(() => offerUndo(before), 50);
+      }
+      document.addEventListener('click', e => { const a = e.target.closest('[data-archive]'); if (!a) return; const c = clientById(a.dataset.archive); if (c) buildProjectArchive(c); });
+      document.addEventListener('change', e => { if (e.target.id !== 'project-import-file') return; const f = e.target.files && e.target.files[0]; e.target.value = ''; if (f) importProjectFile(f); });
+
       // ===== Social media calendar =====
       const SP_PLATFORMS = [['Instagram', 'IG'], ['Facebook', 'FB'], ['YouTube', 'YT'], ['LinkedIn', 'IN'], ['Pinterest', 'PIN'], ['WhatsApp status', 'WA']];
       const SP_TYPES = ['Reel', 'Post', 'Carousel', 'Story', 'Video', 'Short'];
@@ -12105,7 +12354,9 @@
 
       // Hands the finished PDF to the user without leaving the app:
       // iPhone / iPad → share sheet (Save to Files, WhatsApp, Mail…), everything else → normal download.
+      let pdfCapture = null; // set by the project archive: receives each finished PDF
       function deliverPdfFile(blob, fileName) {
+        if (pdfCapture) { const cb = pdfCapture; pdfCapture = null; cb(blob, fileName); return; }
         const triggerDownload = () => {
           const url = URL.createObjectURL(blob);
           const a = document.createElement('a');
@@ -12136,6 +12387,7 @@
       }
 
       function triggerNativePdfPrint(title, innerHtml) {
+        if (pdfCapture) { const cb = pdfCapture; pdfCapture = null; cb(null); return; }
         let frame = document.getElementById('print-frame');
         if (frame) frame.remove();
         frame = document.createElement('iframe');
