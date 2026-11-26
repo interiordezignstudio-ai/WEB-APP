@@ -4104,6 +4104,12 @@
       <div id="archive-body"></div>
     </div>
   </div>
+  <div class="modal-backdrop" id="modal-mcest">
+    <div class="modal-box modal-lg">
+      <div class="modal-header"><h3 class="font-serif" style="font-size:22px; font-weight:700;">Take from an estimate</h3><button class="btn btn-outline btn-sm" data-close-modal="modal-mcest">✕</button></div>
+      <div id="mcest-body"></div>
+    </div>
+  </div>
   <div class="modal-backdrop" id="modal-trash">
     <div class="modal-box modal-lg">
       <div class="modal-header"><h3 class="font-serif" style="font-size:22px; font-weight:700;">Trash</h3><button class="btn btn-outline btn-sm" data-close-modal="modal-trash">✕</button></div>
@@ -10178,7 +10184,7 @@
         const tiles = {};
         (mc.rooms || []).forEach(r => {
           const Lr = mcNum(r.L), Wr = mcNum(r.W), Hr = mcNum(r.H) || 10, area = Lr * Wr, per = 2 * (Lr + Wr);
-          if (!area) return;
+          if (area) {
           const walls = Math.max(0, per * Hr - mcNum(r.doors) * C.door - mcNum(r.windows) * C.window);
           if (r.paint) wall += walls;
           if (r.ceilPaint) ceilPaint += area;
@@ -10195,7 +10201,14 @@
             if (r.floor !== 'wood') { adh += area; groutA += area; }
             if (r.skirting) skirt += Math.max(0, per - mcNum(r.doors) * 3);
           }
-          if (r.light && r.light !== 'none') {
+          } else {
+            // no room size yet: use the sq ft taken from the estimate (edges estimated as a square)
+            const sqEdge = a => 4 * Math.sqrt(a);
+            if (r.paint && mcNum(r.paintSqft)) wall += mcNum(r.paintSqft);
+            if (r.fc && r.fc !== 'none' && mcNum(r.fcSqft)) { const a = mcNum(r.fcSqft); if (r.fcType === 'pop') pop += a; else gyp += a; perim += sqEdge(a) * (r.fc === 'band' ? 2 : 1); if (r.cove) cove += sqEdge(a); }
+            if (r.floor && r.floor !== 'none' && mcNum(r.floorSqft)) { const a = mcNum(r.floorSqft); tiles[r.floor] = (tiles[r.floor] || 0) + a; if (r.floor !== 'wood') { adh += a; groutA += a; } if (r.skirting) skirt += sqEdge(a); }
+          }
+          if (area && r.light && r.light !== 'none') {
             down += Math.max(1, Math.round(area / (MC_LUX[r.light] || MC_LUX.living)[1]));
           }
           wp += mcNum(r.wp);
@@ -10234,7 +10247,8 @@
         const tab = mc.tab || 'rooms';
         const saved = (state.matCalcs || []).slice().sort((a, b) => String(b.savedAt || '').localeCompare(String(a.savedAt || '')));
         const tabs = [['rooms', 'Rooms', mc.rooms.length], ['furniture', 'Furniture → ply, laminate, hardware', mc.units.length], ['paint', 'Paint'], ['ceiling', 'False ceiling'], ['floor', 'Flooring & tiles'], ['lights', 'Lights'], ['wall', 'Wallpaper'], ['cfg', 'Assumptions']];
-        const roomPick = (r, body) => `<tr><td class="w-name"><strong>${escapeHtml(r.name || 'Room')}</strong><div class="hub-muted" style="font-size:11.5px;">${mcNum(r.L)} × ${mcNum(r.W)} ft</div></td>${body}</tr>`;
+        const fromEst = r => [mcNum(r.fcSqft) ? `ceiling ${mcNum(r.fcSqft)}` : '', mcNum(r.floorSqft) ? `floor ${mcNum(r.floorSqft)}` : '', mcNum(r.paintSqft) ? `paint ${mcNum(r.paintSqft)}` : ''].filter(Boolean).join(' · ');
+        const roomPick = (r, body) => `<tr><td class="w-name"><strong>${escapeHtml(r.name || 'Room')}</strong><div class="hub-muted" style="font-size:11.5px;">${mcNum(r.L) && mcNum(r.W) ? `${mcNum(r.L)} × ${mcNum(r.W)} ft` : fromEst(r) ? `from estimate: ${fromEst(r)} sq ft` : 'size not entered'}</div></td>${body}</tr>`;
         const noRooms = '<div class="hub-muted" style="padding:10px 0;">Add rooms first (Rooms tab) — their sizes are used here.</div>';
         const ck = (r, k) => `<input type="checkbox" data-mcr="${r.id}" data-k="${k}" ${r[k] ? 'checked' : ''} />`;
         const sel = (r, k, opts) => `<select class="select" data-mcr="${r.id}" data-k="${k}">${opts.map(([v, l]) => `<option value="${v}" ${(r[k] || opts[0][0]) === v ? 'selected' : ''}>${escapeHtml(l)}</option>`).join('')}</select>`;
@@ -10268,6 +10282,7 @@
             <div class="mc-top">
               <input class="input" id="mc-name" placeholder="Name this calculation (e.g. Chitale 3BHK — material)" value="${escapeHtml(mc.name || '')}" />
               <select class="select" id="mc-client" style="max-width:260px;"><option value="">— no client —</option>${(state.clients || []).map(c => `<option value="${c.id}" ${mc.clientId === c.id ? 'selected' : ''}>${escapeHtml(c.name)}</option>`).join('')}</select>
+              <button type="button" class="btn btn-outline btn-sm" data-mc-fromest title="Take rooms, furniture and sizes from an estimate">⬇ From estimate</button>
               <button type="button" class="btn btn-primary btn-sm" data-mc-save>Save</button>
               <button type="button" class="btn btn-outline btn-sm" data-mc-new>New</button>
               ${saved.length ? `<select class="select" id="mc-open" style="max-width:240px;"><option value="">Open saved (${saved.length})…</option>${saved.map(x => `<option value="${x.id}">${escapeHtml(x.name || 'Untitled')}${x.clientId ? ' · ' + escapeHtml((clientById(x.clientId) || {}).name || '') : ''}</option>`).join('')}</select>` : ''}
@@ -10355,6 +10370,108 @@
           openSpecPreview({ title: 'MATERIAL ESTIMATE', docTitle: `Material estimate — ${mc.name || c.name || ''}`, filename: `Material_${String(mc.name || c.name || 'estimate').replace(/[^\w]+/g, '_')}.html`,
             info: { leftLabel: c.name ? 'Project' : 'Calculation', leftName: c.name || mc.name || 'Material estimate', leftSub: c.address || '', rightLabel: 'Details', rightLines: [mc.name || '', `Date: ${fmtDay(getDateOffset(0))}`].filter(Boolean) }, blocks, signatures: [] });
         }
+      });
+
+
+      // ===== Material calculator: take rooms, furniture and sizes from an estimate =====
+      const MC_MATCH = [
+        [/\bloft\b/i, 'loft'], [/sliding/i, 'sliding', /wardrobe|closet|almirah/i], [/wardrobe|almirah|closet/i, 'wardrobe'],
+        [/(wall|upper|overhead|tall)\s*(unit|cabinet)|kitchen.*(wall|upper|overhead)/i, 'kwall'], [/modular kitchen|kitchen|base unit|base cabinet/i, 'kbase'],
+        [/\btv\b|entertainment/i, 'tv'], [/\bbed\b|cot/i, 'bed'], [/shoe/i, 'shoe'], [/vanity/i, 'vanity'],
+        [/crockery|bar unit|sideboard|buffet|pooja|mandir|console/i, 'crockery'], [/book|study|shelf|library|display|office table|work ?station/i, 'book'],
+        [/cabinet|storage|unit|panel/i, 'custom']
+      ];
+      function mcKindOf(it) {
+        const t = `${it.desc || ''} ${it.specs || ''}`;
+        const d = it.desc || '';
+        // furniture names first (e.g. "Floor-to-ceiling sliding wardrobe" is a wardrobe, not a ceiling)
+        for (const [re, type, also] of MC_MATCH.slice(0, -1)) if (re.test(d) && (!also || also.test(d))) return { sec: 'unit', type };
+        if (/false ceiling|gypsum|\bpop\b|plaster of paris/i.test(d)) return { sec: 'fc', pop: /\bpop\b|plaster of paris/i.test(t) };
+        if (/wallpaper/i.test(d)) return { sec: 'wp' };
+        if (/paint|putty|emulsion|texture|polish(?!ed)|primer/i.test(d)) return { sec: 'paint' };
+        if (/ceiling/i.test(d) && !/tile|floor/i.test(d)) return { sec: 'fc', pop: /\bpop\b/i.test(t) };
+        if (/tile|tiling|flooring|vitrified|marble|granite|wooden floor|laminate floor|skirting/i.test(d)) return { sec: 'floor', wood: /wooden|laminate floor/i.test(t), size: /800\s*[x×]\s*1600/i.test(t) ? '800x1600' : /600\s*[x×]\s*1200|2\s*[x×]\s*4/i.test(t) ? '600x1200' : /300\s*[x×]\s*600/i.test(t) ? '300x600' : /300\s*[x×]\s*300|1\s*[x×]\s*1/i.test(t) ? '300x300' : '600x600' };
+        if (/electric|wiring|light|fan|switch|plumb|civil|demolition|breaking|cleaning|transport|labour/i.test(d) && !/cabinet|unit|wardrobe/i.test(d)) return null;
+        for (const [re, type, also] of MC_MATCH) if (re.test(d) && (!also || also.test(d))) return { sec: 'unit', type };
+        return null;
+      }
+      // what would come from this estimate
+      function mcFromEstimate(ver) {
+        const rooms = []; const units = []; const skipped = [];
+        (ver.rooms || []).forEach(rm => {
+          const room = { id: uid('mr'), name: rm.name || 'Room', L: '', W: '', H: '', doors: 1, windows: 1, paint: false, ceilPaint: false, fc: 'none', fcType: 'gypsum', floor: 'none', light: /kitchen/i.test(rm.name) ? 'kitchen' : /bath|toilet|wash/i.test(rm.name) ? 'bath' : /bed/i.test(rm.name) ? 'bedroom' : /passage|foyer|lobby/i.test(rm.name) ? 'passage' : /study|office/i.test(rm.name) ? 'study' : 'living' };
+          let used = false;
+          (rm.items || []).forEach(it => {
+            const k = mcKindOf(it); const qty = Number(it.qty) || 0; const unit = String(it.unit || '');
+            if (!k) { skipped.push(`${rm.name}: ${it.desc}`); return; }
+            used = true;
+            if (k.sec === 'fc') { room.fc = 'full'; room.fcType = k.pop ? 'pop' : 'gypsum'; if (/sq ?ft/i.test(unit)) room.fcSqft = (mcNum(room.fcSqft) + qty); if (/cove|profile|led/i.test(`${it.desc} ${it.specs}`)) room.cove = true; return; }
+            if (k.sec === 'paint') { room.paint = true; room.ceilPaint = true; if (/sq ?ft/i.test(unit)) room.paintSqft = (mcNum(room.paintSqft) + qty); return; }
+            if (k.sec === 'floor') { room.floor = k.wood ? 'wood' : k.size; if (/sq ?ft/i.test(unit)) room.floorSqft = (mcNum(room.floorSqft) + qty); if (/skirting/i.test(`${it.desc} ${it.specs}`)) room.skirting = true; return; }
+            if (k.sec === 'wp') { room.wp = mcNum(room.wp) + (/sq ?ft/i.test(unit) ? qty : 0); return; }
+            const T = MC_TYPES[k.type]; let W = Number(it.len) || 0, H = Number(it.ht) || 0, n = 1;
+            if (/sq ?ft/i.test(unit)) { if (!W || !H) { H = T.H; W = qty ? Math.round(qty / H * 10) / 10 : T.W; } }
+            else if (/rft|running/i.test(unit)) { W = qty || T.W; H = H || T.H; }
+            else { n = Math.max(1, Math.round(qty) || 1); W = W || T.W; H = H || T.H; }
+            let D2 = T.D;
+            const m2 = `${it.desc || ''} ${it.specs || ''}`.match(/(\d+(?:\.\d+)?)\s*(?:ft|')?\s*[x×*]\s*(\d+(?:\.\d+)?)\s*(?:ft|feet|')/i);
+            if (m2 && !(Number(it.len) && Number(it.ht))) { const a = Number(m2[1]), b2 = Number(m2[2]); if (k.type === 'bed') { W = a; D2 = b2; } else { W = a; H = b2; } }
+            units.push({ id: uid('mu'), type: k.type, name: `${rm.name} — ${it.desc}`.slice(0, 80), qty: n, W, H, D: D2, s: T.s, p: T.p, sh: '', dr: T.dr, exp: 0, back: true, src: it.id });
+          });
+          if (used || units.some(u => u.name.startsWith(rm.name + ' — '))) rooms.push(room);
+        });
+        return { rooms, units, skipped };
+      }
+      let mcEst = null; // { clientId, ver }
+      function renderMcEst() {
+        const box = document.getElementById('mcest-body'); if (!box || !mcEst) return;
+        const withBoq = (state.clients || []).filter(c => state.boqs && state.boqs[c.id] && ['A', 'B', 'C'].some(k => ((state.boqs[c.id].versions || {})[k] || {}).rooms && state.boqs[c.id].versions[k].rooms.some(r => (r.items || []).length)));
+        if (!mcEst.clientId && withBoq.length) mcEst.clientId = (withBoq.find(c => c.id === mcCur().clientId) || withBoq[0]).id;
+        const boq = mcEst.clientId ? state.boqs[mcEst.clientId] : null;
+        if (boq && !mcEst.ver) mcEst.ver = boq.approvedVersion || boq.activeVersion || 'A';
+        const ver = boq && boq.versions ? boq.versions[mcEst.ver] : null;
+        const R = ver ? mcFromEstimate(ver) : { rooms: [], units: [], skipped: [] };
+        mcEst.result = R;
+        const cur = mcCur();
+        box.innerHTML = !withBoq.length ? '<div class="hub-muted">No estimate has items yet. Add items in BOQ Builder first.</div>' : `
+          <div class="form-grid">
+            <div><label class="form-label">Client / estimate</label><select class="select" id="mcest-client">${withBoq.map(c => `<option value="${c.id}" ${c.id === mcEst.clientId ? 'selected' : ''}>${escapeHtml(c.name)}${state.boqs[c.id].estimateNo ? ' · ' + escapeHtml(state.boqs[c.id].estimateNo) : ''}</option>`).join('')}</select></div>
+            <div><label class="form-label">Option</label><select class="select" id="mcest-ver">${['A', 'B', 'C'].filter(k => boq && boq.versions && boq.versions[k]).map(k => `<option value="${k}" ${k === mcEst.ver ? 'selected' : ''}>${escapeHtml(boq.versions[k].title || 'Option ' + k)}${boq.approvedVersion === k ? ' (approved)' : ''}</option>`).join('')}</select></div>
+          </div>
+          <div style="margin-top:14px;">
+            <div class="hub-card-title" style="margin-bottom:6px;">Furniture <span class="hub-row-meta">· ${R.units.length}</span></div>
+            ${R.units.length ? `<div class="mc-scroll"><table class="mc-table"><thead><tr><th>From estimate</th><th>Becomes</th><th>Size W × H × D (ft)</th><th>Qty</th></tr></thead><tbody>${R.units.map(u => `<tr><td>${escapeHtml(u.name)}</td><td>${escapeHtml(MC_TYPES[u.type].label)}</td><td class="tabular">${u.W} × ${u.H} × ${u.D}</td><td>${u.qty}</td></tr>`).join('')}</tbody></table></div>` : '<div class="hub-muted">No furniture items found.</div>'}
+            <div class="hub-card-title" style="margin:14px 0 6px;">Rooms <span class="hub-row-meta">· ${R.rooms.length}</span></div>
+            ${R.rooms.length ? R.rooms.map(r => `<div style="font-size:13px; padding:3px 0;"><strong>${escapeHtml(r.name)}</strong> <span class="hub-muted">${[r.fc !== 'none' ? `false ceiling (${r.fcType === 'pop' ? 'POP' : 'gypsum'}${r.fcSqft ? ' ' + r.fcSqft + ' sq ft' : ''}${r.cove ? ', cove' : ''})` : '', r.paint ? `paint${r.paintSqft ? ' ' + r.paintSqft + ' sq ft' : ''}` : '', r.floor !== 'none' ? `flooring${r.floorSqft ? ' ' + r.floorSqft + ' sq ft' : ''}` : '', r.wp ? `wallpaper ${r.wp} sq ft` : ''].filter(Boolean).join(' · ') || 'furniture only'}</span></div>`).join('') : '<div class="hub-muted">—</div>'}
+            ${R.skipped.length ? `<div class="mc-note">Not used (no material to count here): ${escapeHtml(R.skipped.slice(0, 8).join('; '))}${R.skipped.length > 8 ? ` +${R.skipped.length - 8} more` : ''}</div>` : ''}
+            <div class="mc-note">Check the sizes after importing. Room length × width are left for you to fill — until then the sq ft from the estimate is used for ceiling, paint and flooring.</div>
+          </div>
+          <div class="modal-actions-row" style="flex-wrap:wrap;">
+            <button type="button" class="btn btn-outline" data-close-modal="modal-mcest">Cancel</button>
+            ${cur.rooms.length || cur.units.length ? '<button type="button" class="btn btn-outline" data-mcest-go="add">Add to this calculation</button>' : ''}
+            <button type="button" class="btn btn-primary" data-mcest-go="replace" ${R.units.length || R.rooms.length ? '' : 'disabled'}>${cur.rooms.length || cur.units.length ? 'Replace with this' : 'Use this estimate'}</button>
+          </div>`;
+      }
+      document.addEventListener('click', e => {
+        const t = e.target;
+        if (t.closest('[data-mc-fromest]')) { mcEst = { clientId: '', ver: '' }; renderMcEst(); openModal('modal-mcest'); return; }
+        const go = t.closest('[data-mcest-go]');
+        if (go && mcEst && mcEst.result) {
+          const mc = mcCur(); const R = JSON.parse(JSON.stringify(mcEst.result));
+          if (go.dataset.mcestGo === 'replace') { mc.rooms = R.rooms; mc.units = R.units; }
+          else { R.rooms.forEach(r => { const ex = mc.rooms.find(x => String(x.name).toLowerCase() === String(r.name).toLowerCase()); if (ex) { ['fc', 'fcType', 'cove', 'paint', 'ceilPaint', 'floor', 'skirting'].forEach(k => { if (r[k] && r[k] !== 'none' && (!ex[k] || ex[k] === 'none')) ex[k] = r[k]; }); ['fcSqft', 'floorSqft', 'paintSqft', 'wp'].forEach(k => { if (r[k]) ex[k] = r[k]; }); } else mc.rooms.push(r); }); mc.units = mc.units.concat(R.units); }
+          mc.clientId = mc.clientId || mcEst.clientId;
+          const c = clientById(mcEst.clientId);
+          if (!mc.name && c) mc.name = `${c.name} — material (Option ${mcEst.ver})`;
+          mc.tab = R.units.length ? 'furniture' : 'rooms';
+          commitState(); closeModal('modal-mcest'); renderMatCalc();
+          showToast(`Added ${R.units.length} furniture unit${R.units.length === 1 ? '' : 's'} and ${R.rooms.length} room${R.rooms.length === 1 ? '' : 's'} — check the sizes`);
+        }
+      });
+      document.addEventListener('change', e => {
+        if (!mcEst) return;
+        if (e.target.id === 'mcest-client') { mcEst.clientId = e.target.value; mcEst.ver = ''; renderMcEst(); }
+        if (e.target.id === 'mcest-ver') { mcEst.ver = e.target.value; renderMcEst(); }
       });
 
       // ===== Project archive (ZIP) and import from the master file =====
