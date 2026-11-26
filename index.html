@@ -3597,6 +3597,10 @@
                         <option value="pct">% off</option>
                         <option value="fixed">Fixed ₹</option>
                       </select>
+                      <select id="boq-discount-on" data-fee-field="discountOn" title="What the discount is taken from" style="background:#1C1917; color:#FFF; border:1px solid #57534E; border-radius:6px; padding:3px 6px; font-size:11.5px;">
+                        <option value="work">on BOQ work only</option>
+                        <option value="total">on whole estimate (work + fees)</option>
+                      </select>
                       <input type="number" step="0.5" min="0" id="boq-discount-val" data-fee-field="discountVal" class="tabular" style="width:84px; background:#1C1917; color:#FFF; border:1px solid #57534E; border-radius:6px; padding:3px 7px; font-size:12px; font-weight:700;" value="0" />
                       <label style="display:inline-flex; align-items:center; gap:5px; font-size:11.5px; color:#D6D3D1; cursor:pointer;" title="Off: the PDF shows net rates with no discount line"><input type="checkbox" id="boq-discount-show" checked style="width:15px; height:15px; accent-color:#FDE68A;" /> Show on PDF</label>
                     </div>
@@ -7924,14 +7928,15 @@
         if (!v) return v;
         const sm = computeVersionSummary(v);
         if (!(sm.discount > 0) || v.discountShow !== false) return v;
-        const f = sm.preDiscount > 0 ? sm.taxableTotal / sm.preDiscount : 1;
+        const f = sm.discountFactor;
         const c = JSON.parse(JSON.stringify(v));
         (c.rooms || []).forEach(r => (r.items || []).forEach(it => {
           it.rate = Math.round((Number(it.rate) || 0) * f * 100) / 100;
           ['materialRate', 'labourRate'].forEach(k => { if (Number(it[k])) it[k] = Math.round(Number(it[k]) * f * 100) / 100; });
         }));
-        if (sm.designFee > 0) { c.designFeeType = 'fixed'; c.designFeeVal = Math.round(sm.designFee * f * 100) / 100; }
-        if (sm.execFee > 0) { c.execFeeType = 'fixed'; c.execFeeVal = Math.round(sm.execFee * f * 100) / 100; }
+        const ff = sm.discountOn === 'work' ? 1 : f; // fees keep their full amount when the discount is on work only
+        if (sm.designFee > 0) { c.designFeeType = 'fixed'; c.designFeeVal = Math.round(sm.designFee * ff * 100) / 100; }
+        if (sm.execFee > 0) { c.execFeeType = 'fixed'; c.execFeeVal = Math.round(sm.execFee * ff * 100) / 100; }
         c.discountVal = 0;
         return c;
       }
@@ -7956,6 +7961,7 @@
           targetVer.discountType = srcVer.discountType === 'fixed' ? 'fixed' : 'pct';
           targetVer.discountVal = Number(srcVer.discountVal) || 0;
           targetVer.discountShow = srcVer.discountShow !== false;
+          targetVer.discountOn = srcVer.discountOn === 'work' ? 'work' : 'total';
           targetVer.discountLabel = srcVer.discountLabel || '';
           const targetMult = TIER_MULTIPLIERS[targetKey] || 1.0;
 
@@ -8056,9 +8062,11 @@
         const preDiscount = subtotal + designFee + execFee;
         const discountType = verObj.discountType === 'fixed' ? 'fixed' : 'pct';
         const discountVal = Math.max(0, Number(verObj.discountVal) || 0);
-        const discount = Math.min(preDiscount, discountType === 'fixed' ? discountVal : preDiscount * discountVal / 100);
+        const discountOn = verObj.discountOn === 'work' ? 'work' : 'total'; // 'work' = BOQ work only, 'total' = work + fees
+        const discountBase = discountOn === 'work' ? subtotal : preDiscount;
+        const discount = Math.min(discountBase, discountType === 'fixed' ? discountVal : discountBase * discountVal / 100);
         const taxableTotal = preDiscount - discount;
-        const discFactor = preDiscount > 0 ? taxableTotal / preDiscount : 1;
+        const discFactor = discountOn === 'work' ? (subtotal > 0 ? (subtotal - discount) / subtotal : 1) : (preDiscount > 0 ? taxableTotal / preDiscount : 1);
         // GST basis: 'full' = on the whole taxable amount (work + fees); 'material' = on material cost only
         const gstBasis = verObj.gstBasis === 'material' ? 'material' : 'full';
         const gstBase = gstBasis === 'material' ? materialTotal * discFactor : taxableTotal;
@@ -8072,8 +8080,10 @@
           discount,
           discountType,
           discountVal,
+          discountOn,
+          discountFactor: discFactor,
           discountShown: discount > 0 && verObj.discountShow !== false,
-          discountLabel: `${String(verObj.discountLabel || '').trim() || 'Special discount'}${discountType === 'pct' && discount > 0 ? ` (${discountVal}%)` : ''}`,
+          discountLabel: `${String(verObj.discountLabel || '').trim() || 'Special discount'}${discount > 0 ? ` (${discountType === 'pct' ? discountVal + '% ' : ''}on ${discountOn === 'work' ? 'BOQ work' : 'estimate'})` : ''}`,
           materialTotal,
           labourTotal,
           cgst: verObj.includeGst ? gst / 2 : 0,
@@ -8262,6 +8272,7 @@
         if (eTypeEl) eTypeEl.value = activeVer.execFeeType || 'pct';
         if (eValEl && document.activeElement !== eValEl) eValEl.value = activeVer.execFeeVal ?? 0;
         const kTypeEl = document.getElementById('boq-discount-type'); if (kTypeEl) kTypeEl.value = activeVer.discountType === 'fixed' ? 'fixed' : 'pct';
+        const kOnEl = document.getElementById('boq-discount-on'); if (kOnEl) kOnEl.value = activeVer.discountOn === 'work' ? 'work' : 'total';
         const kValEl = document.getElementById('boq-discount-val'); if (kValEl && document.activeElement !== kValEl) kValEl.value = activeVer.discountVal ?? 0;
         const kShowEl = document.getElementById('boq-discount-show'); if (kShowEl) kShowEl.checked = activeVer.discountShow !== false;
         const kWrap = document.getElementById('boq-sum-discount-wrap'); if (kWrap) kWrap.style.display = summary.discount > 0 ? '' : 'none';
@@ -12990,8 +13001,8 @@
           <div style="margin-top:20px; display:flex; justify-content:flex-end; align-items:flex-end; flex-wrap:wrap; gap:16px; border-top:1px solid #D6D3D1; padding-top:14px;">
             <div style="text-align:right; font-size:13.5px; line-height:1.6;">
               <div>BOQ Work Sub-Total: <strong>${formatINR(summary.subtotal)}</strong></div>
-              ${summary.designFee > 0 ? `<div>Design Fee ${activeVer.designFeeType === 'fixed' ? '' : `(${activeVer.designFeeVal || 0}%)`}: <strong>${formatINR(summary.designFee)}</strong></div>` : ''}
-              ${summary.execFee > 0 ? `<div>Site Execution Fee ${activeVer.execFeeType === 'fixed' ? '' : `(${activeVer.execFeeVal || 0}%)`}: <strong>${formatINR(summary.execFee)}</strong></div>` : ''}
+              ${summary.designFee > 0 ? `<div>Design Fee${activeVer.designFeeType === 'fixed' ? '' : ` (${activeVer.designFeeVal || 0}%)`}: <strong>${formatINR(summary.designFee)}</strong></div>` : ''}
+              ${summary.execFee > 0 ? `<div>Site Execution Fee${activeVer.execFeeType === 'fixed' ? '' : ` (${activeVer.execFeeVal || 0}%)`}: <strong>${formatINR(summary.execFee)}</strong></div>` : ''}
               ${summary.discountShown ? `<div style="color:#0F7457;">${escapeHtml(summary.discountLabel)}: <strong>− ${formatINR(summary.discount)}</strong></div>` : ''}
               ${(summary.designFee > 0 || summary.execFee > 0 || summary.discountShown) ? `<div>Total Before GST: <strong>${formatINR(summary.taxableTotal)}</strong></div>` : ''}
               ${activeVer.includeGst && summary.gstBasis === 'material' ? `<div style="font-size:12.5px; color:#57534E;">GST charged on material value: <strong style="color:#1C1917;">${formatINR(summary.gstBase)}</strong></div>` : ''}
