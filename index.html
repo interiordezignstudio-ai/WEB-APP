@@ -2986,6 +2986,60 @@
       html[data-style="refined"] body { overflow: visible !important; background: #FFF !important; }
       html[data-style="refined"] .main-wrapper { height: auto !important; overflow: visible !important; margin: 0 !important; border-radius: 0 !important; box-shadow: none !important; border: 0 !important; }
     }
+
+    /* ============ DARK MODE: colours written straight into parts of the app ============ */
+    /* refined dark: the reds and blues it was missing (they fell back to light pastels) */
+    html[data-style="refined"][data-theme="dark"] {
+      --accent-rose: #EE8A80;
+      --accent-rose-soft: #3A1E1C;
+      --accent-sky: #8DB7CC;
+      --accent-sky-soft: #1B2A31;
+      --accent-emerald: #8DB287;
+      --accent-emerald-soft: #1F2A1D;
+    }
+    html[data-theme="dark"] .pay-in { color: #7CCB9E !important; }
+    html[data-theme="dark"] .pay-out { color: #F08C8C !important; }
+    html[data-theme="dark"] .btn-danger-soft:hover { background-color: color-mix(in srgb, var(--accent-rose) 22%, transparent); }
+    html[data-theme="dark"] .badge-rose, html[data-theme="dark"] .badge-sky, html[data-theme="dark"] .badge-emerald, html[data-theme="dark"] .badge-amber { border: 1px solid rgba(255, 255, 255, 0.06); }
+    /* selections: "N selected · Create purchase order" bar and the status tags */
+    html[data-theme="dark"] .sel-pickbar { background: #16271E; border-color: #2C4A39; color: #CFEBDC; }
+    html[data-theme="dark"] .sel-pickbar .wa-linkbtn { color: #A7D8BD; }
+    html[data-theme="dark"] .sel-st { background: #2A2C26; color: #D6D1C6; }
+    html[data-theme="dark"] .sel-st-1 { background: #16271E; color: #8FD3AE; }
+    html[data-theme="dark"] .sel-st-2 { background: #172631; color: #95C3DE; }
+    html[data-theme="dark"] .sel-st-3, html[data-theme="dark"] .sel-st-4 { background: #17281A; color: #93D7A5; }
+    html[data-theme="dark"] .sel-pick { background: rgba(20, 21, 18, 0.85) !important; }
+    /* leads: "Next follow-up" box when late / today */
+    html[data-theme="dark"] .lead-next.due-late, html[data-theme="dark"] .ld-next.due-late { background: #351C1B; border-color: #5A2B29; }
+    html[data-theme="dark"] .lead-next.due-today, html[data-theme="dark"] .ld-next.due-today { background: #33261A; border-color: #5A4127; }
+    html[data-theme="dark"] .lead-next.due-late .lead-next-when, html[data-theme="dark"] .ld-next.due-late .lead-next-when { color: #F2A099; }
+    html[data-theme="dark"] .lead-next.due-today .lead-next-when { color: #E6BE8F; }
+    html[data-theme="dark"] .lead-next-edit, html[data-theme="dark"] .ld-tl-edit { color: var(--text-muted); }
+    html[data-theme="dark"] .ld-next small { color: var(--text-muted); }
+    /* onboarding step numbers */
+    html[data-theme="dark"] .ob-num { background: var(--bg-card); color: var(--text-main); border-color: var(--border-strong); }
+    html[data-theme="dark"] .ob-step.done .ob-num { background: #3E6B4F; border-color: #3E6B4F; color: #FFF; }
+    /* segmented switches (Residential / Commercial, All tiers / Opt A…) */
+    html[data-theme="dark"] .seg-toggle { background: var(--bg-sunken); border-color: var(--border-subtle); }
+    html[data-theme="dark"] .seg-toggle button { color: var(--text-muted); }
+    html[data-theme="dark"] .seg-toggle button.on { background: #34362F; color: var(--text-main); box-shadow: none; }
+    html[data-theme="dark"] .hub-filters { background: var(--bg-sunken); }
+    html[data-theme="dark"] .hub-filter span { color: var(--text-muted); }
+    html[data-theme="dark"] .hub-filter.active { background: #34362F; color: var(--text-main); }
+    html[data-theme="dark"] .hub-filter.active span { color: var(--text-muted); }
+    /* social calendar status colours */
+    html[data-theme="dark"] .st-Idea { background: #2A2B27; color: #C9C4B9; }
+    html[data-theme="dark"] .st-Draft { background: #1B2A31; color: #9CC3D6; }
+    html[data-theme="dark"] .st-Scheduled { background: #33281B; color: #E2BE92; }
+    html[data-theme="dark"] .st-Posted { background: #1E2A1D; color: #A6CC9F; }
+    /* soft notice boxes */
+    html[data-theme="dark"] .notif-status.warn { background: #351C1B; color: #F2A099; }
+    html[data-theme="dark"] .notif-status.ok { background: #1E2A1D; color: #A6CC9F; }
+    html[data-theme="dark"] .hub-avatar[style*="#F8E9DF"] { background: #3A2A1F !important; color: #E6BE8F !important; }
+    html[data-theme="dark"] .hub-avatar[style*="#E3F0F8"] { background: #1B2A31 !important; color: #9CC3D6 !important; }
+    html[data-theme="dark"] .hub-avatar[style*="#DDF3EA"] { background: #1A2A20 !important; color: #9BD2B0 !important; }
+    html[data-theme="dark"] .hub-avatar[style*="#F2EEE9"] { background: #2C2B27 !important; color: #D6D1C6 !important; }
+    html[data-theme="dark"] .hub-avatar[style*="#FCE7EA"] { background: #3A1E22 !important; color: #F0A0AA !important; }
 </style>
 </head>
 <body>
@@ -3318,11 +3372,11 @@
                   <button type="button" data-cat-seg="commercial">🏢 Commercial</button>
                 </div>
                 <span style="font-size:11px; font-weight:700; text-transform:uppercase; color:var(--text-muted);">Spec Preview:</span>
-                <div style="display:inline-flex; background:#F5F5F4; padding:3px; border-radius:9px; border:1px solid var(--border-subtle);" id="catalog-view-tier-pills">
-                  <button type="button" class="btn btn-sm" data-cat-view-tier="ALL" style="background:#FFFFFF; color:#1C1917;">All Tiers</button>
-                  <button type="button" class="btn btn-sm" data-cat-view-tier="A" style="background:transparent; color:#57534E;">Opt A</button>
-                  <button type="button" class="btn btn-sm" data-cat-view-tier="B" style="background:transparent; color:#57534E;">Opt B</button>
-                  <button type="button" class="btn btn-sm" data-cat-view-tier="C" style="background:transparent; color:#57534E;">Opt C</button>
+                <div class="seg-toggle" id="catalog-view-tier-pills">
+                  <button type="button" class="btn btn-sm" data-cat-view-tier="ALL">All Tiers</button>
+                  <button type="button" class="btn btn-sm" data-cat-view-tier="A">Opt A</button>
+                  <button type="button" class="btn btn-sm" data-cat-view-tier="B">Opt B</button>
+                  <button type="button" class="btn btn-sm" data-cat-view-tier="C">Opt C</button>
                 </div>
                 <span class="badge badge-amber tabular" id="catalog-count-pill">0 Items</span>
               </div>
@@ -7975,7 +8029,7 @@
             const isAct = activeCat === cat;
             return `
               <button type="button" class="btn btn-sm" data-cat-pill="${escapeHtml(cat)}"
-                style="border-radius:999px; padding:4px 11px; font-size:11.5px; border:1px solid ${isAct ? 'var(--accent-terracotta)' : 'var(--border-subtle)'}; background:${isAct ? 'var(--accent-terracotta)' : '#FAF9F6'}; color:${isAct ? '#FFFFFF' : 'var(--text-main)'};">
+                style="border-radius:999px; padding:4px 11px; font-size:11.5px; border:1px solid ${isAct ? 'var(--text-main)' : 'var(--border-subtle)'}; background:${isAct ? 'var(--text-main)' : 'var(--bg-sunken)'}; color:${isAct ? 'var(--bg-card)' : 'var(--text-main)'};">
                 ${cat === 'ALL' ? 'All Categories' : escapeHtml(cat)} <span style="opacity:0.85;">(${count})</span>
               </button>
             `;
@@ -7984,9 +8038,7 @@
 
         document.querySelectorAll('[data-cat-view-tier]').forEach(btn => {
           const isAct = btn.dataset.catViewTier === activeTierView;
-          btn.style.background = isAct ? '#FFFFFF' : 'transparent';
-          btn.style.color = isAct ? '#1C1917' : '#57534E';
-          btn.style.boxShadow = isAct ? '0 1px 2px rgba(0,0,0,0.08)' : 'none';
+          btn.classList.toggle('on', isAct);
         });
 
         const thMargin = document.getElementById('catalog-th-margin');
