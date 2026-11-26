@@ -2726,6 +2726,7 @@
     .mt-edit .input, .mt-edit .select { width:auto; min-height:34px; padding:5px 8px; font-size:13px; }
     html[data-theme="dark"] .mt-star.on { background:#33281B; border-color:#5A4127; color:#E6BE8F; }
     @media (max-width: 700px) { .mt-row { flex-wrap: wrap; } .mt-acts { width:100%; justify-content:flex-start; padding-left:29px; } }
+    .ios-bar { display:flex; gap:10px; align-items:center; justify-content:space-between; flex-wrap:wrap; padding:10px 14px; border-radius:14px; background: var(--bg-card); border:1px solid var(--border-subtle); margin-top:14px; font-size:13.5px; }
     /* Morning summary */
     .mm-sec { margin-top:14px; }
     .mm-sec h4 { font-size:10.5px; letter-spacing:.14em; text-transform:uppercase; color: var(--text-muted); font-weight:600; margin:0 0 4px; }
@@ -10670,14 +10671,34 @@
       }
       function isoLocal(d) { const pad = n => String(n).padStart(2, '0'); const off = -d.getTimezoneOffset(); return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}:00${off >= 0 ? '+' : '-'}${pad(Math.floor(Math.abs(off) / 60))}:${pad(Math.abs(off) % 60)}`; }
       function taskNotes(t) { const c = clientById(t.clientId); const who = (state.staff || []).find(x => x.email === t.assigneeEmail); return [c ? `Client: ${c.name}` : 'Studio task', who ? `For: ${who.name}` : '', (state.studioProfile || {}).name || ''].filter(Boolean).join(' · '); }
-      function taskToIphone(t) {
-        const payload = { title: t.title, notes: taskNotes(t), due: isoLocal(taskWhen(t)), list: 'Interior Dezign' };
-        const back = location.href.split('#')[0];
+      // tasks already sent to Reminders from this iPhone / iPad (so they are not added twice)
+      const IOS_SENT_KEY = 'ids_ios_sent', IOS_AUTO_KEY = 'ids_ios_auto';
+      function iosSent() { try { return JSON.parse(localStorage.getItem(IOS_SENT_KEY) || '{}') || {}; } catch (e) { return {}; } }
+      function iosAuto() { try { return localStorage.getItem(IOS_AUTO_KEY) === '1'; } catch (e) { return false; } }
+      function iosItem(t) { const c = clientById(t.clientId); return { title: `${t.star ? '⭐ ' : ''}${t.title}${c ? ` (${c.name})` : ''}`, notes: taskNotes(t), due: isoLocal(taskWhen(t)), list: 'Interior Dezign' }; }
+      function tasksToIphone(list) {
+        list = (list || []).filter(Boolean).slice(0, 25); if (!list.length) return;
+        const payload = { items: list.map(iosItem) };
+        const back = location.href.split('#')[0].split('?')[0];
         const url = `shortcuts://x-callback-url/run-shortcut?name=${encodeURIComponent(IOS_SHORTCUT)}&input=text&text=${encodeURIComponent(JSON.stringify(payload))}&x-success=${encodeURIComponent(back)}`;
-        t.phoneAt = new Date().toISOString(); commitState();
+        const sent = iosSent(); const now = new Date().toISOString();
+        list.forEach(t => { sent[t.id] = `${t.dueDate || ''}T${t.dueTime || ''}`; if (!String(t.id).startsWith('test_')) t.phoneAt = now; });
+        try { localStorage.setItem(IOS_SENT_KEY, JSON.stringify(sent)); } catch (e) { /* ignore */ }
+        commitState();
         window.__idsLastOpen = url;
         location.href = url;
-        setTimeout(() => showToast('If nothing opened: set up the “Dezign Reminder” Shortcut once (Sync & Backup → iPhone / iPad Reminders)'), 2500);
+        setTimeout(() => showToast(`Sending ${list.length} to iPhone Reminders… If nothing opened, set up the “${IOS_SHORTCUT}” Shortcut once (Sync & Backup)`), 2500);
+      }
+      function taskToIphone(t) { tasksToIphone([t]); }
+      // my open, dated tasks that this iPhone has not put in Reminders yet
+      function iosPending() {
+        const sent = iosSent();
+        return (state.tasks || []).filter(t => !t.done && t.dueDate && taskIsMine(t) && !sent[t.id]).sort((a, b) => `${a.dueDate}${a.dueTime || ''}`.localeCompare(`${b.dueDate}${b.dueTime || ''}`));
+      }
+      function iosBarHtml() {
+        if (!isAppleMobile() && !iosAuto()) return '';
+        const n = iosPending().length; if (!n) return '';
+        return `<div class="ios-bar"><span>☑️ <b>${n} task${n > 1 ? 's' : ''}</b> not in your iPhone Reminders yet</span><button type="button" class="btn btn-primary btn-sm" data-ios-sendall>Add ${n > 1 ? 'all' : 'it'} to Reminders</button></div>`;
       }
       function icsText(t) {
         const d = taskWhen(t); const end = new Date(d.getTime() + 15 * 60000);
@@ -10767,16 +10788,23 @@
       function renderIosRemSettings() {
         const box = document.getElementById('ios-rem-settings'); if (!box) return;
         box.innerHTML = `
-          <div class="hub-muted" style="font-size:13px;">Tasks from the app go into the iPhone <b>Reminders</b> app with an alert — the phone reminds you even when the app is closed. Make this Shortcut once on each iPhone / iPad (about 2 minutes):</div>
+          <div class="hub-muted" style="font-size:13px;">Your tasks go into the iPhone <b>Reminders</b> app with an alert at their time — the phone reminds you even when this app is closed, and you can tick them off in Reminders. Make this Shortcut once on each iPhone / iPad (about 3 minutes):</div>
           <ol class="qs-steps">
+            <li>Open the <b>Reminders</b> app and add a list called <b>Interior Dezign</b> <button type="button" class="btn btn-outline btn-sm" data-copy-text="Interior Dezign" style="padding:2px 8px;">Copy</button></li>
             <li>Open the <b>Shortcuts</b> app → <b>+</b>. Name it exactly <b>${IOS_SHORTCUT}</b> <button type="button" class="btn btn-outline btn-sm" data-copy-text="${IOS_SHORTCUT}" style="padding:2px 8px;">Copy name</button></li>
-            <li>Tap <b>ⓘ</b> → turn on <b>Show in Share Sheet</b> → Share Sheet types: only <b>Text</b>. (This makes the shortcut receive the task.)</li>
+            <li>Tap <b>ⓘ</b> → turn on <b>Show in Share Sheet</b> → types: only <b>Text</b>.</li>
             <li>Add <b>Get Dictionary from Input</b> (input: <i>Shortcut Input</i>).</li>
-            <li>Add <b>Get Dictionary Value</b> → key <b>due</b>. Then add <b>Get Dates from Input</b> (input: that Dictionary Value).</li>
-            <li>Add <b>Get Dictionary Value</b> → key <b>title</b> (from the Dictionary of step 3).</li>
-            <li>Add <b>Add New Reminder</b>: Reminder = <i>Dictionary Value</i> (title), List = your list (e.g. make one called <b>Interior Dezign</b>), tap the arrow → <b>Alert: At Time</b> → <i>Dates</i>.</li>
-            <li>Done. Back in the app press <b>Test</b> below — a test reminder for 2 minutes from now should appear in Reminders.</li>
+            <li>Add <b>Get Dictionary Value</b> → <i>Value</i> for key <b>items</b>.</li>
+            <li>Add <b>Repeat with Each</b> (input: that <i>Dictionary Value</i>). Inside the repeat, add:
+              <ul style="margin:4px 0 0 16px; list-style:disc;">
+                <li><b>Get Dictionary Value</b> → key <b>due</b> in <i>Repeat Item</i>, then <b>Get Dates from Input</b> (input: that value)</li>
+                <li><b>Get Dictionary Value</b> → key <b>notes</b> in <i>Repeat Item</i></li>
+                <li><b>Get Dictionary Value</b> → key <b>title</b> in <i>Repeat Item</i></li>
+                <li><b>Add New Reminder</b>: Reminder = the <i>title</i> value, List = <b>Interior Dezign</b>, tap ⌄ → <b>Notes</b> = the <i>notes</i> value, <b>Alert: At Time</b> → <i>Dates</i></li>
+              </ul></li>
+            <li>Done. Press <b>Test</b> below — a test reminder for 2 minutes from now should appear in Reminders. <span class="hub-muted">(Made the older one-task version? Change it to these steps — the app now sends several tasks at once.)</span></li>
           </ol>
+          <label class="alert-opt"><input type="checkbox" data-ios-auto ${iosAuto() ? 'checked' : ''} /> <span><strong>Put my tasks in iPhone Reminders automatically (this device)</strong><small>New tasks you add here go straight to Reminders. Tasks added on the laptop or by the team show a one-tap <b>“Add all to Reminders”</b> bar on Tasks &amp; Reminders and in the morning summary.</small></span></label>
           <div style="display:flex; gap:8px; flex-wrap:wrap;"><button type="button" class="btn btn-primary btn-sm" data-ios-test>Test on this iPhone</button><button type="button" class="btn btn-outline btn-sm" data-gcal-test>Test Google Tasks</button><button type="button" class="btn btn-outline btn-sm" data-ics-test>Test other calendar</button></div>
           <div class="hub-muted" style="font-size:12.5px;"><b>Google Tasks:</b> ${cloudEnabled() ? (cloud.cfg.gtasks ? '✓ allowed — tasks go into your Google Tasks list and show in Google Calendar on their day.' : 'the first time you send a task, Google asks once for permission to add to Google Tasks.') : 'connect Google Drive in the card above first — tasks then go into your Google Tasks list (they show in Google Calendar and the Google Tasks app).'}</div>
           <div class="hub-muted" style="font-size:12.5px;">Then use <b>📲 Remind</b> on any task, or choose “Also add to my phone” when you create one. On a laptop, use the calendar option.</div>`;
@@ -10788,10 +10816,20 @@
         if (t.closest('[data-go-ios-setup]')) { e.preventDefault(); closeModal('modal-taskphone'); switchTab('backup'); setTimeout(() => document.getElementById('ios-rem-card')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 200); return; }
         const sample = () => ({ id: 'test_' + Date.now(), title: 'Test reminder from Interior Dezign Studio', dueDate: getDateOffset(0), dueTime: (() => { const d = new Date(Date.now() + 120000); return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`; })() });
         if (t.closest('[data-ios-test]')) { taskToIphone(sample()); return; }
+        if (t.closest('[data-ios-sendall]')) { const list = iosPending(); if (list.length) { closeModal('modal-morning'); tasksToIphone(list); } return; }
         if (t.closest('[data-ics-test]')) { taskToCalendar(sample()); return; }
         if (t.closest('[data-gcal-test]')) { taskToGoogle(sample()); return; }
         const cp = t.closest('[data-copy-text]'); if (cp) { navigator.clipboard?.writeText(cp.dataset.copyText).then(() => showToast('Copied')).catch(() => {}); }
       }, true);
+      document.addEventListener('change', e => {
+        if (!e.target.matches || !e.target.matches('[data-ios-auto]')) return;
+        try { localStorage.setItem(IOS_AUTO_KEY, e.target.checked ? '1' : '0'); } catch (err) { /* ignore */ }
+        if (e.target.checked) {
+          // tasks that already exist: offer them once
+          const n = iosPending().length;
+          showToast(n ? `On — ${n} existing task${n > 1 ? 's' : ''} can be added from Tasks & Reminders (“Add all to Reminders”)` : 'On — new tasks go straight to iPhone Reminders');
+        } else showToast('Off for this device');
+      });
 
 
       // ===== Tasks & reminders =====
@@ -10833,7 +10871,7 @@
       function mtWhenValue(key) {
         const now = new Date(); const d = new Date(now);
         if (key === 'hour') { d.setMinutes(d.getMinutes() + 60 - (d.getMinutes() % 5)); return [ymdT(d), hmT(d)]; }
-        if (key === 'today6') return [ymdT(now), now.getHours() >= 18 ? hmT(new Date(now.getTime() + 3600000)) : '18:00'];
+        if (key === 'today6') { if (now.getHours() < 18) return [ymdT(now), '18:00']; const h = new Date(now.getTime() + 3600000); return [ymdT(h), hmT(h)]; }
         if (key === 'tomorrow') { d.setDate(d.getDate() + 1); return [ymdT(d), '10:00']; }
         if (key === 'monday') { d.setDate(d.getDate() + ((8 - d.getDay()) % 7 || 7)); return [ymdT(d), '10:00']; }
         if (key === 'none') return ['', ''];
@@ -10898,6 +10936,7 @@
               <select class="select" id="mt-send" title="Also remind me on my phone"><option value="">App reminder only</option><option value="ios" ${d.send === 'ios' ? 'selected' : ''}>+ iPhone Reminders</option><option value="google" ${d.send === 'google' ? 'selected' : ''}>+ Google Tasks</option></select>
             </div>
           </div>
+          ${iosBarHtml()}
           ${admin ? `<div class="pf-filters" style="margin-top:14px;"><button type="button" class="${mtUI.scope === 'mine' ? 'on' : ''}" data-mt-scope="mine">My tasks</button><button type="button" class="${mtUI.scope === 'all' ? 'on' : ''}" data-mt-scope="all">Everyone's</button></div>` : ''}
           <div class="card" style="margin-top:14px;">
             ${groups.filter(([, l]) => l.length).map(([h, l, cls]) => `<div class="mt-group"><h4 class="${cls}">${h} <span style="opacity:.7;">${l.length}</span></h4>${l.map(mtRow).join('')}</div>`).join('') || '<div class="hub-muted" style="padding:16px 0; text-align:center;">Nothing pending 🎉 — add something above.</div>'}
@@ -10913,7 +10952,8 @@
         const t = { id: uid('t'), title, assigneeEmail: g('mt-who').value || myEmail(), dueDate: wv[0], dueTime: wv[1], done: false, clientId: g('mt-client').value || '', repeat: g('mt-repeat').value || '', star: !!mtUI.draft.star, createdAt: new Date().toISOString(), by: state.activeStaffEmail };
         if (t.repeat && !t.dueDate) { t.dueDate = getDateOffset(0); t.dueTime = t.dueTime || '10:00'; }
         state.tasks.unshift(t);
-        const send = g('mt-send').value;
+        let send = g('mt-send').value;
+        if (!send && iosAuto()) send = 'ios';
         mtUI.draft = { star: false, send, repeat: '', clientId: '', who: '' };
         commitState(); renderMyTasks(); updateTaskBadge();
         showToast(`Added${t.dueDate ? ` · reminder ${t.dueDate === getDateOffset(0) ? 'today' : fmtDay(t.dueDate)}${t.dueTime ? ' ' + t.dueTime : ''}` : ''}`);
@@ -11023,6 +11063,7 @@
           ${sec('Social posts today', d.posts.map(x => `<div class="mm-row"><span class="tm">${x.time ? escapeHtml(hm12(x.time)) : 'Today'}</span><span class="tt">${escapeHtml(x.title)}</span></div>`))}
           ${sec('⭐ Important (no date yet / later)', d.important.map(t => trow(t, false)))}
           ${sec('Done today ✓', d.doneToday.slice(0, 8).map(t => `<div class="mm-row done"><span class="tm">✓</span><span class="tt">${escapeHtml(t.title)}</span></div>`))}
+          ${iosBarHtml()}
           ${!left && !d.meetings.length && !d.calls.length && !d.posts.length ? '<div class="hub-muted" style="padding:18px 0; text-align:center;">Nothing scheduled for today 🎉</div>' : ''}
           <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:18px;">
             <button type="button" class="btn btn-primary" data-mm-tasks>Open Tasks</button>
@@ -20394,7 +20435,7 @@
             document.getElementById('task-modal-client').innerHTML = '<option value="">General studio task</option>' +
               getScopedClients().map(c => `<option value="${c.id}">${escapeHtml(c.name)}</option>`).join('');
             document.getElementById('task-modal-date').value = getDateOffset(1);
-            const tSend = document.getElementById('task-modal-send'); if (tSend) { let pref = ''; try { pref = localStorage.getItem('ids_task_send') || ''; } catch (err) { /* ignore */ } tSend.value = pref; }
+            const tSend = document.getElementById('task-modal-send'); if (tSend) { let pref = ''; try { pref = localStorage.getItem('ids_task_send') || ''; } catch (err) { /* ignore */ } tSend.value = pref || (iosAuto() ? 'ios' : ''); }
             openModal('modal-task');
             return;
           }
