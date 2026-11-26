@@ -2644,6 +2644,12 @@
     .arc-steps li.now { font-weight: 600; }
     .arc-bar { height: 6px; border-radius: 99px; background: var(--bg-sunken); overflow: hidden; margin: 14px 0 6px; }
     .arc-bar i { display: block; height: 100%; background: var(--accent-terracotta); width: 0; transition: width .3s; }
+    /* archived project countdown */
+    .keep-banner { display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin-top:12px; padding:10px 14px; border-radius:12px; background: var(--bg-sunken); border:1px solid var(--border-subtle); font-size:13px; }
+    .keep-banner strong { font-weight:600; }
+    .keep-banner .hub-muted { font-size:12.5px; }
+    .keep-banner .sp { flex:1 1 220px; min-width:0; }
+    .keep-banner.soon { border-color: var(--accent-rose); }
     /* Trash */
     .trash-row { display:flex; gap:12px; align-items:center; padding:12px 0; border-bottom:1px solid var(--border-subtle); flex-wrap:wrap; }
     .trash-row:last-child { border-bottom:0; }
@@ -6656,6 +6662,7 @@
                   <span class="hub-mini-bar"><span style="width:${pct}%;"></span></span>
                   <span class="hub-item-stage">${escapeHtml(c.status === 'Completed' ? 'Completed' : STAGE_SHORT[stageIdx])}</span>
                   ${fin && fin.due > 0 ? `<span class="badge badge-rose" style="font-size:10.5px; padding:1px 7px;">Due ${formatLakhs(fin.due)}</span>` : ''}
+                  ${c.removeOn && !c.keepForever && c.status === 'Completed' ? `<span class="badge badge-stone" style="font-size:10.5px; padding:1px 7px;" title="Archived — moves to Trash on ${escapeHtml(fmtDay(c.removeOn))}">🗄 ${keepDaysLeft(c)}d</span>` : ''}
                 </span>
               </span>
             </button>
@@ -6768,6 +6775,7 @@
               ${perms.canSeeMoney ? `<button type="button" class="btn btn-outline btn-sm" data-archive="${c.id}" title="ZIP with every PDF, an Excel workbook, photos and a master file">📦 Project archive</button>` : ''}
               ${perms.canEditClients ? `<button type="button" class="btn btn-danger-soft btn-sm" data-client-del="${c.id}" style="margin-left:auto;">Delete client</button>` : ''}
             </div>
+            ${keepBannerHtml(c, perms)}
 
             <div class="hub-stepper" aria-label="Project stage">
               ${EXEC_STAGES.map((st, i) => {
@@ -7477,6 +7485,7 @@
           const c = state.clients.find(x => x.id === t.dataset.hubStatus);
           if (c) {
             c.status = t.value;
+            if (c.status !== 'Completed') { delete c.removeOn; }
             if (state.hubFilter !== 'All') state.hubFilter = c.status;
             commitState();
             renderClients();
@@ -9873,6 +9882,54 @@
 
 
 
+
+      // ===== Completed + archived projects stay 30 days, then move to Trash =====
+      const KEEP_DAYS = 30;
+      function keepDaysLeft(c) { return Math.max(0, daysBetween(getDateOffset(0), c.removeOn)); }
+      function keepBannerHtml(c, perms) {
+        if (c.status !== 'Completed' || (!c.removeOn && !c.keepForever && !c.archivedAt)) return '';
+        const can = perms.canEditClients;
+        if (c.keepForever) return `<div class="keep-banner"><span>🗄</span><span class="sp"><strong>Archived${c.archivedAt ? ' ' + escapeHtml(fmtDay(String(c.archivedAt).slice(0, 10))) : ''}</strong> <span class="hub-muted">· kept in the app (no auto-remove)</span></span>${can ? `<button type="button" class="btn btn-outline btn-sm" data-keep-auto="${c.id}">Remove after 30 days</button>` : ''}</div>`;
+        if (!c.removeOn) return '';
+        const left = keepDaysLeft(c);
+        return `<div class="keep-banner${left <= 5 ? ' soon' : ''}"><span>🗄</span><span class="sp"><strong>Archived${c.archivedAt ? ' ' + escapeHtml(fmtDay(String(c.archivedAt).slice(0, 10))) : ''}</strong> · stays here until <strong>${escapeHtml(fmtDay(c.removeOn))}</strong> <span class="hub-muted">(${left} day${left === 1 ? '' : 's'} left) — then it moves to Trash for 30 more days. Your ZIP and master file have everything.</span></span>
+          ${can ? `<button type="button" class="btn btn-outline btn-sm" data-keep-more="${c.id}">Keep 30 more days</button><button type="button" class="btn btn-outline btn-sm" data-keep-forever="${c.id}">Never remove</button>` : ''}</div>`;
+      }
+      // start the 30 days when the archive of a completed project has been made
+      function startKeepTimer(c) {
+        c.archivedAt = new Date().toISOString();
+        if (c.status === 'Completed' && !c.keepForever) c.removeOn = addDays(getDateOffset(0), KEEP_DAYS);
+        commitState();
+      }
+      // remove completed projects whose 30 days are over (they go to Trash, restorable for 30 days)
+      function sweepArchivedProjects() {
+        if (typeof state === 'undefined' || !Array.isArray(state.clients)) return;
+        const today = getDateOffset(0);
+        const due = state.clients.filter(c => c.status === 'Completed' && c.removeOn && !c.keepForever && c.removeOn <= today);
+        if (!due.length) return;
+        const before = JSON.stringify(state);
+        due.forEach(c => {
+          const L = clientLinkedRecords(c);
+          const gone = new Set([...L.invoices, ...L.money, ...L.selections, ...L.pos, ...L.siteBills, ...L.tasks]);
+          ['invoices', 'money', 'selections', 'pos', 'siteBills', 'tasks'].forEach(k => { if (Array.isArray(state[k])) state[k] = state[k].filter(x => !gone.has(x)); });
+          L.boqIds.forEach(id => { delete state.boqs[id]; });
+          (state.leads || []).forEach(l => { if (l.clientId === c.id) delete l.clientId; });
+          state.clients = state.clients.filter(x => x !== c);
+          if (state.activeClientId === c.id) state.activeClientId = (state.clients[0] || {}).id || null;
+        });
+        try { recordTrash(before); } catch (e) { /* ignore */ }
+        commitState(); renderAll();
+        showToast(due.length === 1 ? `${due[0].name} (archived) moved to Trash — restore within 30 days if needed` : `${due.length} archived projects moved to Trash`);
+      }
+      setTimeout(() => { try { sweepArchivedProjects(); } catch (e) { /* ignore */ } }, 6000);
+      setInterval(() => { try { sweepArchivedProjects(); } catch (e) { /* ignore */ } }, 3600000);
+      document.addEventListener('click', e => {
+        const t = e.target;
+        const m = t.closest('[data-keep-more]'); if (m) { const c = clientById(m.dataset.keepMore); if (!c) return; c.removeOn = addDays(c.removeOn && c.removeOn > getDateOffset(0) ? c.removeOn : getDateOffset(0), KEEP_DAYS); commitState(); renderClients(); showToast(`Kept until ${fmtDay(c.removeOn)}`); return; }
+        const f = t.closest('[data-keep-forever]'); if (f) { const c = clientById(f.dataset.keepForever); if (!c) return; c.keepForever = true; delete c.removeOn; commitState(); renderClients(); showToast('Kept in the app — it will not be removed'); return; }
+        const a = t.closest('[data-keep-auto]'); if (a) { const c = clientById(a.dataset.keepAuto); if (!c) return; delete c.keepForever; c.removeOn = addDays(getDateOffset(0), KEEP_DAYS); commitState(); renderClients(); showToast(`Moves to Trash on ${fmtDay(c.removeOn)}`); }
+      });
+
       // ===== Project archive (ZIP) and import from the master file =====
       const JSZIP_SOURCES = ['https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js', 'https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js'];
       function loadJsZip() {
@@ -10060,8 +10117,9 @@
           const blob = await zip.generateAsync({ type: 'blob', compression: 'DEFLATE', compressionOptions: { level: 6 } }, meta => renderArchiveProgress(steps, 5, 'Packing the ZIP…', 92 + meta.percent * 0.08));
           renderArchiveProgress(steps, 6, missed.length ? `Done. Not included: ${missed.join(', ')}` : 'Done.', 100);
           deliverAnyFile(blob, `${arcSafe(c.name)}_Project_Archive_${getDateOffset(0)}.zip`);
+          startKeepTimer(c); if (state.activeTab === 'clients') renderClients();
           setTimeout(() => closeModal('modal-archive'), 900);
-          showToast(`Project archive ready · ${(blob.size / 1048576).toFixed(1)} MB${missed.length ? ` · ${missed.length} item${missed.length === 1 ? '' : 's'} skipped` : ''}`);
+          showToast(`Project archive ready · ${(blob.size / 1048576).toFixed(1)} MB${missed.length ? ` · ${missed.length} item${missed.length === 1 ? '' : 's'} skipped` : ''}${c.removeOn ? ` · stays in the app until ${fmtDay(c.removeOn)}` : ''}`);
         } catch (err) {
           console.error(err); closeModal('modal-archive'); showToast('Could not make the archive: ' + (err.message || err));
         } finally {
@@ -10089,6 +10147,7 @@
         (d.leads || []).forEach(l => { if (!Array.isArray(state.leads)) state.leads = []; const i = state.leads.findIndex(x => x.id === l.id); if (i >= 0) state.leads[i] = l; else state.leads.push(l); });
         (d.vendors || []).forEach(v => { if (!Array.isArray(state.vendors)) state.vendors = []; if (!state.vendors.some(x => x.id === v.id)) state.vendors.push(v); });
         state.boqs = state.boqs || {}; Object.assign(state.boqs, d.boqs || {});
+        if (d.client.removeOn && !d.client.keepForever && d.client.removeOn <= addDays(getDateOffset(0), 0)) d.client.removeOn = addDays(getDateOffset(0), KEEP_DAYS);
         const i = state.clients.findIndex(x => x.id === cid); if (i >= 0) state.clients[i] = d.client; else state.clients.push(d.client);
         state.activeClientId = cid; state.hubOpen = true; state.hubTab = 'overview'; state.hubFilter = 'All';
         commitState(); switchTab('clients'); renderAll();
