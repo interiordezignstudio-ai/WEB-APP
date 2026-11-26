@@ -2686,6 +2686,17 @@
     .mc-cfg { display:grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap:8px 12px; }
     .mc-cfg label { font-size:12px; color: var(--text-muted); display:flex; flex-direction:column; gap:3px; }
     .mc-cfg input { min-height:32px; padding:4px 8px; }
+    /* tasks → phone reminders */
+    .qs-steps { margin:0; padding-left:20px; font-size:13.5px; line-height:1.65; color: var(--text-main); }
+    .qs-steps li { margin-bottom:6px; }
+    .qs-steps b { font-weight:700; }
+    .home-phone-btn { border: 0; background: transparent; cursor: pointer; font-size: 15px; padding: 2px 4px; border-radius: 8px; opacity: .7; }
+    .home-phone-btn:hover { opacity: 1; background: var(--bg-sunken); }
+    .tp-choice { display: flex; gap: 12px; align-items: center; width: 100%; text-align: left; border: 1px solid var(--border-subtle); background: var(--bg-card); color: var(--text-main); border-radius: 14px; padding: 14px; cursor: pointer; font: inherit; margin-bottom: 10px; }
+    .tp-choice:hover { border-color: var(--accent-terracotta); }
+    .tp-choice span.i { font-size: 26px; flex: 0 0 auto; }
+    .tp-choice strong { display: block; font-size: 15px; }
+    .tp-choice small { display: block; color: var(--text-muted); font-size: 12.5px; margin-top: 2px; }
     /* Trash */
     .trash-row { display:flex; gap:12px; align-items:center; padding:12px 0; border-bottom:1px solid var(--border-subtle); flex-wrap:wrap; }
     .trash-row:last-child { border-bottom:0; }
@@ -3904,6 +3915,10 @@
               <h3 style="font-size:16px; font-weight:700;">Alerts &amp; notifications</h3>
               <div id="lead-alert-settings"></div>
             </div>
+            <div class="card" style="display:flex; flex-direction:column; gap:10px;" id="ios-rem-card">
+              <h3 style="font-size:16px; font-weight:700;">iPhone / iPad Reminders</h3>
+              <div id="ios-rem-settings"></div>
+            </div>
 
           </div>
 
@@ -4125,6 +4140,12 @@
     <div class="modal-box">
       <div class="modal-header"><h3 class="font-serif" style="font-size:22px; font-weight:700;">Onboard as client</h3><button class="btn btn-outline btn-sm" data-close-modal="modal-onboard-est">✕</button></div>
       <div id="onboard-est-body"></div>
+    </div>
+  </div>
+  <div class="modal-backdrop" id="modal-taskphone">
+    <div class="modal-box">
+      <div class="modal-header"><h3 class="font-serif" style="font-size:22px; font-weight:700;">Remind me on my phone</h3><button class="btn btn-outline btn-sm" data-close-modal="modal-taskphone">✕</button></div>
+      <div id="taskphone-body"></div>
     </div>
   </div>
   <div class="modal-backdrop" id="modal-trash">
@@ -4748,6 +4769,18 @@
         <div>
           <label class="form-label">Due Date</label>
           <input type="date" name="dueDate" id="task-modal-date" class="input" />
+        </div>
+        <div>
+          <label class="form-label">Remind at</label>
+          <input type="time" name="dueTime" id="task-modal-time" class="input" />
+        </div>
+        <div>
+          <label class="form-label">Also add to my phone</label>
+          <select name="sendTo" id="task-modal-send" class="select">
+            <option value="">No</option>
+            <option value="ios">iPhone / iPad Reminders</option>
+            <option value="ics">Calendar (laptop, Google, Outlook)</option>
+          </select>
         </div>
         <div class="form-full" style="display:flex; justify-content:flex-end; gap:8px; margin-top:6px;">
           <button type="button" class="btn btn-outline" data-close-modal="modal-task">Cancel</button>
@@ -5956,6 +5989,7 @@
                 <small>${who ? escapeHtml(who.name) : escapeHtml(t.assigneeEmail || '')}${cl ? ` · <button type="button" class="hub-chip" data-hub-open-client="${cl.id}">${escapeHtml(cl.name)}</button>` : ''}</small>
               </span>
               <span class="home-due ${t.done ? '' : r.cls}">${t.done ? 'Done' : r.text}</span>
+              ${t.done ? '' : `<button type="button" class="home-phone-btn" data-task-phone="${t.id}" title="Add to iPhone Reminders or a calendar" aria-label="Add to phone reminders">📲</button>`}
             </label>`;
           }).join('');
         }
@@ -7210,6 +7244,7 @@
                     <div class="hub-row-meta" style="${late ? 'color:var(--accent-rose); font-weight:600;' : ''}">${late ? 'Overdue · ' : 'Due '}${escapeHtml(t.dueDate || '—')}${t.dueTime ? ` · ⏰ ${escapeHtml(t.dueTime)}` : ''}</div>
                   </div>
                   <select class="input-inline" data-hub-task-assign="${t.id}" aria-label="Assigned to">${buildStaffOptionsHtml(t.assigneeEmail)}</select>
+                  ${t.done ? '' : `<button type="button" class="btn btn-outline btn-sm" data-task-phone="${t.id}" title="Add to iPhone Reminders or a calendar">📲 Remind</button>`}
                   <button type="button" class="btn btn-outline btn-sm" data-hub-task-edit="${t.id}">Edit</button>
                   <button type="button" class="btn btn-danger-soft btn-sm" data-hub-task-del="${t.id}" aria-label="Delete task">✕</button>
                 </div>`;
@@ -10552,6 +10587,78 @@
         if (e.target.closest('[data-ob-go]')) doOnboardEstimate();
       });
 
+
+      // ===== Tasks → iPhone Reminders (via a one-time Shortcut) or any calendar (.ics) =====
+      const IOS_SHORTCUT = 'Dezign Reminder';
+      function taskWhen(t) {
+        const d = new Date(`${t.dueDate || getDateOffset(0)}T${t.dueTime || '10:00'}`);
+        return isNaN(d) ? new Date(Date.now() + 3600000) : d;
+      }
+      function isoLocal(d) { const pad = n => String(n).padStart(2, '0'); const off = -d.getTimezoneOffset(); return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}:00${off >= 0 ? '+' : '-'}${pad(Math.floor(Math.abs(off) / 60))}:${pad(Math.abs(off) % 60)}`; }
+      function taskNotes(t) { const c = clientById(t.clientId); const who = (state.staff || []).find(x => x.email === t.assigneeEmail); return [c ? `Client: ${c.name}` : 'Studio task', who ? `For: ${who.name}` : '', (state.studioProfile || {}).name || ''].filter(Boolean).join(' · '); }
+      function taskToIphone(t) {
+        const payload = { title: t.title, notes: taskNotes(t), due: isoLocal(taskWhen(t)), list: 'Interior Dezign' };
+        const back = location.href.split('#')[0];
+        const url = `shortcuts://x-callback-url/run-shortcut?name=${encodeURIComponent(IOS_SHORTCUT)}&input=text&text=${encodeURIComponent(JSON.stringify(payload))}&x-success=${encodeURIComponent(back)}`;
+        t.phoneAt = new Date().toISOString(); commitState();
+        window.__idsLastOpen = url;
+        location.href = url;
+        setTimeout(() => showToast('If nothing opened: set up the “Dezign Reminder” Shortcut once (Sync & Backup → iPhone / iPad Reminders)'), 2500);
+      }
+      function icsText(t) {
+        const d = taskWhen(t); const end = new Date(d.getTime() + 15 * 60000);
+        const z = x => x.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '');
+        const esc = v => String(v || '').replace(/\\/g, '\\\\').replace(/;/g, '\\;').replace(/,/g, '\\,').replace(/\n/g, '\\n');
+        return ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Interior Dezign Studio//OS//EN', 'CALSCALE:GREGORIAN', 'METHOD:PUBLISH',
+          'BEGIN:VEVENT', `UID:${t.id}@interiordezign`, `DTSTAMP:${z(new Date())}`, `DTSTART:${z(d)}`, `DTEND:${z(end)}`, `SUMMARY:${esc(t.title)}`, `DESCRIPTION:${esc(taskNotes(t))}`,
+          'BEGIN:VALARM', 'ACTION:DISPLAY', `DESCRIPTION:${esc(t.title)}`, 'TRIGGER:-PT0M', 'END:VALARM',
+          'BEGIN:VALARM', 'ACTION:DISPLAY', `DESCRIPTION:${esc(t.title)}`, 'TRIGGER:-PT15M', 'END:VALARM',
+          'END:VEVENT', 'END:VCALENDAR'].join('\r\n');
+      }
+      function taskToCalendar(t) {
+        const txt = icsText(t); const name = `${String(t.title).replace(/[^\w]+/g, '_').slice(0, 40) || 'task'}.ics`;
+        const blob = new Blob([txt], { type: 'text/calendar;charset=utf-8' });
+        if (isAppleTouch()) { const url = URL.createObjectURL(blob); window.open(url, '_blank') || (location.href = url); setTimeout(() => URL.revokeObjectURL(url), 60000); }
+        else deliverAnyFile(blob, name);
+        t.phoneAt = new Date().toISOString(); commitState();
+        showToast('Calendar event ready — open it and tap “Add”. It alerts 15 min before and at the time.');
+      }
+      function openTaskPhone(t) {
+        const when = taskWhen(t);
+        document.getElementById('taskphone-body').innerHTML = `
+          <div style="margin-bottom:12px;"><strong>${escapeHtml(t.title)}</strong><div class="hub-muted" style="font-size:13px;">${escapeHtml(when.toLocaleString('en-IN', { weekday: 'short', day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' }))}${t.dueTime ? '' : ' (10 am — set a time with Edit)'} · ${escapeHtml(taskNotes(t))}</div></div>
+          <button type="button" class="tp-choice" data-tp-go="ios" data-task="${t.id}"><span class="i">☑️</span><span><strong>iPhone / iPad Reminders</strong><small>Adds it to the Reminders app with an alert at that time. Needs the “Dezign Reminder” Shortcut (one-time setup).</small></span></button>
+          <button type="button" class="tp-choice" data-tp-go="ics" data-task="${t.id}"><span class="i">📅</span><span><strong>Calendar</strong><small>An event with alerts 15 min before and at the time — Apple, Google or Outlook calendar, phone or laptop.</small></span></button>
+          <div class="hub-muted" style="font-size:12.5px;">First time on iPhone? <a href="#" data-go-ios-setup>See the 2-minute Shortcut setup</a>.</div>`;
+        openModal('modal-taskphone');
+      }
+      function renderIosRemSettings() {
+        const box = document.getElementById('ios-rem-settings'); if (!box) return;
+        box.innerHTML = `
+          <div class="hub-muted" style="font-size:13px;">Tasks from the app go into the iPhone <b>Reminders</b> app with an alert — the phone reminds you even when the app is closed. Make this Shortcut once on each iPhone / iPad (about 2 minutes):</div>
+          <ol class="qs-steps">
+            <li>Open the <b>Shortcuts</b> app → <b>+</b>. Name it exactly <b>${IOS_SHORTCUT}</b> <button type="button" class="btn btn-outline btn-sm" data-copy-text="${IOS_SHORTCUT}" style="padding:2px 8px;">Copy name</button></li>
+            <li>Tap <b>ⓘ</b> → turn on <b>Show in Share Sheet</b> → Share Sheet types: only <b>Text</b>. (This makes the shortcut receive the task.)</li>
+            <li>Add <b>Get Dictionary from Input</b> (input: <i>Shortcut Input</i>).</li>
+            <li>Add <b>Get Dictionary Value</b> → key <b>due</b>. Then add <b>Get Dates from Input</b> (input: that Dictionary Value).</li>
+            <li>Add <b>Get Dictionary Value</b> → key <b>title</b> (from the Dictionary of step 3).</li>
+            <li>Add <b>Add New Reminder</b>: Reminder = <i>Dictionary Value</i> (title), List = your list (e.g. make one called <b>Interior Dezign</b>), tap the arrow → <b>Alert: At Time</b> → <i>Dates</i>.</li>
+            <li>Done. Back in the app press <b>Test</b> below — a test reminder for 2 minutes from now should appear in Reminders.</li>
+          </ol>
+          <div style="display:flex; gap:8px; flex-wrap:wrap;"><button type="button" class="btn btn-primary btn-sm" data-ios-test>Test on this iPhone</button><button type="button" class="btn btn-outline btn-sm" data-ics-test>Test calendar event</button></div>
+          <div class="hub-muted" style="font-size:12.5px;">Then use <b>📲 Remind</b> on any task, or choose “Also add to my phone” when you create one. On a laptop, use the calendar option.</div>`;
+      }
+      document.addEventListener('click', e => {
+        const t = e.target;
+        const ph = t.closest('[data-task-phone]'); if (ph) { e.preventDefault(); e.stopPropagation(); const tk = (state.tasks || []).find(x => x.id === ph.dataset.taskPhone); if (tk) openTaskPhone(tk); return; }
+        const go = t.closest('[data-tp-go]'); if (go) { const tk = (state.tasks || []).find(x => x.id === go.dataset.task); closeModal('modal-taskphone'); if (tk) { if (go.dataset.tpGo === 'ios') taskToIphone(tk); else taskToCalendar(tk); } return; }
+        if (t.closest('[data-go-ios-setup]')) { e.preventDefault(); closeModal('modal-taskphone'); switchTab('backup'); setTimeout(() => document.getElementById('ios-rem-card')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 200); return; }
+        const sample = () => ({ id: 'test_' + Date.now(), title: 'Test reminder from Interior Dezign Studio', dueDate: getDateOffset(0), dueTime: (() => { const d = new Date(Date.now() + 120000); return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`; })() });
+        if (t.closest('[data-ios-test]')) { taskToIphone(sample()); return; }
+        if (t.closest('[data-ics-test]')) { taskToCalendar(sample()); return; }
+        const cp = t.closest('[data-copy-text]'); if (cp) { navigator.clipboard?.writeText(cp.dataset.copyText).then(() => showToast('Copied')).catch(() => {}); }
+      }, true);
+
       // ===== Project archive (ZIP) and import from the master file =====
       const JSZIP_SOURCES = ['https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js', 'https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js'];
       function loadJsZip() {
@@ -13791,6 +13898,7 @@
         if (typeof updateSocialBadge === 'function') updateSocialBadge();
         if (state.activeTab === 'backup' && typeof renderCloudSettings === 'function') renderCloudSettings();
         if (state.activeTab === 'backup' && typeof renderLeadAlertSettings === 'function') renderLeadAlertSettings();
+        if (state.activeTab === 'backup' && typeof renderIosRemSettings === 'function') renderIosRemSettings();
         if (state.activeTab === 'leads' && typeof leadPopQueue !== 'undefined' && !leadPopQueue.length) document.title = BASE_TITLE;
       }
 
@@ -19834,6 +19942,7 @@
             document.getElementById('task-modal-client').innerHTML = '<option value="">General studio task</option>' +
               getScopedClients().map(c => `<option value="${c.id}">${escapeHtml(c.name)}</option>`).join('');
             document.getElementById('task-modal-date').value = getDateOffset(1);
+            const tSend = document.getElementById('task-modal-send'); if (tSend) { let pref = ''; try { pref = localStorage.getItem('ids_task_send') || ''; } catch (err) { /* ignore */ } tSend.value = pref; }
             openModal('modal-task');
             return;
           }
@@ -20816,7 +20925,7 @@
         if (e.target.id === 'form-new-task') {
           e.preventDefault();
           const fd = new FormData(e.target);
-          state.tasks.unshift({
+          const newTask = {
             id: uid('t'),
             title: (fd.get('title') || '').trim(),
             assigneeEmail: fd.get('assigneeEmail') || state.activeStaffEmail,
@@ -20824,12 +20933,17 @@
             dueTime: fd.get('dueTime') || '',
             done: false,
             clientId: fd.get('clientId') || ''
-          });
+          };
+          state.tasks.unshift(newTask);
+          const sendTo = fd.get('sendTo') || '';
+          try { localStorage.setItem('ids_task_send', sendTo); } catch (err) { /* ignore */ }
           commitState();
           closeModal('modal-task');
           e.target.reset();
           renderAll();
           showToast('Task assigned');
+          if (sendTo === 'ios') setTimeout(() => taskToIphone(newTask), 250);
+          if (sendTo === 'ics') setTimeout(() => taskToCalendar(newTask), 250);
           return;
         }
 
