@@ -4779,7 +4779,8 @@
           <select name="sendTo" id="task-modal-send" class="select">
             <option value="">No</option>
             <option value="ios">iPhone / iPad Reminders</option>
-            <option value="ics">Calendar (laptop, Google, Outlook)</option>
+            <option value="google">Google Calendar</option>
+            <option value="ics">Other calendar (Apple, Outlook)</option>
           </select>
         </div>
         <div class="form-full" style="display:flex; justify-content:flex-end; gap:8px; margin-top:6px;">
@@ -7672,6 +7673,7 @@
           const title = String(fd.get('title') || '').trim();
           if (!task || !title) return true;
           Object.assign(task, { title, assigneeEmail: fd.get('assigneeEmail') || task.assigneeEmail, dueDate: fd.get('dueDate') || task.dueDate, dueTime: fd.get('dueTime') || '' });
+          if (task.gcalId && typeof taskGoogleSync === 'function') taskGoogleSync(task);
           hubTaskEditId = null;
           commitState();
           renderClients();
@@ -10623,12 +10625,48 @@
         t.phoneAt = new Date().toISOString(); commitState();
         showToast('Calendar event ready — open it and tap “Add”. It alerts 15 min before and at the time.');
       }
+
+      // ----- Google Calendar for tasks -----
+      function taskLocal(t) { return `${t.dueDate || getDateOffset(0)}T${t.dueTime || '10:00'}`; }
+      function taskGoogleBody(t) {
+        const start = taskLocal(t);
+        return { summary: t.title, description: taskNotes(t) + '\nFrom Interior Dezign Studio OS', start: { dateTime: `${start}:00`, timeZone: 'Asia/Kolkata' }, end: { dateTime: `${addMinutesLocal(start, 15)}:00`, timeZone: 'Asia/Kolkata' }, reminders: { useDefault: false, overrides: [{ method: 'popup', minutes: 15 }, { method: 'popup', minutes: 0 }] } };
+      }
+      function taskGoogleLink(t) {
+        const start = taskLocal(t);
+        const q = new URLSearchParams({ action: 'TEMPLATE', text: t.title, dates: `${calCompact(start)}/${calCompact(addMinutesLocal(start, 15))}`, details: taskNotes(t) + '\nFrom Interior Dezign Studio OS', ctz: 'Asia/Kolkata' });
+        return `https://calendar.google.com/calendar/render?${q.toString()}`;
+      }
+      async function taskToGoogle(t) {
+        if (calendarAuto()) {
+          try {
+            await getCloudToken(true);
+            const base = 'https://www.googleapis.com/calendar/v3/calendars/primary/events';
+            const ev = t.gcalId
+              ? await gApi(`${base}/${t.gcalId}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(taskGoogleBody(t)) })
+              : await gApi(base, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(taskGoogleBody(t)) });
+            t.gcalId = ev.id; t.gcalLink = ev.htmlLink || ''; t.phoneAt = new Date().toISOString(); commitState();
+            showToast(`Added to Google Calendar · alerts 15 min before and at ${t.dueTime || '10:00'}`);
+            return;
+          } catch (err) {
+            if (t.gcalId && /404|not found/i.test(String(err && (err.message || err.code)))) { delete t.gcalId; return taskToGoogle(t); }
+            showToast('Could not add automatically — opening Google Calendar instead');
+          }
+        }
+        window.__idsLastOpen = taskGoogleLink(t);
+        window.open(taskGoogleLink(t), '_blank', 'noopener');
+        t.phoneAt = new Date().toISOString(); commitState();
+      }
+      // keep the Google Calendar event in step when the task changes or is deleted
+      async function taskGoogleSync(t) { if (!t || !t.gcalId || !calendarAuto()) return; try { await getCloudToken(false); await gApi(`https://www.googleapis.com/calendar/v3/calendars/primary/events/${t.gcalId}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(taskGoogleBody(t)) }); } catch (err) { /* offline — fine */ } }
+
       function openTaskPhone(t) {
         const when = taskWhen(t);
         document.getElementById('taskphone-body').innerHTML = `
           <div style="margin-bottom:12px;"><strong>${escapeHtml(t.title)}</strong><div class="hub-muted" style="font-size:13px;">${escapeHtml(when.toLocaleString('en-IN', { weekday: 'short', day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' }))}${t.dueTime ? '' : ' (10 am — set a time with Edit)'} · ${escapeHtml(taskNotes(t))}</div></div>
           <button type="button" class="tp-choice" data-tp-go="ios" data-task="${t.id}"><span class="i">☑️</span><span><strong>iPhone / iPad Reminders</strong><small>Adds it to the Reminders app with an alert at that time. Needs the “Dezign Reminder” Shortcut (one-time setup).</small></span></button>
-          <button type="button" class="tp-choice" data-tp-go="ics" data-task="${t.id}"><span class="i">📅</span><span><strong>Calendar</strong><small>An event with alerts 15 min before and at the time — Apple, Google or Outlook calendar, phone or laptop.</small></span></button>
+          <button type="button" class="tp-choice" data-tp-go="google" data-task="${t.id}"><span class="i">🗓️</span><span><strong>Google Calendar</strong><small>${calendarAuto() ? 'Added straight to the studio Google Calendar with phone alerts 15 min before and at the time. Edits to the task move the event too.' : 'Opens Google Calendar with the event filled in — tap Save. (Connect Google Calendar in Sync &amp; Backup to add it automatically with alerts.)'}${t.gcalId ? ' <b>Already added — this updates it.</b>' : ''}</small></span></button>
+          <button type="button" class="tp-choice" data-tp-go="ics" data-task="${t.id}"><span class="i">📅</span><span><strong>Other calendar</strong><small>An event file with alerts 15 min before and at the time — Apple Calendar, Outlook, phone or laptop.</small></span></button>
           <div class="hub-muted" style="font-size:12.5px;">First time on iPhone? <a href="#" data-go-ios-setup>See the 2-minute Shortcut setup</a>.</div>`;
         openModal('modal-taskphone');
       }
@@ -10645,17 +10683,19 @@
             <li>Add <b>Add New Reminder</b>: Reminder = <i>Dictionary Value</i> (title), List = your list (e.g. make one called <b>Interior Dezign</b>), tap the arrow → <b>Alert: At Time</b> → <i>Dates</i>.</li>
             <li>Done. Back in the app press <b>Test</b> below — a test reminder for 2 minutes from now should appear in Reminders.</li>
           </ol>
-          <div style="display:flex; gap:8px; flex-wrap:wrap;"><button type="button" class="btn btn-primary btn-sm" data-ios-test>Test on this iPhone</button><button type="button" class="btn btn-outline btn-sm" data-ics-test>Test calendar event</button></div>
+          <div style="display:flex; gap:8px; flex-wrap:wrap;"><button type="button" class="btn btn-primary btn-sm" data-ios-test>Test on this iPhone</button><button type="button" class="btn btn-outline btn-sm" data-gcal-test>Test Google Calendar</button><button type="button" class="btn btn-outline btn-sm" data-ics-test>Test other calendar</button></div>
+          <div class="hub-muted" style="font-size:12.5px;"><b>Google Calendar:</b> ${calendarAuto() ? '✓ connected — tasks are added automatically with phone alerts.' : 'tick “Add meetings to Google Calendar” in the Google Drive card above to add tasks automatically with alerts; until then Google Calendar opens with the task filled in.'}</div>
           <div class="hub-muted" style="font-size:12.5px;">Then use <b>📲 Remind</b> on any task, or choose “Also add to my phone” when you create one. On a laptop, use the calendar option.</div>`;
       }
       document.addEventListener('click', e => {
         const t = e.target;
         const ph = t.closest('[data-task-phone]'); if (ph) { e.preventDefault(); e.stopPropagation(); const tk = (state.tasks || []).find(x => x.id === ph.dataset.taskPhone); if (tk) openTaskPhone(tk); return; }
-        const go = t.closest('[data-tp-go]'); if (go) { const tk = (state.tasks || []).find(x => x.id === go.dataset.task); closeModal('modal-taskphone'); if (tk) { if (go.dataset.tpGo === 'ios') taskToIphone(tk); else taskToCalendar(tk); } return; }
+        const go = t.closest('[data-tp-go]'); if (go) { const tk = (state.tasks || []).find(x => x.id === go.dataset.task); closeModal('modal-taskphone'); if (tk) { if (go.dataset.tpGo === 'ios') taskToIphone(tk); else if (go.dataset.tpGo === 'google') taskToGoogle(tk); else taskToCalendar(tk); } return; }
         if (t.closest('[data-go-ios-setup]')) { e.preventDefault(); closeModal('modal-taskphone'); switchTab('backup'); setTimeout(() => document.getElementById('ios-rem-card')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 200); return; }
         const sample = () => ({ id: 'test_' + Date.now(), title: 'Test reminder from Interior Dezign Studio', dueDate: getDateOffset(0), dueTime: (() => { const d = new Date(Date.now() + 120000); return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`; })() });
         if (t.closest('[data-ios-test]')) { taskToIphone(sample()); return; }
         if (t.closest('[data-ics-test]')) { taskToCalendar(sample()); return; }
+        if (t.closest('[data-gcal-test]')) { taskToGoogle(sample()); return; }
         const cp = t.closest('[data-copy-text]'); if (cp) { navigator.clipboard?.writeText(cp.dataset.copyText).then(() => showToast('Copied')).catch(() => {}); }
       }, true);
 
@@ -20944,6 +20984,7 @@
           showToast('Task assigned');
           if (sendTo === 'ios') setTimeout(() => taskToIphone(newTask), 250);
           if (sendTo === 'ics') setTimeout(() => taskToCalendar(newTask), 250);
+          if (sendTo === 'google') setTimeout(() => taskToGoogle(newTask), 250);
           return;
         }
 
