@@ -2650,6 +2650,10 @@
     .keep-banner .hub-muted { font-size:12.5px; }
     .keep-banner .sp { flex:1 1 220px; min-width:0; }
     .keep-banner.soon { border-color: var(--accent-rose); }
+    /* labour-only items */
+    .lo-chip { flex:0 0 auto; border:1px dashed var(--border-strong); background: transparent; color: var(--text-muted); border-radius:999px; padding:3px 9px; font-size:11px; font-weight:600; cursor:pointer; white-space:nowrap; }
+    .lo-chip:hover { border-color: var(--accent-terracotta); color: var(--text-main); }
+    .lo-chip.on { border-style: solid; border-color: transparent; background: var(--accent-sky-soft); color: var(--accent-sky); }
     /* Trash */
     .trash-row { display:flex; gap:12px; align-items:center; padding:12px 0; border-bottom:1px solid var(--border-subtle); flex-wrap:wrap; }
     .trash-row:last-child { border-bottom:0; }
@@ -4372,6 +4376,9 @@
             <option value="nos">nos</option>
             <option value="lump sum">lump sum</option>
           </select>
+        </div>
+        <div class="form-full">
+          <label class="pay-check" style="display:inline-flex; align-items:center; gap:8px; font-size:13.5px; cursor:pointer;"><input type="checkbox" name="labourOnly" id="cat-form-labour-only" /> <span><strong>Labour only</strong> — the client supplies the material (e.g. civil work, painting labour)</span></label>
         </div>
         <div id="cat-dim-qty-wrap" style="display:none;">
           <label class="form-label">Default Qty *</label>
@@ -7908,9 +7915,10 @@
           ht,
           qty,
           unit: catItem.unit,
-          materialRate: matRate,
+          materialRate: catItem.labourOnly ? 0 : matRate,
           labourRate: labRate,
-          rate: tierRate
+          rate: catItem.labourOnly && labRate > 0 ? labRate : tierRate,
+          ...(catItem.labourOnly ? { labourOnly: true } : {})
         });
 
         syncAllThreeOptionsFrom(boq, verKey);
@@ -7926,6 +7934,16 @@
       // (so every line adds up to the discounted total) and no discount line is printed.
       function pdfVersion(v) {
         if (!v) return v;
+        const hasLO = (v.rooms || []).some(r => (r.items || []).some(it => it.labourOnly));
+        if (hasLO) {
+          // say "Labour only" on those lines (the client supplies the material)
+          const marked = JSON.parse(JSON.stringify(v));
+          marked.rooms.forEach(r => (r.items || []).forEach(it => { if (it.labourOnly && !/labour only/i.test(it.desc || '')) it.desc = `${it.desc || ''} (Labour only)`.trim(); }));
+          const out = pdfVersionDiscount(marked); return out;
+        }
+        return pdfVersionDiscount(v);
+      }
+      function pdfVersionDiscount(v) {
         const sm = computeVersionSummary(v);
         if (!(sm.discount > 0) || v.discountShow !== false) return v;
         const f = sm.discountFactor;
@@ -8009,9 +8027,10 @@
                   ht: Number(itemSrc.ht) || 0,
                   qty: Number(itemSrc.qty) || 0,
                   unit: itemSrc.unit || 'sq ft',
-                  materialRate: computedMatRate,
+                  materialRate: itemSrc.labourOnly ? 0 : computedMatRate,
                   labourRate: computedLabRate,
-                  rate: computedRate
+                  rate: itemSrc.labourOnly ? (catMatch && computedLabRate > 0 ? computedLabRate : computedRate) : computedRate,
+                  ...(itemSrc.labourOnly ? { labourOnly: true } : {})
                 };
               })
             };
@@ -8022,6 +8041,7 @@
       function computeItemMatLab(it) {
         const qty = Number(it.qty) || 0;
         const rate = Number(it.rate) || 0;
+        if (it.labourOnly) return { matTotal: 0, labTotal: qty * rate, matRate: 0, labRate: rate };
         const hasSplit = (Number(it.materialRate) || 0) > 0 || (Number(it.labourRate) || 0) > 0;
         const matRate = hasSplit ? (Number(it.materialRate) || 0) : Math.round(rate * 0.68);
         const labRate = hasSplit ? (Number(it.labourRate) || 0) : Math.max(0, rate - matRate);
@@ -8208,7 +8228,7 @@
                 <div style="font-weight:700; font-size:13.5px; color:var(--text-main);">${escapeHtml(item.name)}${segBadge}</div>
                 ${specsHtml}
                 <div style="font-size:11px; color:var(--accent-terracotta); margin-top:4px; font-weight:600;">
-                  Default: ${item.defaultLen && item.defaultHt && item.unit === 'sq ft' ? `${item.defaultLen} × ${item.defaultHt} ft (${item.defaultQty} sq ft)` : `${item.defaultQty} ${item.unit}`}
+                  ${item.labourOnly ? '<span class="lo-chip on" style="cursor:default; margin-right:6px;">🔨 Labour only</span>' : ''}Default: ${item.defaultLen && item.defaultHt && item.unit === 'sq ft' ? `${item.defaultLen} × ${item.defaultHt} ft (${item.defaultQty} sq ft)` : `${item.defaultQty} ${item.unit}`}
                 </div>
               </td>
               <td class="st-half" style="vertical-align:top;"><span class="badge badge-amber">${escapeHtml(item.category)}</span></td>
@@ -8641,13 +8661,14 @@
                                 <input type="text" class="input-inline" style="width:100%; font-weight:700; font-size:12.5px;" placeholder="Scope Item Title (e.g., Queen Size Bed)" value="${escapeHtml(it.desc)}" data-boq-desc="${rIdx}:${iIdx}" />
                               </div>
                               <textarea class="input-inline" rows="2" style="width:100%; font-size:11.5px; color:var(--text-muted); line-height:1.35; resize:vertical;" placeholder="Specifications: Ply grade, laminate/PU finish, hardware brand, headboard..." data-boq-specs="${rIdx}:${iIdx}">${escapeHtml(it.specs || '')}</textarea>
+                              <div style="margin-top:4px;"><button type="button" class="lo-chip${it.labourOnly ? ' on' : ''}" data-boq-labour="${rIdx}:${iIdx}" title="${it.labourOnly ? 'Labour only — the client supplies the material. Tap to charge material too.' : 'Charge labour only (client supplies material)'}">🔨 ${it.labourOnly ? 'Labour only' : 'Labour only?'}</button></div>
                             </td>
                             <td data-label="L (ft)" style="vertical-align:top;"><input type="number" step="0.1" class="input-inline tabular" style="width:62px;" value="${it.len || 0}" data-boq-field="len" data-room="${rIdx}" data-item="${iIdx}" /></td>
                             <td data-label="H/W (ft)" style="vertical-align:top;"><input type="number" step="0.1" class="input-inline tabular" style="width:62px;" value="${it.ht || 0}" data-boq-field="ht" data-room="${rIdx}" data-item="${iIdx}" /></td>
                             <td data-label="Qty" style="vertical-align:top;"><input type="number" step="0.01" class="input-inline tabular" style="width:66px; font-weight:700;" value="${it.qty || 0}" data-boq-field="qty" data-room="${rIdx}" data-item="${iIdx}" /></td>
                             <td data-label="Unit" style="vertical-align:top;"><span style="font-size:12px; color:var(--text-muted);">${escapeHtml(it.unit)}</span></td>
                             ${perms.canSeeMoney ? (state.boqSeparateRates ? `
-                              <td data-label="Mat ₹" style="vertical-align:top;"><input type="number" class="input-inline tabular" style="width:76px;" value="${split.matRate}" data-boq-field="materialRate" data-room="${rIdx}" data-item="${iIdx}" /></td>
+                              <td data-label="Mat ₹" style="vertical-align:top;"><input type="number" class="input-inline tabular" style="width:76px;" value="${split.matRate}" data-boq-field="materialRate" data-room="${rIdx}" data-item="${iIdx}" ${it.labourOnly ? 'disabled title="Labour only — no material"' : ''} /></td>
                               <td data-label="Lab ₹" style="vertical-align:top;"><input type="number" class="input-inline tabular" style="width:76px;" value="${split.labRate}" data-boq-field="labourRate" data-room="${rIdx}" data-item="${iIdx}" /></td>
                               <td data-label="Rate ₹" style="vertical-align:top;"><input type="number" class="input-inline tabular" style="width:82px; font-weight:700;" value="${it.rate || 0}" data-boq-field="rate" data-room="${rIdx}" data-item="${iIdx}" /></td>
                               <td id="line-total-${rIdx}-${iIdx}" class="tabular" data-label="Amount" style="vertical-align:top;">
@@ -9994,6 +10015,31 @@
         const a = t.closest('[data-keep-auto]'); if (a) { const c = clientById(a.dataset.keepAuto); if (!c) return; delete c.keepForever; c.removeOn = addDays(getDateOffset(0), KEEP_DAYS); commitState(); renderClients(); showToast(`Moves to Trash on ${fmtDay(c.removeOn)}`); }
       });
 
+
+      // ===== Labour-only items (the client supplies the material) =====
+      document.addEventListener('click', e => {
+        const b = e.target.closest('[data-boq-labour]'); if (!b) return;
+        const [rIdx, iIdx] = b.dataset.boqLabour.split(':').map(Number);
+        const boq = ensureBoqForClient(state.activeBoqClientId);
+        const ver = getActiveVersionObj(boq);
+        const it = ver.rooms[rIdx] && ver.rooms[rIdx].items[iIdx]; if (!it) return;
+        if (!it.labourOnly) {
+          const split = computeItemMatLab(it);
+          it.fullRate = Number(it.rate) || 0; it.fullMat = split.matRate;
+          it.labourOnly = true; it.materialRate = 0; it.labourRate = split.labRate || Number(it.rate) || 0; it.rate = it.labourRate;
+          showToast(`Labour only · rate ${formatINR(it.rate)} per ${it.unit || 'unit'} — change it if needed`);
+        } else {
+          delete it.labourOnly;
+          const lab = Number(it.labourRate) || 0;
+          it.materialRate = Number(it.fullMat) || Math.max(0, (Number(it.fullRate) || 0) - lab);
+          it.rate = it.materialRate + lab; // material back on top of the (possibly changed) labour rate
+          delete it.fullRate; delete it.fullMat;
+          showToast('Material and labour charged again');
+        }
+        syncAllThreeOptionsFrom(boq, boq.activeVersion);
+        commitState(); renderBoqBuilder();
+      });
+
       // ===== Project archive (ZIP) and import from the master file =====
       const JSZIP_SOURCES = ['https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js', 'https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js'];
       function loadJsZip() {
@@ -10064,7 +10110,7 @@
           ['A', 'B', 'C'].forEach(k => {
             const v = boq.versions && boq.versions[k]; if (!v) return;
             const rows = [];
-            (v.rooms || []).forEach(rm => (rm.items || []).forEach((it, i) => rows.push({ Room: rm.name, '#': i + 1, Description: it.desc || '', Length: it.len || '', Height: it.ht || '', Qty: Number(it.qty) || 0, Unit: it.unit || '', Rate: Number(it.rate) || 0, Amount: Math.round((Number(it.qty) || 0) * (Number(it.rate) || 0) * 100) / 100 })));
+            (v.rooms || []).forEach(rm => (rm.items || []).forEach((it, i) => rows.push({ Room: rm.name, '#': i + 1, Description: it.desc || '', 'Labour only': it.labourOnly ? 'Yes' : '', Length: it.len || '', Height: it.ht || '', Qty: Number(it.qty) || 0, Unit: it.unit || '', Rate: Number(it.rate) || 0, Amount: Math.round((Number(it.qty) || 0) * (Number(it.rate) || 0) * 100) / 100 })));
             if (!rows.length) return;
             const sm = computeVersionSummary(v);
             rows.push({}, { Description: 'Sub-total', Amount: sm.subtotal }, { Description: 'Design fee', Amount: sm.designFee || 0 }, { Description: 'Execution fee', Amount: sm.execFee || 0 }, { Description: sm.discount > 0 ? `${sm.discountLabel}${v.discountShow === false ? ' (not shown on PDF)' : ''}` : 'Discount', Amount: -(sm.discount || 0) }, { Description: 'GST', Amount: (sm.cgst || 0) + (sm.sgst || 0) }, { Description: 'Grand total', Amount: sm.grandTotal });
@@ -13331,7 +13377,9 @@
           document.getElementById('cat-form-mat-rate-c').value = existingItem.materialRateC || '';
           document.getElementById('cat-form-lab-rate-c').value = existingItem.labourRateC || '';
           document.getElementById('cat-form-rate-c').value = existingItem.rateC || '';
+          document.getElementById('cat-form-labour-only').checked = !!existingItem.labourOnly;
         } else {
+          document.getElementById('cat-form-labour-only').checked = false;
           const nextNum = 101 + state.catalog.length;
           document.getElementById('catalog-modal-title').textContent = 'Add Item to Master Catalog';
           document.getElementById('cat-form-edit-id').value = '';
@@ -20060,7 +20108,8 @@
             rateB,
             materialRateC: matRateC,
             labourRateC: labRateC,
-            rateC
+            rateC,
+            labourOnly: fd.get('labourOnly') === 'on'
           };
 
           payload.segment = fd.get('segment') || 'both';
@@ -20466,12 +20515,13 @@
             const qtyInput = document.querySelector(`[data-boq-field="qty"][data-room="${rIdx}"][data-item="${iIdx}"]`);
             if (qtyInput) qtyInput.value = it.qty;
           } else if (field === 'materialRate' || field === 'labourRate') {
+            if (it.labourOnly) it.materialRate = 0;
             it.rate = (Number(it.materialRate) || 0) + (Number(it.labourRate) || 0);
             const rateInput = document.querySelector(`[data-boq-field="rate"][data-room="${rIdx}"][data-item="${iIdx}"]`);
             if (rateInput) rateInput.value = it.rate;
           } else if (field === 'rate') {
-            it.materialRate = Math.round(val * 0.68);
-            it.labourRate = Math.max(0, val - it.materialRate);
+            if (it.labourOnly) { it.materialRate = 0; it.labourRate = val; }
+            else { it.materialRate = Math.round(val * 0.68); it.labourRate = Math.max(0, val - it.materialRate); }
           }
 
           syncAllThreeOptionsFrom(boq, boq.activeVersion);
