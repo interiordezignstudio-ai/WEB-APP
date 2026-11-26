@@ -4850,7 +4850,7 @@
           <select name="sendTo" id="task-modal-send" class="select">
             <option value="">No</option>
             <option value="ios">iPhone / iPad Reminders</option>
-            <option value="google">Google Calendar</option>
+            <option value="google">Google Tasks (shows in Google Calendar)</option>
             <option value="ics">Other calendar (Apple, Outlook)</option>
           </select>
         </div>
@@ -7633,6 +7633,7 @@
         if (e.target.closest('[data-hub-task-cancel]')) { hubTaskEditId = null; renderClients(); return true; }
         const delTask = e.target.closest('[data-hub-task-del]');
         if (delTask) {
+          const gone = state.tasks.find(t => t.id === delTask.dataset.hubTaskDel); if (gone && gone.gtaskId) gtaskSync(gone, true);
           state.tasks = state.tasks.filter(t => t.id !== delTask.dataset.hubTaskDel);
           commitState();
           renderClients();
@@ -7744,7 +7745,7 @@
           const title = String(fd.get('title') || '').trim();
           if (!task || !title) return true;
           Object.assign(task, { title, assigneeEmail: fd.get('assigneeEmail') || task.assigneeEmail, dueDate: fd.get('dueDate') || task.dueDate, dueTime: fd.get('dueTime') || '' });
-          if (task.gcalId && typeof taskGoogleSync === 'function') taskGoogleSync(task);
+          if ((task.gcalId || task.gtaskId) && typeof taskGoogleSync === 'function') taskGoogleSync(task);
           hubTaskEditId = null;
           commitState();
           renderClients();
@@ -10708,35 +10709,57 @@
         const q = new URLSearchParams({ action: 'TEMPLATE', text: t.title, dates: `${calCompact(start)}/${calCompact(addMinutesLocal(start, 15))}`, details: taskNotes(t) + '\nFrom Interior Dezign Studio OS', ctz: 'Asia/Kolkata' });
         return `https://calendar.google.com/calendar/render?${q.toString()}`;
       }
+      // ----- Google Tasks (shows in Google Calendar's task list) -----
+      const GTASKS_API = 'https://tasks.googleapis.com/tasks/v1/lists/@default/tasks';
+      function gtaskBody(t) {
+        const tm = t.dueTime ? new Date(`2000-01-01T${t.dueTime}`).toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit' }) + ' · ' : '';
+        const b = { title: `${tm}${t.title}`, notes: taskNotes(t) + '\nFrom Interior Dezign Studio OS', status: t.done ? 'completed' : 'needsAction' };
+        // Google Tasks keeps only the day (no time) — the time goes in the title
+        if (t.dueDate) b.due = `${t.dueDate}T00:00:00.000Z`;
+        return b;
+      }
+      async function gtaskReady(interactive) {
+        if (!cloudEnabled()) return false;
+        if (!cloud.cfg.gtasks) { if (!interactive) return false; cloud.cfg.gtasks = true; saveCloudCfg(); }
+        return !!(await getCloudToken(interactive));
+      }
       async function taskToGoogle(t) {
-        if (calendarAuto()) {
-          try {
-            await getCloudToken(true);
-            const base = 'https://www.googleapis.com/calendar/v3/calendars/primary/events';
-            const ev = t.gcalId
-              ? await gApi(`${base}/${t.gcalId}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(taskGoogleBody(t)) })
-              : await gApi(base, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(taskGoogleBody(t)) });
-            t.gcalId = ev.id; t.gcalLink = ev.htmlLink || ''; t.phoneAt = new Date().toISOString(); commitState();
-            showToast(`Added to Google Calendar · alerts 15 min before and at ${t.dueTime || '10:00'}`);
-            return;
-          } catch (err) {
-            if (t.gcalId && /404|not found/i.test(String(err && (err.message || err.code)))) { delete t.gcalId; return taskToGoogle(t); }
-            showToast('Could not add automatically — opening Google Calendar instead');
-          }
+        if (!cloudEnabled()) {
+          showToast('Connect Google first (Sync & Backup → Google Drive) — then tasks go straight into Google Tasks');
+          closeModal('modal-taskphone'); switchTab('backup'); return;
         }
-        window.__idsLastOpen = taskGoogleLink(t);
-        window.open(taskGoogleLink(t), '_blank', 'noopener');
-        t.phoneAt = new Date().toISOString(); commitState();
+        try {
+          await gtaskReady(true);
+          let r;
+          if (t.gtaskId) {
+            try { r = await gApi(`${GTASKS_API}/${t.gtaskId}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(gtaskBody(t)) }); }
+            catch (err) { if (err && err.code === 404) { delete t.gtaskId; } else throw err; }
+          }
+          if (!t.gtaskId) r = await gApi(GTASKS_API, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(gtaskBody(t)) });
+          t.gtaskId = r.id; t.phoneAt = new Date().toISOString(); commitState();
+          if (state.activeTab === 'tasks' && typeof renderMyTasks === 'function') renderMyTasks();
+          showToast(`Added to Google Tasks${t.dueDate ? ` · ${t.dueDate === getDateOffset(0) ? 'today' : fmtDay(t.dueDate)}` : ''} — shows in Google Calendar`);
+        } catch (err) {
+          showToast(err && err.message ? err.message : 'Could not add to Google Tasks');
+        }
       }
       // keep the Google Calendar event in step when the task changes or is deleted
-      async function taskGoogleSync(t) { if (!t || !t.gcalId || !calendarAuto()) return; try { await getCloudToken(false); await gApi(`https://www.googleapis.com/calendar/v3/calendars/primary/events/${t.gcalId}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(taskGoogleBody(t)) }); } catch (err) { /* offline — fine */ } }
+      async function gtaskSync(t, remove) {
+        if (!t || !t.gtaskId) return;
+        try {
+          if (!(await gtaskReady(false))) return;
+          if (remove) await gApi(`${GTASKS_API}/${t.gtaskId}`, { method: 'DELETE' });
+          else await gApi(`${GTASKS_API}/${t.gtaskId}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(gtaskBody(t)) });
+        } catch (err) { /* offline or removed in Google — fine */ }
+      }
+      async function taskGoogleSync(t) { if (t && t.gtaskId) gtaskSync(t); if (!t || !t.gcalId || !calendarAuto()) return; try { await getCloudToken(false); await gApi(`https://www.googleapis.com/calendar/v3/calendars/primary/events/${t.gcalId}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(taskGoogleBody(t)) }); } catch (err) { /* offline — fine */ } }
 
       function openTaskPhone(t) {
         const when = taskWhen(t);
         document.getElementById('taskphone-body').innerHTML = `
           <div style="margin-bottom:12px;"><strong>${escapeHtml(t.title)}</strong><div class="hub-muted" style="font-size:13px;">${escapeHtml(when.toLocaleString('en-IN', { weekday: 'short', day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' }))}${t.dueTime ? '' : ' (10 am — set a time with Edit)'} · ${escapeHtml(taskNotes(t))}</div></div>
           <button type="button" class="tp-choice" data-tp-go="ios" data-task="${t.id}"><span class="i">☑️</span><span><strong>iPhone / iPad Reminders</strong><small>Adds it to the Reminders app with an alert at that time. Needs the “Dezign Reminder” Shortcut (one-time setup).</small></span></button>
-          <button type="button" class="tp-choice" data-tp-go="google" data-task="${t.id}"><span class="i">🗓️</span><span><strong>Google Calendar</strong><small>${calendarAuto() ? 'Added straight to the studio Google Calendar with phone alerts 15 min before and at the time. Edits to the task move the event too.' : 'Opens Google Calendar with the event filled in — tap Save. (Connect Google Calendar in Sync &amp; Backup to add it automatically with alerts.)'}${t.gcalId ? ' <b>Already added — this updates it.</b>' : ''}</small></span></button>
+          <button type="button" class="tp-choice" data-tp-go="google" data-task="${t.id}"><span class="i">✅</span><span><strong>Google Tasks</strong><small>${cloudEnabled() ? 'Added as a <b>task</b> (not an event) to your Google Tasks list — it shows in Google Calendar on that day and in the Google Tasks app. Ticking, editing or deleting it here updates it there.' : 'Connect Google Drive in Sync &amp; Backup first — then tasks go straight into Google Tasks.'}${t.gtaskId ? ' <b>Already added — this updates it.</b>' : ''}</small></span></button>
           <button type="button" class="tp-choice" data-tp-go="ics" data-task="${t.id}"><span class="i">📅</span><span><strong>Other calendar</strong><small>An event file with alerts 15 min before and at the time — Apple Calendar, Outlook, phone or laptop.</small></span></button>
           <div class="hub-muted" style="font-size:12.5px;">First time on iPhone? <a href="#" data-go-ios-setup>See the 2-minute Shortcut setup</a>.</div>`;
         openModal('modal-taskphone');
@@ -10754,8 +10777,8 @@
             <li>Add <b>Add New Reminder</b>: Reminder = <i>Dictionary Value</i> (title), List = your list (e.g. make one called <b>Interior Dezign</b>), tap the arrow → <b>Alert: At Time</b> → <i>Dates</i>.</li>
             <li>Done. Back in the app press <b>Test</b> below — a test reminder for 2 minutes from now should appear in Reminders.</li>
           </ol>
-          <div style="display:flex; gap:8px; flex-wrap:wrap;"><button type="button" class="btn btn-primary btn-sm" data-ios-test>Test on this iPhone</button><button type="button" class="btn btn-outline btn-sm" data-gcal-test>Test Google Calendar</button><button type="button" class="btn btn-outline btn-sm" data-ics-test>Test other calendar</button></div>
-          <div class="hub-muted" style="font-size:12.5px;"><b>Google Calendar:</b> ${calendarAuto() ? '✓ connected — tasks are added automatically with phone alerts.' : 'tick “Add meetings to Google Calendar” in the Google Drive card above to add tasks automatically with alerts; until then Google Calendar opens with the task filled in.'}</div>
+          <div style="display:flex; gap:8px; flex-wrap:wrap;"><button type="button" class="btn btn-primary btn-sm" data-ios-test>Test on this iPhone</button><button type="button" class="btn btn-outline btn-sm" data-gcal-test>Test Google Tasks</button><button type="button" class="btn btn-outline btn-sm" data-ics-test>Test other calendar</button></div>
+          <div class="hub-muted" style="font-size:12.5px;"><b>Google Tasks:</b> ${cloudEnabled() ? (cloud.cfg.gtasks ? '✓ allowed — tasks go into your Google Tasks list and show in Google Calendar on their day.' : 'the first time you send a task, Google asks once for permission to add to Google Tasks.') : 'connect Google Drive in the card above first — tasks then go into your Google Tasks list (they show in Google Calendar and the Google Tasks app).'}</div>
           <div class="hub-muted" style="font-size:12.5px;">Then use <b>📲 Remind</b> on any task, or choose “Also add to my phone” when you create one. On a laptop, use the calendar option.</div>`;
       }
       document.addEventListener('click', e => {
@@ -10795,8 +10818,8 @@
           t.doneLog = (t.doneLog || []).concat([new Date().toISOString()]).slice(-50);
           t.dueDate = nextRepeatDate(t); t.done = false;
           setTimeout(() => showToast(`Done ✓ · next: ${fmtDay(t.dueDate)}${t.dueTime ? ' ' + t.dueTime : ''}`), 50);
-          if (t.gcalId && typeof taskGoogleSync === 'function') taskGoogleSync(t);
-        } else { t.done = true; t.doneAt = new Date().toISOString(); }
+          if ((t.gcalId || t.gtaskId) && typeof taskGoogleSync === 'function') taskGoogleSync(t);
+        } else { t.done = true; t.doneAt = new Date().toISOString(); if (t.gtaskId) gtaskSync(t); }
       }
       function myEmail() { const me = getCurrentStaff ? getCurrentStaff() : null; return me ? me.email : ''; }
       function taskIsMine(t) { const me = getCurrentStaff(); return t.assigneeEmail ? t.assigneeEmail === me.email : me.role === 'Principal / Admin'; }
@@ -10833,7 +10856,7 @@
         return `<div class="mt-row${t.done ? ' done' : ''}">
           <input type="checkbox" data-mt-done="${t.id}" ${t.done ? 'checked' : ''} aria-label="Done" />
           <div class="mt-main"><strong>${t.star ? '⭐ ' : ''}${escapeHtml(t.title)}</strong>
-            <div class="mt-meta"><span class="${late ? 'late' : t.dueDate === today ? 'today' : ''}">${late ? 'Overdue · ' : ''}${escapeHtml(whenTxt)}</span>${t.repeat ? `<span>🔁 ${escapeHtml((REPEATS.find(r => r[0] === t.repeat) || [])[1] || '')}</span>` : ''}${c ? `<button type="button" class="hub-chip" data-hub-open-client="${c.id}">${escapeHtml(c.name)}</button>` : ''}${who && who.email !== myEmail() ? `<span>→ ${escapeHtml(who.name)}</span>` : ''}${t.gcalId ? '<span title="On Google Calendar">🗓️</span>' : ''}${t.phoneAt && !t.gcalId ? '<span title="Sent to phone">📲</span>' : ''}</div></div>
+            <div class="mt-meta"><span class="${late ? 'late' : t.dueDate === today ? 'today' : ''}">${late ? 'Overdue · ' : ''}${escapeHtml(whenTxt)}</span>${t.repeat ? `<span>🔁 ${escapeHtml((REPEATS.find(r => r[0] === t.repeat) || [])[1] || '')}</span>` : ''}${c ? `<button type="button" class="hub-chip" data-hub-open-client="${c.id}">${escapeHtml(c.name)}</button>` : ''}${who && who.email !== myEmail() ? `<span>→ ${escapeHtml(who.name)}</span>` : ''}${t.gtaskId ? '<span title="In Google Tasks">✅ Google</span>' : t.gcalId ? '<span title="On Google Calendar">🗓️</span>' : ''}${t.phoneAt && !t.gcalId && !t.gtaskId ? '<span title="Sent to phone">📲</span>' : ''}</div></div>
           <div class="mt-acts">${t.done ? `<button type="button" class="btn btn-outline btn-sm" data-mt-del="${t.id}" aria-label="Delete">✕</button>` : `
             <button type="button" class="btn btn-outline btn-sm" data-mt-star="${t.id}" title="Important">${t.star ? '★' : '☆'}</button>
             <button type="button" class="btn btn-outline btn-sm" data-mt-snooze="${t.id}" data-by="hour" title="Remind me in 1 hour">⏰ 1 h</button>
@@ -10872,7 +10895,7 @@
               <select class="select" id="mt-client" style="max-width:200px;"><option value="">No client</option>${(state.clients || []).map(c => `<option value="${c.id}" ${d.clientId === c.id ? 'selected' : ''}>${escapeHtml(c.name)}</option>`).join('')}</select>
               <select class="select" id="mt-who" style="max-width:200px;">${buildStaffOptionsHtml(d.who || me.email)}</select>
               <button type="button" class="mt-star${d.star ? ' on' : ''}" data-mt-draftstar>${d.star ? '★ Important' : '☆ Important'}</button>
-              <select class="select" id="mt-send" title="Also remind me on my phone"><option value="">App reminder only</option><option value="ios" ${d.send === 'ios' ? 'selected' : ''}>+ iPhone Reminders</option><option value="google" ${d.send === 'google' ? 'selected' : ''}>+ Google Calendar</option></select>
+              <select class="select" id="mt-send" title="Also remind me on my phone"><option value="">App reminder only</option><option value="ios" ${d.send === 'ios' ? 'selected' : ''}>+ iPhone Reminders</option><option value="google" ${d.send === 'google' ? 'selected' : ''}>+ Google Tasks</option></select>
             </div>
           </div>
           ${admin ? `<div class="pf-filters" style="margin-top:14px;"><button type="button" class="${mtUI.scope === 'mine' ? 'on' : ''}" data-mt-scope="mine">My tasks</button><button type="button" class="${mtUI.scope === 'all' ? 'on' : ''}" data-mt-scope="all">Everyone's</button></div>` : ''}
@@ -10881,7 +10904,7 @@
             ${done.length ? `<div class="mt-group"><h4><button type="button" class="wa-linkbtn" data-mt-showdone style="font-size:10.5px; letter-spacing:.14em; text-transform:uppercase;">${mtUI.showDone ? '▾' : '▸'} Done ${done.length}</button></h4>${mtUI.showDone ? done.map(mtRow).join('') : ''}</div>` : ''}
           </div>
           ${morningSettingsHtml()}
-          <div class="hub-muted" style="font-size:12.5px; margin-top:10px;">The app pops up a reminder at the time (and a phone notification if “Notifications on this device” is on). For alerts when the app is closed, use 📲 — iPhone Reminders or Google Calendar.</div>`;
+          <div class="hub-muted" style="font-size:12.5px; margin-top:10px;">The app pops up a reminder at the time (and a phone notification if “Notifications on this device” is on). For alerts when the app is closed, use 📲 — iPhone Reminders or Google Tasks.</div>`;
       }
       function mtAdd() {
         const g = id => document.getElementById(id);
@@ -10905,7 +10928,7 @@
         if (t.id === 'mt-date') mtUI.draft.date = t.value; if (t.id === 'mt-time') mtUI.draft.time = t.value;
         if (t.id === 'mt-repeat') mtUI.draft.repeat = t.value; if (t.id === 'mt-client') mtUI.draft.clientId = t.value; if (t.id === 'mt-who') mtUI.draft.who = t.value; if (t.id === 'mt-send') mtUI.draft.send = t.value;
         const dn = t.closest && t.closest('[data-mt-done]');
-        if (dn) { const tk = (state.tasks || []).find(x => x.id === dn.dataset.mtDone); if (!tk) return; if (dn.checked) completeTask(tk); else { tk.done = false; delete tk.doneAt; } commitState(); setTimeout(() => { renderMyTasks(); updateTaskBadge(); }, 120); }
+        if (dn) { const tk = (state.tasks || []).find(x => x.id === dn.dataset.mtDone); if (!tk) return; if (dn.checked) completeTask(tk); else { tk.done = false; delete tk.doneAt; gtaskSync(tk); } commitState(); setTimeout(() => { renderMyTasks(); updateTaskBadge(); }, 120); }
       });
       document.addEventListener('click', async e => {
         const t = e.target; if (!t.closest('#tasks-root')) return;
@@ -10916,13 +10939,13 @@
         if (t.closest('[data-mt-showdone]')) { mtUI.showDone = !mtUI.showDone; renderMyTasks(); return; }
         const st = t.closest('[data-mt-star]'); if (st) { const tk = state.tasks.find(x => x.id === st.dataset.mtStar); if (tk) { tk.star = !tk.star; commitState(); renderMyTasks(); } return; }
         const sn = t.closest('[data-mt-snooze]');
-        if (sn) { const tk = state.tasks.find(x => x.id === sn.dataset.mtSnooze); if (!tk) return; const [dd, tt] = mtWhenValue(sn.dataset.by); tk.dueDate = dd; tk.dueTime = tt; commitState(); renderMyTasks(); updateTaskBadge(); showToast(`Reminder moved to ${dd === getDateOffset(0) ? 'today' : fmtDay(dd)} ${tt}`); if (tk.gcalId) taskGoogleSync(tk); return; }
+        if (sn) { const tk = state.tasks.find(x => x.id === sn.dataset.mtSnooze); if (!tk) return; const [dd, tt] = mtWhenValue(sn.dataset.by); tk.dueDate = dd; tk.dueTime = tt; commitState(); renderMyTasks(); updateTaskBadge(); showToast(`Reminder moved to ${dd === getDateOffset(0) ? 'today' : fmtDay(dd)} ${tt}`); if (tk.gcalId || tk.gtaskId) taskGoogleSync(tk); return; }
         const ed = t.closest('[data-mt-edit]'); if (ed) { mtUI.editId = ed.dataset.mtEdit; renderMyTasks(); return; }
         if (t.closest('[data-mt-cancel]')) { mtUI.editId = null; renderMyTasks(); return; }
         const sv = t.closest('[data-mt-save]');
-        if (sv) { const tk = state.tasks.find(x => x.id === sv.dataset.mtSave); if (!tk) return; const g = id => document.getElementById(id).value; const title = g('mte-title').trim(); if (!title) return; Object.assign(tk, { title, dueDate: g('mte-date'), dueTime: g('mte-time'), repeat: g('mte-repeat'), clientId: g('mte-client'), assigneeEmail: g('mte-who') }); mtUI.editId = null; commitState(); renderMyTasks(); updateTaskBadge(); if (tk.gcalId) taskGoogleSync(tk); showToast('Saved'); return; }
+        if (sv) { const tk = state.tasks.find(x => x.id === sv.dataset.mtSave); if (!tk) return; const g = id => document.getElementById(id).value; const title = g('mte-title').trim(); if (!title) return; Object.assign(tk, { title, dueDate: g('mte-date'), dueTime: g('mte-time'), repeat: g('mte-repeat'), clientId: g('mte-client'), assigneeEmail: g('mte-who') }); mtUI.editId = null; commitState(); renderMyTasks(); updateTaskBadge(); if (tk.gcalId || tk.gtaskId) taskGoogleSync(tk); showToast('Saved'); return; }
         const dl = t.closest('[data-mt-del]');
-        if (dl) { const tk = state.tasks.find(x => x.id === dl.dataset.mtDel); if (!tk) return; if (!await appConfirm(`Delete “${tk.title}”?\n\nIt stays in Trash for 30 days.`)) return; state.tasks = state.tasks.filter(x => x.id !== tk.id); commitState(); renderMyTasks(); updateTaskBadge(); showToast('Task deleted'); }
+        if (dl) { const tk = state.tasks.find(x => x.id === dl.dataset.mtDel); if (!tk) return; if (!await appConfirm(`Delete “${tk.title}”?\n\nIt stays in Trash for 30 days.`)) return; state.tasks = state.tasks.filter(x => x.id !== tk.id); gtaskSync(tk, true); commitState(); renderMyTasks(); updateTaskBadge(); showToast('Task deleted'); }
       });
 
 
@@ -14559,10 +14582,12 @@
       const CLOUD_TOKEN_KEY = 'interior_dezign_cloud_token_v1';
       const DRIVE_SCOPE = 'https://www.googleapis.com/auth/drive.file';
       const SHEETS_RO_SCOPE = 'https://www.googleapis.com/auth/spreadsheets.readonly';
+      const GTASKS_SCOPE = 'https://www.googleapis.com/auth/tasks';
       function wantedScopes() {
         const list = [DRIVE_SCOPE];
         if (cloud.cfg.sheetsRead) list.push(SHEETS_RO_SCOPE);
         if (cloud.cfg.calendar) list.push('https://www.googleapis.com/auth/calendar.events');
+        if (cloud.cfg.gtasks) list.push(GTASKS_SCOPE);
         return list.join(' ');
       }
       function tokenHasScopes() { return wantedScopes().split(' ').every(sc => (cloud.tokenScopes || DRIVE_SCOPE).includes(sc)); }
@@ -14749,6 +14774,11 @@
                 const granted = resp.scope || wantedScopes();
                 if (cloud.cfg.calendar && !granted.includes('https://www.googleapis.com/auth/calendar.events')) {
                   reject(new Error('Permission to add events to Google Calendar was not given — tick the Calendar box and try again'));
+                  return;
+                }
+                if (cloud.cfg.gtasks && !granted.includes(GTASKS_SCOPE)) {
+                  cloud.cfg.gtasks = false; saveCloudCfg();
+                  reject(new Error('Permission to add to Google Tasks was not given — tap the button again and allow it'));
                   return;
                 }
                 if (cloud.cfg.sheetsRead && !granted.includes(SHEETS_RO_SCOPE)) {
