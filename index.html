@@ -3092,6 +3092,17 @@
     html[data-theme="dark"] .hub-avatar[style*="#DDF3EA"] { background: #1A2A20 !important; color: #9BD2B0 !important; }
     html[data-theme="dark"] .hub-avatar[style*="#F2EEE9"] { background: #2C2B27 !important; color: #D6D1C6 !important; }
     html[data-theme="dark"] .hub-avatar[style*="#FCE7EA"] { background: #3A1E22 !important; color: #F0A0AA !important; }
+
+    /* ============ DARK MODE: hover & focus states ============ */
+    @media (hover: hover) { html[data-theme="dark"] #catalog-table-body tr:hover { background: var(--bg-sunken); } }
+    html[data-theme="dark"] #catalog-table-body tr:hover td { color: var(--text-main); }
+    html[data-theme="dark"] .input-inline:focus { background: var(--bg-card); color: var(--text-main); }
+    html[data-theme="dark"] .gantt-row[role="button"]:hover, html[data-theme="dark"] button.pay-proj:hover, html[data-theme="dark"] .att-click:hover { background: var(--bg-sunken); }
+    html[data-theme="dark"] .flow-big > button:hover { background: var(--bg-sunken); }
+    html[data-theme="dark"] .import-drop:hover { background: var(--bg-sunken); }
+    html[data-theme="dark"] .btn-wa { background: transparent; border-color: #2C5A3E; color: #7CCB9E; }
+    html[data-theme="dark"] .btn-wa:hover { background: #16271E; }
+    html[data-theme="dark"] .catalog-pick-card:hover { background: var(--bg-sunken); }
 </style>
 </head>
 <body>
