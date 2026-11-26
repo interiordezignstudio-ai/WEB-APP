@@ -10788,22 +10788,25 @@
       function renderIosRemSettings() {
         const box = document.getElementById('ios-rem-settings'); if (!box) return;
         box.innerHTML = `
-          <div class="hub-muted" style="font-size:13px;">Your tasks go into the iPhone <b>Reminders</b> app with an alert at their time — the phone reminds you even when this app is closed, and you can tick them off in Reminders. Make this Shortcut once on each iPhone / iPad (about 3 minutes):</div>
+          <div class="hub-muted" style="font-size:13px;">Your tasks go into the iPhone <b>Reminders</b> app with an alert at their time — the phone reminds you even when this app is closed. It needs the <b>${IOS_SHORTCUT}</b> Shortcut on each iPhone / iPad.</div>
+          ${state.iosShortcutLink ? `<div class="ios-bar" style="margin-top:0;"><span>📥 <b>Install the Shortcut</b> on this iPhone / iPad — tap, then <b>Add Shortcut</b>.</span><a class="btn btn-primary btn-sm" href="${escapeHtml(state.iosShortcutLink)}" target="_blank" rel="noopener">Get the Shortcut</a></div>` : ''}
+          <details ${state.iosShortcutLink ? '' : 'open'} class="ios-steps"><summary style="cursor:pointer; font-weight:600; font-size:13.5px;">${state.iosShortcutLink ? 'Or build it yourself' : 'Build it once on your iPhone (about 5 minutes)'}</summary>
+          <div class="hub-muted" style="font-size:12.5px; margin:6px 0;">Tip: in Shortcuts, tap the search bar at the bottom to find each action by name. Blue words in an action are tappable — tap one and pick the variable named here.</div>
           <ol class="qs-steps">
-            <li>Open the <b>Reminders</b> app and add a list called <b>Interior Dezign</b> <button type="button" class="btn btn-outline btn-sm" data-copy-text="Interior Dezign" style="padding:2px 8px;">Copy</button></li>
-            <li>Open the <b>Shortcuts</b> app → <b>+</b>. Name it exactly <b>${IOS_SHORTCUT}</b> <button type="button" class="btn btn-outline btn-sm" data-copy-text="${IOS_SHORTCUT}" style="padding:2px 8px;">Copy name</button></li>
-            <li>Tap <b>ⓘ</b> → turn on <b>Show in Share Sheet</b> → types: only <b>Text</b>.</li>
-            <li>Add <b>Get Dictionary from Input</b> (input: <i>Shortcut Input</i>).</li>
-            <li>Add <b>Get Dictionary Value</b> → <i>Value</i> for key <b>items</b>.</li>
-            <li>Add <b>Repeat with Each</b> (input: that <i>Dictionary Value</i>). Inside the repeat, add:
-              <ul style="margin:4px 0 0 16px; list-style:disc;">
-                <li><b>Get Dictionary Value</b> → key <b>due</b> in <i>Repeat Item</i>, then <b>Get Dates from Input</b> (input: that value)</li>
-                <li><b>Get Dictionary Value</b> → key <b>notes</b> in <i>Repeat Item</i></li>
-                <li><b>Get Dictionary Value</b> → key <b>title</b> in <i>Repeat Item</i></li>
-                <li><b>Add New Reminder</b>: Reminder = the <i>title</i> value, List = <b>Interior Dezign</b>, tap ⌄ → <b>Notes</b> = the <i>notes</i> value, <b>Alert: At Time</b> → <i>Dates</i></li>
-              </ul></li>
-            <li>Done. Press <b>Test</b> below — a test reminder for 2 minutes from now should appear in Reminders. <span class="hub-muted">(Made the older one-task version? Change it to these steps — the app now sends several tasks at once.)</span></li>
+            <li>Open the <b>Reminders</b> app → <b>Add List</b> → name it <b>Interior Dezign</b> <button type="button" class="btn btn-outline btn-sm" data-copy-text="Interior Dezign" style="padding:2px 8px;">Copy</button></li>
+            <li>Open <b>Shortcuts</b> → <b>+</b> (top right). Tap the name at the top → <b>Rename</b> → <b>${IOS_SHORTCUT}</b> <button type="button" class="btn btn-outline btn-sm" data-copy-text="${IOS_SHORTCUT}" style="padding:2px 8px;">Copy name</button></li>
+            <li>Search <b>Get Dictionary from Input</b> → tap it. Its blue word should say <i>Shortcut Input</i> (tap it and choose that if not).</li>
+            <li>Search <b>Get Dictionary Value</b> → tap it. Tap <i>Key</i> → type <b>items</b> <button type="button" class="btn btn-outline btn-sm" data-copy-text="items" style="padding:2px 8px;">Copy</button></li>
+            <li>Search <b>Repeat with Each</b> → tap it (it repeats with <i>Dictionary Value</i>). The next steps go <b>between</b> “Repeat with each” and “End Repeat” — drag them there if needed.</li>
+            <li>Inside the repeat — <b>Get Dictionary Value</b>: Key <b>due</b>, and tap <i>Dictionary</i> → choose <b>Repeat Item</b>.</li>
+            <li>Inside — <b>Get Dates from Input</b> (it uses the <i>Dictionary Value</i> above).</li>
+            <li>Inside — <b>Get Dictionary Value</b>: Key <b>title</b>, Dictionary → <b>Repeat Item</b>.</li>
+            <li>Inside — <b>Add New Reminder</b>: tap <i>Reminder</i> → pick <b>Dictionary Value</b> (the title); tap <i>Reminders</i> list → <b>Interior Dezign</b>; tap <b>⌄</b> → <b>Alert</b> → <b>At Time</b> → tap the time → <b>Select Variable</b> → <b>Dates</b>.</li>
+            <li>Tap <b>Done</b>. Back here press <b>Test on this iPhone</b> — a test reminder for 2 minutes from now should appear in Reminders.</li>
           </ol>
+          <div class="hub-muted" style="font-size:12.5px; margin-top:6px;"><b>Share it with the team (and your iPad):</b> in Shortcuts, press and hold <b>${IOS_SHORTCUT}</b> → <b>Share</b> → <b>Copy iCloud Link</b>, paste it here and Save. Everyone then gets a one-tap “Get the Shortcut” button above.</div>
+          <div style="display:flex; gap:6px; flex-wrap:wrap; margin-top:6px;"><input class="input" id="ios-sc-link" placeholder="https://www.icloud.com/shortcuts/…" value="${escapeHtml(state.iosShortcutLink || '')}" style="flex:1 1 220px; min-height:34px; font-size:13px;" /><button type="button" class="btn btn-outline btn-sm" data-ios-sc-save>Save link</button></div>
+          </details>
           <label class="alert-opt"><input type="checkbox" data-ios-auto ${iosAuto() ? 'checked' : ''} /> <span><strong>Put my tasks in iPhone Reminders automatically (this device)</strong><small>New tasks you add here go straight to Reminders. Tasks added on the laptop or by the team show a one-tap <b>“Add all to Reminders”</b> bar on Tasks &amp; Reminders and in the morning summary.</small></span></label>
           <div style="display:flex; gap:8px; flex-wrap:wrap;"><button type="button" class="btn btn-primary btn-sm" data-ios-test>Test on this iPhone</button><button type="button" class="btn btn-outline btn-sm" data-gcal-test>Test Google Tasks</button><button type="button" class="btn btn-outline btn-sm" data-ics-test>Test other calendar</button></div>
           <div class="hub-muted" style="font-size:12.5px;"><b>Google Tasks:</b> ${cloudEnabled() ? (cloud.cfg.gtasks ? '✓ allowed — tasks go into your Google Tasks list and show in Google Calendar on their day.' : 'the first time you send a task, Google asks once for permission to add to Google Tasks.') : 'connect Google Drive in the card above first — tasks then go into your Google Tasks list (they show in Google Calendar and the Google Tasks app).'}</div>
@@ -10816,6 +10819,7 @@
         if (t.closest('[data-go-ios-setup]')) { e.preventDefault(); closeModal('modal-taskphone'); switchTab('backup'); setTimeout(() => document.getElementById('ios-rem-card')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 200); return; }
         const sample = () => ({ id: 'test_' + Date.now(), title: 'Test reminder from Interior Dezign Studio', dueDate: getDateOffset(0), dueTime: (() => { const d = new Date(Date.now() + 120000); return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`; })() });
         if (t.closest('[data-ios-test]')) { taskToIphone(sample()); return; }
+        if (t.closest('[data-ios-sc-save]')) { const v = (document.getElementById('ios-sc-link').value || '').trim(); if (v && !/^https:\/\/(www\.)?icloud\.com\/shortcuts\//.test(v)) { showToast('That is not an iCloud Shortcut link — it starts with https://www.icloud.com/shortcuts/'); return; } state.iosShortcutLink = v; commitState(); renderIosRemSettings(); showToast(v ? 'Saved — every iPhone now gets a “Get the Shortcut” button' : 'Link removed'); return; }
         if (t.closest('[data-ios-sendall]')) { const list = iosPending(); if (list.length) { closeModal('modal-morning'); tasksToIphone(list); } return; }
         if (t.closest('[data-ics-test]')) { taskToCalendar(sample()); return; }
         if (t.closest('[data-gcal-test]')) { taskToGoogle(sample()); return; }
