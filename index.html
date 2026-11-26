@@ -2697,6 +2697,35 @@
     .tp-choice span.i { font-size: 26px; flex: 0 0 auto; }
     .tp-choice strong { display: block; font-size: 15px; }
     .tp-choice small { display: block; color: var(--text-muted); font-size: 12.5px; margin-top: 2px; }
+    /* Tasks & reminders */
+    .mt-add { display:grid; grid-template-columns: minmax(0, 1fr); gap:10px; }
+    .mt-add .row1 { display:flex; gap:8px; flex-wrap:wrap; }
+    .mt-add .row1 .input { flex:1 1 260px; font-size:15px; }
+    .mt-add .row2 { display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
+    .mt-add .row2 .input, .mt-add .row2 .select { width:auto; flex:0 1 auto; min-height:36px; padding:6px 10px; font-size:13px; }
+    .mt-chips { display:flex; gap:6px; flex-wrap:wrap; }
+    .mt-chips button { border:1px solid var(--border-subtle); background: var(--bg-card); color: var(--text-main); border-radius:999px; padding:5px 11px; font-size:12.5px; font-weight:600; cursor:pointer; }
+    .mt-chips button.on { background: var(--text-main); color: var(--bg-card); border-color: var(--text-main); }
+    .mt-star { border:1px solid var(--border-subtle); background: var(--bg-card); border-radius:999px; padding:5px 11px; cursor:pointer; font-size:13px; color: var(--text-muted); }
+    .mt-star.on { color:#B7791F; border-color:#E6C27A; background:#FFF8E6; }
+    .mt-group { margin-top:18px; }
+    .mt-group h4 { font-size:10.5px; letter-spacing:.14em; text-transform:uppercase; color: var(--text-muted); font-weight:600; margin:0 0 6px; display:flex; gap:8px; align-items:center; }
+    .mt-group h4.late { color: var(--accent-rose); }
+    .mt-row { display:flex; gap:10px; align-items:flex-start; padding:10px 0; border-bottom:1px solid var(--border-subtle); }
+    .mt-row:last-child { border-bottom:0; }
+    .mt-row input[type=checkbox] { width:19px; height:19px; margin-top:2px; flex:0 0 19px; cursor:pointer; }
+    .mt-main { flex:1; min-width:0; }
+    .mt-main strong { font-size:14.5px; font-weight:600; display:block; overflow-wrap:anywhere; }
+    .mt-row.done .mt-main strong { text-decoration: line-through; color: var(--text-light); }
+    .mt-meta { display:flex; gap:6px; flex-wrap:wrap; align-items:center; margin-top:3px; font-size:12.5px; color: var(--text-muted); }
+    .mt-meta .late { color: var(--accent-rose); font-weight:600; }
+    .mt-meta .today { color: var(--accent-terracotta-dark); font-weight:600; }
+    .mt-acts { display:flex; gap:4px; flex-wrap:wrap; justify-content:flex-end; }
+    .mt-acts .btn { padding:4px 9px; font-size:12px; min-height:30px; }
+    .mt-edit { display:flex; gap:6px; flex-wrap:wrap; margin-top:6px; }
+    .mt-edit .input, .mt-edit .select { width:auto; min-height:34px; padding:5px 8px; font-size:13px; }
+    html[data-theme="dark"] .mt-star.on { background:#33281B; border-color:#5A4127; color:#E6BE8F; }
+    @media (max-width: 700px) { .mt-row { flex-wrap: wrap; } .mt-acts { width:100%; justify-content:flex-start; padding-left:29px; } }
     /* Trash */
     .trash-row { display:flex; gap:12px; align-items:center; padding:12px 0; border-bottom:1px solid var(--border-subtle); flex-wrap:wrap; }
     .trash-row:last-child { border-bottom:0; }
@@ -3139,6 +3168,11 @@
           <span class="nav-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7.5" height="9" rx="1.8"/><rect x="13.5" y="3" width="7.5" height="5" rx="1.8"/><rect x="13.5" y="11" width="7.5" height="10" rx="1.8"/><rect x="3" y="15" width="7.5" height="6" rx="1.8"/></svg></span>
           <span class="nav-label">Home</span>
         </button>
+        <button class="nav-item" data-tab="tasks" data-short="Tasks" title="Tasks & reminders">
+          <span class="nav-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 11.5 11 13.5 15.5 9"/><rect x="3.5" y="3.5" width="17" height="17" rx="4"/></svg></span>
+          <span class="nav-label">Tasks &amp; Reminders</span>
+          <span class="nav-badge" id="badge-mytasks" hidden>0</span>
+        </button>
         <button class="nav-item" data-tab="leads" data-short="Leads" title="Leads CRM">
           <span class="nav-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.2" fill="currentColor"/></svg></span>
           <span class="nav-label">Leads</span>
@@ -3416,6 +3450,16 @@
         </section>
 
         <!-- ==================== 4. MASTER ITEM CATALOG VIEW ==================== -->
+        <section id="view-tasks" class="app-view" style="display:none;">
+          <div class="page-header">
+            <div>
+              <h1 class="page-title">Tasks &amp; Reminders</h1>
+              <p class="page-sub">Everything you have to remember — with a time, repeat and a reminder on your phone</p>
+            </div>
+          </div>
+          <div id="tasks-root"></div>
+        </section>
+
         <section id="view-matcalc" class="app-view" style="display:none;">
           <div class="page-header">
             <div>
@@ -5092,7 +5136,7 @@
       ];
       function normPerm(o) {
         o = o || {};
-        const out = { tabs: ACCESS_SCREENS.map(x => x[0]).filter(t => t === 'dashboard' || t === 'attendance' || (o.tabs || []).includes(t)).concat(['portfolio', 'social', 'matcalc']) };
+        const out = { tabs: ACCESS_SCREENS.map(x => x[0]).filter(t => t === 'dashboard' || t === 'attendance' || (o.tabs || []).includes(t)).concat(['portfolio', 'social', 'matcalc', 'tasks']) };
         ACCESS_ABILITIES.forEach(([k]) => { out[k] = Boolean(o[k]); });
         return out;
       }
@@ -7634,7 +7678,7 @@
         }
         if (t.dataset.hubTaskToggle) {
           const task = state.tasks.find(x => x.id === t.dataset.hubTaskToggle);
-          if (task) { task.done = t.checked; commitState(); renderClients(); }
+          if (task) { if (t.checked) completeTask(task); else task.done = false; commitState(); renderClients(); }
           return true;
         }
         if (t.dataset.hubTaskAssign) {
@@ -10698,6 +10742,160 @@
         if (t.closest('[data-gcal-test]')) { taskToGoogle(sample()); return; }
         const cp = t.closest('[data-copy-text]'); if (cp) { navigator.clipboard?.writeText(cp.dataset.copyText).then(() => showToast('Copied')).catch(() => {}); }
       }, true);
+
+
+      // ===== Tasks & reminders =====
+      const REPEATS = [['', 'No repeat'], ['daily', 'Every day'], ['weekdays', 'Mon–Sat'], ['weekly', 'Every week'], ['monthly', 'Every month'], ['yearly', 'Every year']];
+      const mtUI = { scope: 'mine', when: 'today6', showDone: false, editId: null, draft: { star: false } };
+      const pad2t = n => String(n).padStart(2, '0');
+      const ymdT = d => `${d.getFullYear()}-${pad2t(d.getMonth() + 1)}-${pad2t(d.getDate())}`;
+      const hmT = d => `${pad2t(d.getHours())}:${pad2t(d.getMinutes())}`;
+      function nextRepeatDate(t) {
+        const d = new Date(`${t.dueDate || ymdT(new Date())}T${t.dueTime || '10:00'}`); const today = ymdT(new Date());
+        const step = () => {
+          if (t.repeat === 'daily') d.setDate(d.getDate() + 1);
+          else if (t.repeat === 'weekdays') { do { d.setDate(d.getDate() + 1); } while (d.getDay() === 0); }
+          else if (t.repeat === 'weekly') d.setDate(d.getDate() + 7);
+          else if (t.repeat === 'monthly') d.setMonth(d.getMonth() + 1);
+          else if (t.repeat === 'yearly') d.setFullYear(d.getFullYear() + 1);
+        };
+        step(); let guard = 0; while (ymdT(d) < today && guard++ < 400) step();
+        return ymdT(d);
+      }
+      // tick a task: repeating ones move to their next date instead of closing
+      function completeTask(t) {
+        if (t.repeat) {
+          t.doneLog = (t.doneLog || []).concat([new Date().toISOString()]).slice(-50);
+          t.dueDate = nextRepeatDate(t); t.done = false;
+          setTimeout(() => showToast(`Done ✓ · next: ${fmtDay(t.dueDate)}${t.dueTime ? ' ' + t.dueTime : ''}`), 50);
+          if (t.gcalId && typeof taskGoogleSync === 'function') taskGoogleSync(t);
+        } else { t.done = true; t.doneAt = new Date().toISOString(); }
+      }
+      function myEmail() { const me = getCurrentStaff ? getCurrentStaff() : null; return me ? me.email : ''; }
+      function taskIsMine(t) { const me = getCurrentStaff(); return t.assigneeEmail ? t.assigneeEmail === me.email : me.role === 'Principal / Admin'; }
+      function taskDueAt(t) { return t.dueDate ? new Date(`${t.dueDate}T${t.dueTime || '23:59'}`) : null; }
+      function updateTaskBadge() {
+        const b = document.getElementById('badge-mytasks'); if (!b) return;
+        const today = getDateOffset(0);
+        const n = (state.tasks || []).filter(t => !t.done && taskIsMine(t) && t.dueDate && t.dueDate <= today).length;
+        b.textContent = n; b.hidden = !n;
+      }
+      function mtWhenValue(key) {
+        const now = new Date(); const d = new Date(now);
+        if (key === 'hour') { d.setMinutes(d.getMinutes() + 60 - (d.getMinutes() % 5)); return [ymdT(d), hmT(d)]; }
+        if (key === 'today6') return [ymdT(now), now.getHours() >= 18 ? hmT(new Date(now.getTime() + 3600000)) : '18:00'];
+        if (key === 'tomorrow') { d.setDate(d.getDate() + 1); return [ymdT(d), '10:00']; }
+        if (key === 'monday') { d.setDate(d.getDate() + ((8 - d.getDay()) % 7 || 7)); return [ymdT(d), '10:00']; }
+        if (key === 'none') return ['', ''];
+        return null;
+      }
+      function mtRow(t) {
+        const today = getDateOffset(0); const due = taskDueAt(t); const late = !t.done && due && due.getTime() < Date.now();
+        const c = clientById(t.clientId); const who = (state.staff || []).find(x => x.email === t.assigneeEmail);
+        const whenTxt = t.dueDate ? `${t.dueDate === today ? 'Today' : t.dueDate === getDateOffset(1) ? 'Tomorrow' : fmtDay(t.dueDate)}${t.dueTime ? ' · ' + new Date(`2000-01-01T${t.dueTime}`).toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit' }) : ''}` : 'No date';
+        if (mtUI.editId === t.id) return `<div class="mt-row"><div class="mt-main">
+            <input class="input" id="mte-title" value="${escapeHtml(t.title)}" />
+            <div class="mt-edit">
+              <input class="input" type="date" id="mte-date" value="${escapeHtml(t.dueDate || '')}" />
+              <input class="input" type="time" id="mte-time" value="${escapeHtml(t.dueTime || '')}" />
+              <select class="select" id="mte-repeat">${REPEATS.map(([v, l]) => `<option value="${v}" ${(t.repeat || '') === v ? 'selected' : ''}>${l}</option>`).join('')}</select>
+              <select class="select" id="mte-client"><option value="">No client</option>${(state.clients || []).map(cl => `<option value="${cl.id}" ${t.clientId === cl.id ? 'selected' : ''}>${escapeHtml(cl.name)}</option>`).join('')}</select>
+              <select class="select" id="mte-who">${buildStaffOptionsHtml(t.assigneeEmail)}</select>
+              <button type="button" class="btn btn-primary btn-sm" data-mt-save="${t.id}">Save</button><button type="button" class="btn btn-outline btn-sm" data-mt-cancel>Cancel</button>
+            </div></div></div>`;
+        return `<div class="mt-row${t.done ? ' done' : ''}">
+          <input type="checkbox" data-mt-done="${t.id}" ${t.done ? 'checked' : ''} aria-label="Done" />
+          <div class="mt-main"><strong>${t.star ? '⭐ ' : ''}${escapeHtml(t.title)}</strong>
+            <div class="mt-meta"><span class="${late ? 'late' : t.dueDate === today ? 'today' : ''}">${late ? 'Overdue · ' : ''}${escapeHtml(whenTxt)}</span>${t.repeat ? `<span>🔁 ${escapeHtml((REPEATS.find(r => r[0] === t.repeat) || [])[1] || '')}</span>` : ''}${c ? `<button type="button" class="hub-chip" data-hub-open-client="${c.id}">${escapeHtml(c.name)}</button>` : ''}${who && who.email !== myEmail() ? `<span>→ ${escapeHtml(who.name)}</span>` : ''}${t.gcalId ? '<span title="On Google Calendar">🗓️</span>' : ''}${t.phoneAt && !t.gcalId ? '<span title="Sent to phone">📲</span>' : ''}</div></div>
+          <div class="mt-acts">${t.done ? `<button type="button" class="btn btn-outline btn-sm" data-mt-del="${t.id}" aria-label="Delete">✕</button>` : `
+            <button type="button" class="btn btn-outline btn-sm" data-mt-star="${t.id}" title="Important">${t.star ? '★' : '☆'}</button>
+            <button type="button" class="btn btn-outline btn-sm" data-mt-snooze="${t.id}" data-by="hour" title="Remind me in 1 hour">⏰ 1 h</button>
+            <button type="button" class="btn btn-outline btn-sm" data-mt-snooze="${t.id}" data-by="tomorrow" title="Move to tomorrow 10 am">Tomorrow</button>
+            <button type="button" class="btn btn-outline btn-sm" data-task-phone="${t.id}" title="Remind on my phone">📲</button>
+            <button type="button" class="btn btn-outline btn-sm" data-mt-edit="${t.id}">Edit</button>
+            <button type="button" class="btn btn-outline btn-sm" data-mt-del="${t.id}" aria-label="Delete">✕</button>`}</div>
+        </div>`;
+      }
+      function renderMyTasks() {
+        const box = document.getElementById('tasks-root'); if (!box) return;
+        const me = getCurrentStaff(); const admin = me.role === 'Principal / Admin';
+        const today = getDateOffset(0), tom = getDateOffset(1), week = getDateOffset(7);
+        const all = (state.tasks || []).filter(t => mtUI.scope === 'all' && admin ? true : taskIsMine(t));
+        const open = all.filter(t => !t.done).sort((a, b) => (a.dueDate || '9999').localeCompare(b.dueDate || '9999') || (a.dueTime || '99').localeCompare(b.dueTime || '99'));
+        const now = Date.now();
+        const groups = [
+          ['⭐ Important', open.filter(t => t.star), ''],
+          ['Overdue', open.filter(t => !t.star && taskDueAt(t) && taskDueAt(t).getTime() < now), 'late'],
+          ['Today', open.filter(t => !t.star && t.dueDate === today && !(taskDueAt(t).getTime() < now)), ''],
+          ['Tomorrow', open.filter(t => !t.star && t.dueDate === tom), ''],
+          ['This week', open.filter(t => !t.star && t.dueDate > tom && t.dueDate <= week), ''],
+          ['Later', open.filter(t => !t.star && t.dueDate > week), ''],
+          ['No date', open.filter(t => !t.star && !t.dueDate), '']
+        ];
+        const done = all.filter(t => t.done).sort((a, b) => String(b.doneAt || '').localeCompare(String(a.doneAt || ''))).slice(0, 30);
+        const d = mtUI.draft;
+        const wv = mtWhenValue(mtUI.when) || [d.date || '', d.time || ''];
+        box.innerHTML = `
+          <div class="card mt-add">
+            <div class="row1"><input class="input" id="mt-title" placeholder="What do you need to remember? e.g. Call Ramesh about kitchen ply" value="${escapeHtml(d.title || '')}" autocomplete="off" /><button type="button" class="btn btn-primary" data-mt-add>Add</button></div>
+            <div class="mt-chips">${[['hour', 'In 1 hour'], ['today6', 'Today 6 pm'], ['tomorrow', 'Tomorrow 10 am'], ['monday', 'Next Monday'], ['pick', 'Pick date & time'], ['none', 'No date']].map(([k, l]) => `<button type="button" class="${mtUI.when === k ? 'on' : ''}" data-mt-when="${k}">${l}</button>`).join('')}</div>
+            <div class="row2">
+              ${mtUI.when === 'pick' ? `<input class="input" type="date" id="mt-date" value="${escapeHtml(d.date || today)}" /><input class="input" type="time" id="mt-time" value="${escapeHtml(d.time || '10:00')}" />` : `<span class="hub-muted" style="font-size:12.5px;">${wv[0] ? `⏰ ${escapeHtml(wv[0] === today ? 'Today' : wv[0] === tom ? 'Tomorrow' : fmtDay(wv[0]))} ${escapeHtml(wv[1] || '')}` : 'No reminder time'}</span>`}
+              <select class="select" id="mt-repeat">${REPEATS.map(([v, l]) => `<option value="${v}" ${(d.repeat || '') === v ? 'selected' : ''}>${l}</option>`).join('')}</select>
+              <select class="select" id="mt-client" style="max-width:200px;"><option value="">No client</option>${(state.clients || []).map(c => `<option value="${c.id}" ${d.clientId === c.id ? 'selected' : ''}>${escapeHtml(c.name)}</option>`).join('')}</select>
+              <select class="select" id="mt-who" style="max-width:200px;">${buildStaffOptionsHtml(d.who || me.email)}</select>
+              <button type="button" class="mt-star${d.star ? ' on' : ''}" data-mt-draftstar>${d.star ? '★ Important' : '☆ Important'}</button>
+              <select class="select" id="mt-send" title="Also remind me on my phone"><option value="">App reminder only</option><option value="ios" ${d.send === 'ios' ? 'selected' : ''}>+ iPhone Reminders</option><option value="google" ${d.send === 'google' ? 'selected' : ''}>+ Google Calendar</option></select>
+            </div>
+          </div>
+          ${admin ? `<div class="pf-filters" style="margin-top:14px;"><button type="button" class="${mtUI.scope === 'mine' ? 'on' : ''}" data-mt-scope="mine">My tasks</button><button type="button" class="${mtUI.scope === 'all' ? 'on' : ''}" data-mt-scope="all">Everyone's</button></div>` : ''}
+          <div class="card" style="margin-top:14px;">
+            ${groups.filter(([, l]) => l.length).map(([h, l, cls]) => `<div class="mt-group"><h4 class="${cls}">${h} <span style="opacity:.7;">${l.length}</span></h4>${l.map(mtRow).join('')}</div>`).join('') || '<div class="hub-muted" style="padding:16px 0; text-align:center;">Nothing pending 🎉 — add something above.</div>'}
+            ${done.length ? `<div class="mt-group"><h4><button type="button" class="wa-linkbtn" data-mt-showdone style="font-size:10.5px; letter-spacing:.14em; text-transform:uppercase;">${mtUI.showDone ? '▾' : '▸'} Done ${done.length}</button></h4>${mtUI.showDone ? done.map(mtRow).join('') : ''}</div>` : ''}
+          </div>
+          <div class="hub-muted" style="font-size:12.5px; margin-top:10px;">The app pops up a reminder at the time (and a phone notification if “Notifications on this device” is on). For alerts when the app is closed, use 📲 — iPhone Reminders or Google Calendar.</div>`;
+      }
+      function mtAdd() {
+        const g = id => document.getElementById(id);
+        const title = (g('mt-title') || {}).value ? g('mt-title').value.trim() : ''; if (!title) { showToast('Type what you need to remember'); g('mt-title') && g('mt-title').focus(); return; }
+        const wv = mtUI.when === 'pick' ? [g('mt-date').value, g('mt-time').value] : (mtWhenValue(mtUI.when) || ['', '']);
+        const t = { id: uid('t'), title, assigneeEmail: g('mt-who').value || myEmail(), dueDate: wv[0], dueTime: wv[1], done: false, clientId: g('mt-client').value || '', repeat: g('mt-repeat').value || '', star: !!mtUI.draft.star, createdAt: new Date().toISOString(), by: state.activeStaffEmail };
+        if (t.repeat && !t.dueDate) { t.dueDate = getDateOffset(0); t.dueTime = t.dueTime || '10:00'; }
+        state.tasks.unshift(t);
+        const send = g('mt-send').value;
+        mtUI.draft = { star: false, send, repeat: '', clientId: '', who: '' };
+        commitState(); renderMyTasks(); updateTaskBadge();
+        showToast(`Added${t.dueDate ? ` · reminder ${t.dueDate === getDateOffset(0) ? 'today' : fmtDay(t.dueDate)}${t.dueTime ? ' ' + t.dueTime : ''}` : ''}`);
+        if (send === 'ios' && t.dueDate) setTimeout(() => taskToIphone(t), 200);
+        if (send === 'google' && t.dueDate) setTimeout(() => taskToGoogle(t), 200);
+        setTimeout(() => document.getElementById('mt-title')?.focus(), 50);
+      }
+      document.addEventListener('keydown', e => { if (e.target.id === 'mt-title' && e.key === 'Enter') { e.preventDefault(); mtAdd(); } });
+      document.addEventListener('input', e => { if (e.target.id === 'mt-title') mtUI.draft.title = e.target.value; });
+      document.addEventListener('change', e => {
+        const t = e.target;
+        if (t.id === 'mt-date') mtUI.draft.date = t.value; if (t.id === 'mt-time') mtUI.draft.time = t.value;
+        if (t.id === 'mt-repeat') mtUI.draft.repeat = t.value; if (t.id === 'mt-client') mtUI.draft.clientId = t.value; if (t.id === 'mt-who') mtUI.draft.who = t.value; if (t.id === 'mt-send') mtUI.draft.send = t.value;
+        const dn = t.closest && t.closest('[data-mt-done]');
+        if (dn) { const tk = (state.tasks || []).find(x => x.id === dn.dataset.mtDone); if (!tk) return; if (dn.checked) completeTask(tk); else { tk.done = false; delete tk.doneAt; } commitState(); setTimeout(() => { renderMyTasks(); updateTaskBadge(); }, 120); }
+      });
+      document.addEventListener('click', async e => {
+        const t = e.target; if (!t.closest('#tasks-root')) return;
+        if (t.closest('[data-mt-add]')) { mtAdd(); return; }
+        const wn = t.closest('[data-mt-when]'); if (wn) { mtUI.when = wn.dataset.mtWhen; renderMyTasks(); return; }
+        if (t.closest('[data-mt-draftstar]')) { mtUI.draft.star = !mtUI.draft.star; renderMyTasks(); return; }
+        const sc = t.closest('[data-mt-scope]'); if (sc) { mtUI.scope = sc.dataset.mtScope; renderMyTasks(); return; }
+        if (t.closest('[data-mt-showdone]')) { mtUI.showDone = !mtUI.showDone; renderMyTasks(); return; }
+        const st = t.closest('[data-mt-star]'); if (st) { const tk = state.tasks.find(x => x.id === st.dataset.mtStar); if (tk) { tk.star = !tk.star; commitState(); renderMyTasks(); } return; }
+        const sn = t.closest('[data-mt-snooze]');
+        if (sn) { const tk = state.tasks.find(x => x.id === sn.dataset.mtSnooze); if (!tk) return; const [dd, tt] = mtWhenValue(sn.dataset.by); tk.dueDate = dd; tk.dueTime = tt; commitState(); renderMyTasks(); updateTaskBadge(); showToast(`Reminder moved to ${dd === getDateOffset(0) ? 'today' : fmtDay(dd)} ${tt}`); if (tk.gcalId) taskGoogleSync(tk); return; }
+        const ed = t.closest('[data-mt-edit]'); if (ed) { mtUI.editId = ed.dataset.mtEdit; renderMyTasks(); return; }
+        if (t.closest('[data-mt-cancel]')) { mtUI.editId = null; renderMyTasks(); return; }
+        const sv = t.closest('[data-mt-save]');
+        if (sv) { const tk = state.tasks.find(x => x.id === sv.dataset.mtSave); if (!tk) return; const g = id => document.getElementById(id).value; const title = g('mte-title').trim(); if (!title) return; Object.assign(tk, { title, dueDate: g('mte-date'), dueTime: g('mte-time'), repeat: g('mte-repeat'), clientId: g('mte-client'), assigneeEmail: g('mte-who') }); mtUI.editId = null; commitState(); renderMyTasks(); updateTaskBadge(); if (tk.gcalId) taskGoogleSync(tk); showToast('Saved'); return; }
+        const dl = t.closest('[data-mt-del]');
+        if (dl) { const tk = state.tasks.find(x => x.id === dl.dataset.mtDel); if (!tk) return; if (!await appConfirm(`Delete “${tk.title}”?\n\nIt stays in Trash for 30 days.`)) return; state.tasks = state.tasks.filter(x => x.id !== tk.id); commitState(); renderMyTasks(); updateTaskBadge(); showToast('Task deleted'); }
+      });
 
       // ===== Project archive (ZIP) and import from the master file =====
       const JSZIP_SOURCES = ['https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js', 'https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js'];
@@ -13928,6 +14126,8 @@
         if (state.activeTab === 'catalog') renderCatalogView();
         if (state.activeTab === 'quickboq') renderQuickBoq();
         if (state.activeTab === 'matcalc' && typeof renderMatCalc === 'function') renderMatCalc();
+        if (state.activeTab === 'tasks' && typeof renderMyTasks === 'function') renderMyTasks();
+        if (typeof updateTaskBadge === 'function') updateTaskBadge();
         if (state.activeTab === 'boq') renderBoqBuilder();
         if (state.activeTab === 'billing') renderBilling();
         if (state.activeTab === 'payments') renderPayments();
@@ -16834,7 +17034,7 @@
         const rs = t.closest('[data-rem-snooze]'); if (rs) { snoozeReminder(rs.dataset.remSnooze, 30); return; }
         const rpd = t.closest('[data-rem-post-done]'); if (rpd) { const x = (state.posts || []).find(q => q.id === rpd.dataset.postId); dropReminder(rpd.dataset.remPostDone); if (x) { x.status = 'Posted'; x.postedAt = new Date().toISOString(); commitState(); renderAll(); showToast('Marked as posted'); } return; }
         const rpo = t.closest('[data-rem-post-open]'); if (rpo) { dropReminder(rpo.dataset.remPostOpen); switchTab('social'); spOpen(rpo.dataset.postId); return; }
-        const rtd = t.closest('[data-rem-task-done]'); if (rtd) { const tk = (state.tasks || []).find(x => x.id === rtd.dataset.taskId); dropReminder(rtd.dataset.remTaskDone); if (tk) { tk.done = true; commitState(); renderAll(); showToast('Task done'); } return; }
+        const rtd = t.closest('[data-rem-task-done]'); if (rtd) { const tk = (state.tasks || []).find(x => x.id === rtd.dataset.taskId); dropReminder(rtd.dataset.remTaskDone); if (tk) { completeTask(tk); commitState(); renderAll(); showToast('Task done'); } return; }
         const rto = t.closest('[data-rem-task-open]'); if (rto) { const tk = (state.tasks || []).find(x => x.id === rto.dataset.taskId); dropReminder(rto.dataset.remTaskOpen); if (tk) openTaskInHub(tk); return; }
         const rl = t.closest('[data-rem-log]'); if (rl) { dropReminder(rl.dataset.remLog); openLeadFlow('call', rl.dataset.leadId); return; }
         const rd = t.closest('[data-rem-detail]'); if (rd) { dropReminder(rd.dataset.remDetail); openLeadDetail(rd.dataset.leadId); return; }
@@ -19473,7 +19673,7 @@
       }, true);
 
       // ===== Undo for deletes =====
-      const UNDOABLE = '[data-sp-del], [data-sv-del], [data-trade-del], [data-wa-del], [data-client-del], [data-leads-bulk-del], [data-hub-ls-del], [data-sel-del], [data-po-del], [data-ph-del], [data-ck-del], [data-invoice-del], [data-sb-del], [data-pay-del], [data-vendor-del], [data-ms-due], [data-ms-quick], #btn-import-confirm, [data-delete-room], [data-delete-item], [data-cat-delete], [data-delete-revision], [data-hub-task-del], [data-hub-note-del], [data-hub-link-del], [data-remove-staff], #btn-confirm-delete-estimate, #btn-clear-all-rooms';
+      const UNDOABLE = '[data-mt-del], [data-sp-del], [data-sv-del], [data-trade-del], [data-wa-del], [data-client-del], [data-leads-bulk-del], [data-hub-ls-del], [data-sel-del], [data-po-del], [data-ph-del], [data-ck-del], [data-invoice-del], [data-sb-del], [data-pay-del], [data-vendor-del], [data-ms-due], [data-ms-quick], #btn-import-confirm, [data-delete-room], [data-delete-item], [data-cat-delete], [data-delete-revision], [data-hub-task-del], [data-hub-note-del], [data-hub-link-del], [data-remove-staff], #btn-confirm-delete-estimate, #btn-clear-all-rooms';
       let undoSnapshot = null;
       let undoTimer = null;
       let undoArm = null;
@@ -20681,7 +20881,7 @@
         if (toggleTaskCb) {
           const task = state.tasks.find(t => t.id === toggleTaskCb.dataset.toggleTask);
           if (task) {
-            task.done = toggleTaskCb.checked;
+            if (toggleTaskCb.checked) completeTask(task); else task.done = false;
             commitState();
             renderDashboard();
           }
