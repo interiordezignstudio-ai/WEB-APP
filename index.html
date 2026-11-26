@@ -3583,7 +3583,7 @@
               <span class="badge badge-sky" id="badge-auto-sync-status" title="Edits in any option update the other two with their own tier rates">A ⇄ B ⇄ C live sync</span>
               <button type="button" class="btn btn-outline btn-sm" data-tier-open="boq" title="Names, titles, scope, price % and default specs &amp; terms for Options A, B &amp; C">⚙ Option A/B/C settings</button>
             </div>
-            <button type="button" class="btn btn-emerald btn-sm" id="btn-approve-active-version">Approve this option for billing</button>
+            <span style="display:flex; gap:8px; flex-wrap:wrap;"><button type="button" class="btn btn-emerald btn-sm" id="btn-approve-active-version">Approve this option for billing</button><button type="button" class="btn btn-primary btn-sm" id="btn-onboard-estimate" style="display:none;" title="Make this estimate a client project">Onboard as client →</button></span>
           </div>
 
           <div class="estimate-workspace" id="estimate-workspace-grid">
@@ -4108,6 +4108,12 @@
     <div class="modal-box modal-lg">
       <div class="modal-header"><h3 class="font-serif" style="font-size:22px; font-weight:700;">Take from an estimate</h3><button class="btn btn-outline btn-sm" data-close-modal="modal-mcest">✕</button></div>
       <div id="mcest-body"></div>
+    </div>
+  </div>
+  <div class="modal-backdrop" id="modal-onboard-est">
+    <div class="modal-box">
+      <div class="modal-header"><h3 class="font-serif" style="font-size:22px; font-weight:700;">Onboard as client</h3><button class="btn btn-outline btn-sm" data-close-modal="modal-onboard-est">✕</button></div>
+      <div id="onboard-est-body"></div>
     </div>
   </div>
   <div class="modal-backdrop" id="modal-trash">
@@ -8544,6 +8550,8 @@
             approveBtn.className = isApproved ? 'btn btn-outline btn-sm' : 'btn btn-emerald btn-sm';
             approveBtn.style.display = perms.canEditBoq ? '' : 'none';
           }
+          const obBtn = document.getElementById('btn-onboard-estimate');
+          if (obBtn) obBtn.style.display = perms.canEditClients && (state.customEstimates || []).some(x => x.id === state.activeBoqClientId) ? '' : 'none';
         }
         const appBadge = document.getElementById('est-approved-status-badge');
         if (appBadge) {
@@ -10472,6 +10480,65 @@
         if (!mcEst) return;
         if (e.target.id === 'mcest-client') { mcEst.clientId = e.target.value; mcEst.ver = ''; renderMcEst(); }
         if (e.target.id === 'mcest-ver') { mcEst.ver = e.target.value; renderMcEst(); }
+      });
+
+
+      // ===== Onboard a finalised standalone estimate as a client =====
+      let obEst = null; // { estId }
+      function obLeadMatches(boq) {
+        const ph = phoneDigits(boq.clientContact || '').slice(-10); const nm = String(boq.clientName || '').trim().toLowerCase();
+        return (state.leads || []).filter(l => !leadClient(l) && ((ph && phoneDigits(l.phone || '').slice(-10) === ph) || (nm && String(l.name || '').trim().toLowerCase() === nm)));
+      }
+      function openOnboardEstimate(estId) {
+        const boq = state.boqs[estId]; if (!boq) return;
+        if (!getCurrentPermissions().canEditClients) { showToast('Your access does not allow adding clients'); return; }
+        const match = obLeadMatches(boq)[0];
+        obEst = { estId, leadId: match ? match.id : '' };
+        const ver = boq.approvedVersion || boq.activeVersion || 'A';
+        const sm = computeVersionSummary(boq.versions[ver]);
+        const openLeads = (state.leads || []).filter(l => !leadClient(l) && !['Closed Lost'].includes(l.stage));
+        const ld = match || {};
+        document.getElementById('onboard-est-body').innerHTML = `
+          <div class="pay-note" style="margin:0 0 12px; padding:10px 12px; border-radius:10px;">${escapeHtml(boq.estimateNo || 'Estimate')} · <strong>${escapeHtml((boq.versions[ver] || {}).title || 'Option ' + ver)}</strong>${boq.approvedVersion ? ' (approved)' : ' — not approved yet, it will be approved now'} · <strong>${formatINR(sm.grandTotal)}</strong></div>
+          <div class="form-grid">
+            <div class="form-full"><label class="form-label">Client name *</label><input class="input" id="ob-name" value="${escapeHtml(boq.clientName || ld.name || '')}" /></div>
+            <div><label class="form-label">Phone</label><input class="input" id="ob-phone" value="${escapeHtml(boq.clientContact || ld.phone || '')}" inputmode="tel" /></div>
+            <div><label class="form-label">Email</label><input class="input" id="ob-email" type="email" value="${escapeHtml(ld.email || '')}" /></div>
+            <div class="form-full"><label class="form-label">Site address</label><input class="input" id="ob-address" value="${escapeHtml(boq.siteAddress || ld.location || '')}" /></div>
+            <div><label class="form-label">Project / scope</label><input class="input" id="ob-scope" value="${escapeHtml(ld.property ? ld.property + ' Interior' : (boq.versions[ver] || {}).scopeOfWork ? 'Turnkey Interior' : 'Home Interior')}" /></div>
+            <div><label class="form-label">Lead (marked Won)</label><select class="select" id="ob-lead"><option value="">— no lead —</option>${openLeads.map(l => `<option value="${l.id}" ${l.id === obEst.leadId ? 'selected' : ''}>${escapeHtml(l.name)}${l.phone ? ' · ' + escapeHtml(l.phone) : ''}</option>`).join('')}</select></div>
+          </div>
+          ${match ? `<div class="hub-muted" style="font-size:12.5px; margin-top:6px;">Found the lead “${escapeHtml(match.name)}” with the same ${phoneDigits(boq.clientContact || '').slice(-10) && phoneDigits(match.phone || '').slice(-10) === phoneDigits(boq.clientContact || '').slice(-10) ? 'phone' : 'name'} — it will be marked Won and linked.</div>` : ''}
+          <div class="modal-actions-row"><button type="button" class="btn btn-outline" data-close-modal="modal-onboard-est">Cancel</button><button type="button" class="btn btn-primary" data-ob-go>Onboard client</button></div>`;
+        openModal('modal-onboard-est');
+      }
+      function doOnboardEstimate() {
+        const g = id => (document.getElementById(id) || {}).value || '';
+        const name = g('ob-name').trim(); if (!name) { showToast('Add the client name'); return; }
+        const estId = obEst && obEst.estId; const boq = state.boqs[estId]; if (!boq) return;
+        if (!boq.approvedVersion) boq.approvedVersion = boq.activeVersion || 'A';
+        const lead = (state.leads || []).find(l => l.id === g('ob-lead'));
+        let cid;
+        if (lead) cid = convertLeadToClient(lead);
+        else {
+          cid = uid('c');
+          state.clients.push({ id: cid, name, phone: '', email: '', address: '', scope: 'Home Interior', stage: '2D/3D Design & Approval', status: 'Active', driveUrl: '', salesOwner: state.activeStaffEmail || 'sales@interiordezign.in', designOwner: 'design@interiordezign.in', siteOwner: 'site@interiordezign.in', billingOwner: 'accounts@interiordezign.in' });
+        }
+        const c = clientById(cid);
+        Object.assign(c, { name, phone: g('ob-phone').trim() || c.phone || '', email: g('ob-email').trim() || c.email || '', address: g('ob-address').trim() || c.address || '', scope: g('ob-scope').trim() || c.scope, status: 'Active', onboardedAt: new Date().toISOString(), fromEstimate: boq.estimateNo || '' });
+        // the estimate becomes this client's estimate (keeps its number, options, approval)
+        boq.clientName = name; if (c.phone) boq.clientContact = c.phone; if (c.address) boq.siteAddress = c.address;
+        state.boqs[cid] = boq; delete state.boqs[estId];
+        state.customEstimates = (state.customEstimates || []).filter(x => x.id !== estId);
+        if (lead) { lead.estimate = Object.assign({}, lead.estimate || {}, { amount: computeVersionSummary(boq.versions[boq.approvedVersion]).grandTotal, estimateNo: boq.estimateNo }); }
+        state.activeBoqClientId = cid; state.activeClientId = cid; state.hubOpen = true; state.hubTab = 'overview'; state.hubFilter = 'Active';
+        commitState(); closeModal('modal-onboard-est'); obEst = null;
+        switchTab('clients'); renderAll();
+        showToast(`${name} onboarded · contract ${formatINR(computeVersionSummary(boq.versions[boq.approvedVersion]).grandTotal)}`);
+      }
+      document.addEventListener('click', e => {
+        if (e.target.closest('#btn-onboard-estimate')) { openOnboardEstimate(state.activeBoqClientId); return; }
+        if (e.target.closest('[data-ob-go]')) doOnboardEstimate();
       });
 
       // ===== Project archive (ZIP) and import from the master file =====
@@ -19854,6 +19921,10 @@
           commitState();
           renderBoqBuilder();
           showToast(`Approved ${boq.versions[boq.activeVersion].title} for GST Billing!`);
+          if ((state.customEstimates || []).some(x => x.id === state.activeBoqClientId) && getCurrentPermissions().canEditClients) {
+            const estId = state.activeBoqClientId;
+            setTimeout(async () => { if (await appConfirm(`${boq.versions[boq.activeVersion].title} approved ✓\n\nOnboard ${boq.clientName || 'this client'} now? A client project is created with this estimate, so payments, bills, POs and site work can start.`, { ok: 'Onboard client', danger: false })) openOnboardEstimate(estId); }, 300);
+          }
           return;
         }
 
