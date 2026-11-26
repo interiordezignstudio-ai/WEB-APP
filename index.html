@@ -3591,6 +3591,15 @@
                       </select>
                       <input type="number" step="0.5" min="0" id="boq-exec-fee-val" data-fee-field="execFeeVal" class="tabular" style="width:74px; background:#1C1917; color:#FFF; border:1px solid #57534E; border-radius:6px; padding:3px 7px; font-size:12px; font-weight:700;" value="0" />
                     </div>
+                    <div style="background:#292524; border:1px solid #44403C; border-radius:10px; padding:7px 11px; display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
+                      <span style="font-size:11.5px; font-weight:700; color:#FDE68A;">Discount:</span>
+                      <select id="boq-discount-type" data-fee-field="discountType" style="background:#1C1917; color:#FFF; border:1px solid #57534E; border-radius:6px; padding:3px 6px; font-size:11.5px;">
+                        <option value="pct">% off</option>
+                        <option value="fixed">Fixed ₹</option>
+                      </select>
+                      <input type="number" step="0.5" min="0" id="boq-discount-val" data-fee-field="discountVal" class="tabular" style="width:84px; background:#1C1917; color:#FFF; border:1px solid #57534E; border-radius:6px; padding:3px 7px; font-size:12px; font-weight:700;" value="0" />
+                      <label style="display:inline-flex; align-items:center; gap:5px; font-size:11.5px; color:#D6D3D1; cursor:pointer;" title="Off: the PDF shows net rates with no discount line"><input type="checkbox" id="boq-discount-show" checked style="width:15px; height:15px; accent-color:#FDE68A;" /> Show on PDF</label>
+                    </div>
                     <label id="boq-gst-label" style="background:#292524; border:1px solid #44403C; border-radius:10px; padding:7px 12px; display:inline-flex; align-items:center; gap:8px; cursor:pointer; min-height:38px;">
                       <input type="checkbox" id="boq-gst-checkbox" checked style="width:17px; height:17px; accent-color:#E0A07E; cursor:pointer;" />
                       <span style="font-size:11.5px; font-weight:700; color:#E0A07E;">Include 18% GST</span>
@@ -3626,6 +3635,10 @@
                   <div>
                     <div style="font-size:11px; color:#A7F3D0;">Site Execution Fee</div>
                     <div style="font-size:14px; font-weight:700; color:#A7F3D0;" id="boq-sum-exec-fee">₹0</div>
+                  </div>
+                  <div id="boq-sum-discount-wrap" style="display:none;">
+                    <div style="font-size:11px; color:#FDE68A;" id="boq-sum-discount-label">Discount</div>
+                    <div style="font-size:14px; font-weight:700; color:#FDE68A;" id="boq-sum-discount">₹0</div>
                   </div>
                   <div>
                     <div style="font-size:11px; color:#A8A29E;">Total Before GST</div>
@@ -7905,6 +7918,24 @@
       }
 
       // Bidirectionally sync all 3 options (A, B, C) from whichever option was just edited, applying each tier's respective rate & specifications
+      // For PDFs & previews: when the discount is hidden, rates and fees are reduced by the same share
+      // (so every line adds up to the discounted total) and no discount line is printed.
+      function pdfVersion(v) {
+        if (!v) return v;
+        const sm = computeVersionSummary(v);
+        if (!(sm.discount > 0) || v.discountShow !== false) return v;
+        const f = sm.preDiscount > 0 ? sm.taxableTotal / sm.preDiscount : 1;
+        const c = JSON.parse(JSON.stringify(v));
+        (c.rooms || []).forEach(r => (r.items || []).forEach(it => {
+          it.rate = Math.round((Number(it.rate) || 0) * f * 100) / 100;
+          ['materialRate', 'labourRate'].forEach(k => { if (Number(it[k])) it[k] = Math.round(Number(it[k]) * f * 100) / 100; });
+        }));
+        if (sm.designFee > 0) { c.designFeeType = 'fixed'; c.designFeeVal = Math.round(sm.designFee * f * 100) / 100; }
+        if (sm.execFee > 0) { c.execFeeType = 'fixed'; c.execFeeVal = Math.round(sm.execFee * f * 100) / 100; }
+        c.discountVal = 0;
+        return c;
+      }
+      function displayBoq(boq) { if (!boq || !boq.versions) return boq; const vs = {}; Object.keys(boq.versions).forEach(k => { vs[k] = pdfVersion(boq.versions[k]); }); return Object.assign({}, boq, { versions: vs }); }
       function syncAllThreeOptionsFrom(boq, sourceKey = null) {
         if (!boq || !boq.versions) return;
         const srcKey = ['A', 'B', 'C'].includes(sourceKey) ? sourceKey : (boq.activeVersion || 'A');
@@ -7922,6 +7953,10 @@
           targetVer.designFeeVal = Number(srcVer.designFeeVal) || 0;
           targetVer.execFeeType = srcVer.execFeeType || 'pct';
           targetVer.execFeeVal = Number(srcVer.execFeeVal) || 0;
+          targetVer.discountType = srcVer.discountType === 'fixed' ? 'fixed' : 'pct';
+          targetVer.discountVal = Number(srcVer.discountVal) || 0;
+          targetVer.discountShow = srcVer.discountShow !== false;
+          targetVer.discountLabel = srcVer.discountLabel || '';
           const targetMult = TIER_MULTIPLIERS[targetKey] || 1.0;
 
           targetVer.rooms = (srcVer.rooms || []).map((roomSrc, rIdx) => {
@@ -8017,16 +8052,28 @@
         const execFeeVal = Number(verObj.execFeeVal) || 0;
         const execFee = execFeeType === 'fixed' ? execFeeVal : (subtotal * execFeeVal / 100);
 
-        const taxableTotal = subtotal + designFee + execFee;
+        // discount (before GST): % of work + fees, or a fixed ₹ amount
+        const preDiscount = subtotal + designFee + execFee;
+        const discountType = verObj.discountType === 'fixed' ? 'fixed' : 'pct';
+        const discountVal = Math.max(0, Number(verObj.discountVal) || 0);
+        const discount = Math.min(preDiscount, discountType === 'fixed' ? discountVal : preDiscount * discountVal / 100);
+        const taxableTotal = preDiscount - discount;
+        const discFactor = preDiscount > 0 ? taxableTotal / preDiscount : 1;
         // GST basis: 'full' = on the whole taxable amount (work + fees); 'material' = on material cost only
         const gstBasis = verObj.gstBasis === 'material' ? 'material' : 'full';
-        const gstBase = gstBasis === 'material' ? materialTotal : taxableTotal;
+        const gstBase = gstBasis === 'material' ? materialTotal * discFactor : taxableTotal;
         const gst = verObj.includeGst ? gstBase * 0.18 : 0;
         return {
           subtotal,
           designFee,
           execFee,
           taxableTotal,
+          preDiscount,
+          discount,
+          discountType,
+          discountVal,
+          discountShown: discount > 0 && verObj.discountShow !== false,
+          discountLabel: `${String(verObj.discountLabel || '').trim() || 'Special discount'}${discountType === 'pct' && discount > 0 ? ` (${discountVal}%)` : ''}`,
           materialTotal,
           labourTotal,
           cgst: verObj.includeGst ? gst / 2 : 0,
@@ -8214,6 +8261,12 @@
         if (dValEl && document.activeElement !== dValEl) dValEl.value = activeVer.designFeeVal ?? 0;
         if (eTypeEl) eTypeEl.value = activeVer.execFeeType || 'pct';
         if (eValEl && document.activeElement !== eValEl) eValEl.value = activeVer.execFeeVal ?? 0;
+        const kTypeEl = document.getElementById('boq-discount-type'); if (kTypeEl) kTypeEl.value = activeVer.discountType === 'fixed' ? 'fixed' : 'pct';
+        const kValEl = document.getElementById('boq-discount-val'); if (kValEl && document.activeElement !== kValEl) kValEl.value = activeVer.discountVal ?? 0;
+        const kShowEl = document.getElementById('boq-discount-show'); if (kShowEl) kShowEl.checked = activeVer.discountShow !== false;
+        const kWrap = document.getElementById('boq-sum-discount-wrap'); if (kWrap) kWrap.style.display = summary.discount > 0 ? '' : 'none';
+        const kSum = document.getElementById('boq-sum-discount'); if (kSum) kSum.textContent = perms.canSeeMoney ? `− ${formatINR(summary.discount)}` : 'Hidden';
+        const kLab = document.getElementById('boq-sum-discount-label'); if (kLab) kLab.textContent = `${summary.discountLabel}${activeVer.discountShow === false ? ' · hidden on PDF' : ''}`;
 
         const showSplitTotals = Boolean(state.boqSeparateRates && perms.canSeeMoney);
         if (matWrap) matWrap.style.display = showSplitTotals ? 'block' : 'none';
@@ -10003,7 +10056,7 @@
             (v.rooms || []).forEach(rm => (rm.items || []).forEach((it, i) => rows.push({ Room: rm.name, '#': i + 1, Description: it.desc || '', Length: it.len || '', Height: it.ht || '', Qty: Number(it.qty) || 0, Unit: it.unit || '', Rate: Number(it.rate) || 0, Amount: Math.round((Number(it.qty) || 0) * (Number(it.rate) || 0) * 100) / 100 })));
             if (!rows.length) return;
             const sm = computeVersionSummary(v);
-            rows.push({}, { Description: 'Sub-total', Amount: sm.subtotal }, { Description: 'Design fee', Amount: sm.designFee || 0 }, { Description: 'Execution fee', Amount: sm.execFee || 0 }, { Description: 'GST', Amount: (sm.cgst || 0) + (sm.sgst || 0) }, { Description: 'Grand total', Amount: sm.grandTotal });
+            rows.push({}, { Description: 'Sub-total', Amount: sm.subtotal }, { Description: 'Design fee', Amount: sm.designFee || 0 }, { Description: 'Execution fee', Amount: sm.execFee || 0 }, { Description: sm.discount > 0 ? `${sm.discountLabel}${v.discountShow === false ? ' (not shown on PDF)' : ''}` : 'Discount', Amount: -(sm.discount || 0) }, { Description: 'GST', Amount: (sm.cgst || 0) + (sm.sgst || 0) }, { Description: 'Grand total', Amount: sm.grandTotal });
             sheets.push([`${id === c.finalBoqId && id !== c.id ? 'Final ' : ''}Estimate ${k}${boq.approvedVersion === k ? ' (approved)' : ''}`.slice(0, 31), rows]);
           });
         });
@@ -11359,7 +11412,7 @@
       function pdfSafeText(str) {
         return String(str)
           .replace(/₹\s?/g, 'Rs. ')
-          .replace(/[–—]/g, '-').replace(/[•●]/g, '-').replace(/[‘’]/g, "'").replace(/[“”]/g, '"').replace(/…/g, '...')
+          .replace(/[–—−]/g, '-').replace(/[•●]/g, '-').replace(/[‘’]/g, "'").replace(/[“”]/g, '"').replace(/…/g, '...')
           .replace(/[→⇄]/g, '->').replace(/[›»]/g, '>').replace(/[‹«]/g, '<').replace(/[✓✔]/g, 'v').replace(/[✕✖]/g, 'x')
           .replace(/[   ]/g, ' ')
           .replace(/[^\x09\x0A\x0D\x20-\x7E¡-ÿ]/g, '');
@@ -12061,7 +12114,7 @@
                 drawText(`For ${(state.studioProfile || {}).name || 'Studio'}`, X + CONTENT_W_MM, curY + 1.5, { sizePt: 8, color: '#57534E', align: 'right' });
                 curY += 6;
               } else if (currentPrintDocType === 'comparison') {
-                const boq = ensureBoqForClient(state.activeBoqClientId);
+                const boq = displayBoq(ensureBoqForClient(state.activeBoqClientId));
                 const client = state.clients.find(c => c.id === state.activeBoqClientId);
                 drawLetterhead('3-OPTION ESTIMATE COMPARISON PROPOSAL', bannerImgEl);
 
@@ -12137,6 +12190,15 @@
                   curY += 8.5;
                 }
 
+                if (sums.A.discountShown || sums.B.discountShown || sums.C.discountShown) {
+                  drawRoundRect(MARGIN_MM, curY, CONTENT_W_MM, 8.5, 0, '#FFFFFF', '#D6D3D1');
+                  drawText('Discount', MARGIN_MM + 2.5, curY + 2.5, { font: 'bold', sizePt: 8.2, color: '#0F7457' });
+                  ['A', 'B', 'C'].forEach((k, idx) => {
+                    const rx = MARGIN_MM + colW[0] + colW[1] * (idx + 1) - 2.5;
+                    drawText(sums[k].discountShown ? `− ${formatINR(sums[k].discount)}` : '—', rx, curY + 2.5, { sizePt: 8.2, align: 'right', color: '#0F7457' });
+                  });
+                  curY += 8.5;
+                }
                 drawRoundRect(MARGIN_MM, curY, CONTENT_W_MM, 8.5, 0, '#FFFFFF', '#D6D3D1');
                 drawText(sums.A.gstBasis === 'material' ? 'GST (18% on material)' : 'GST (18%)', MARGIN_MM + 2.5, curY + 2.5, { font: 'bold', sizePt: 8.2 });
                 ['A', 'B', 'C'].forEach((k, idx) => {
@@ -12161,7 +12223,7 @@
                 const recordId = state.activeBoqClientId;
                 const client = state.clients.find(c => c.id === recordId);
                 const boq = ensureBoqForClient(recordId);
-                const activeVer = getActiveVersionObj(boq);
+                const activeVer = pdfVersion(getActiveVersionObj(boq));
                 const summary = computeVersionSummary(activeVer);
                 const hasBanner = Boolean(bannerImgEl && bannerImgEl.naturalWidth > 0);
 
@@ -12313,6 +12375,14 @@
                   sumLineY += 4.4;
                 }
 
+                if (summary.discountShown) {
+                  drawText(`${summary.discountLabel}: `, tableRight - 26, sumLineY, { sizePt: 8.4, color: '#0F7457', align: 'right' });
+                  drawText(`− ${formatINR(summary.discount)}`, tableRight, sumLineY, { font: 'bold', sizePt: 8.4, color: '#0F7457', align: 'right' });
+                  sumLineY += 4.4;
+                  drawText('Total Before GST: ', tableRight - 26, sumLineY, { sizePt: 8.4, color: '#1C1917', align: 'right' });
+                  drawText(formatINR(summary.taxableTotal), tableRight, sumLineY, { font: 'bold', sizePt: 8.4, color: '#1C1917', align: 'right' });
+                  sumLineY += 4.4;
+                }
                 if (activeVer.includeGst && summary.gstBasis === 'material') {
                   drawText(`GST charged on material value: ${formatINR(summary.gstBase)}`, tableRight, sumLineY, { sizePt: 8.2, color: '#57534E', align: 'right' });
                   sumLineY += 4.4;
@@ -12839,7 +12909,7 @@
         const recordId = state.activeBoqClientId;
         const client = state.clients.find(c => c.id === recordId);
         const boq = ensureBoqForClient(recordId);
-        const activeVer = getActiveVersionObj(boq);
+        const activeVer = pdfVersion(getActiveVersionObj(boq));
         const summary = computeVersionSummary(activeVer);
         const hasBanner = Boolean(getBrandBannerUrl());
 
@@ -12922,7 +12992,8 @@
               <div>BOQ Work Sub-Total: <strong>${formatINR(summary.subtotal)}</strong></div>
               ${summary.designFee > 0 ? `<div>Design Fee ${activeVer.designFeeType === 'fixed' ? '' : `(${activeVer.designFeeVal || 0}%)`}: <strong>${formatINR(summary.designFee)}</strong></div>` : ''}
               ${summary.execFee > 0 ? `<div>Site Execution Fee ${activeVer.execFeeType === 'fixed' ? '' : `(${activeVer.execFeeVal || 0}%)`}: <strong>${formatINR(summary.execFee)}</strong></div>` : ''}
-              ${(summary.designFee > 0 || summary.execFee > 0) ? `<div>Total Before GST: <strong>${formatINR(summary.taxableTotal)}</strong></div>` : ''}
+              ${summary.discountShown ? `<div style="color:#0F7457;">${escapeHtml(summary.discountLabel)}: <strong>− ${formatINR(summary.discount)}</strong></div>` : ''}
+              ${(summary.designFee > 0 || summary.execFee > 0 || summary.discountShown) ? `<div>Total Before GST: <strong>${formatINR(summary.taxableTotal)}</strong></div>` : ''}
               ${activeVer.includeGst && summary.gstBasis === 'material' ? `<div style="font-size:12.5px; color:#57534E;">GST charged on material value: <strong style="color:#1C1917;">${formatINR(summary.gstBase)}</strong></div>` : ''}
               ${activeVer.includeGst ? `<div>CGST (9%): <strong>${formatINR(summary.cgst)}</strong> | SGST (9%): <strong>${formatINR(summary.sgst)}</strong></div>` : ''}
               <div style="font-size:18px; color:#A44A22; margin-top:4px;">Grand Total: <strong>${formatINR(summary.grandTotal)}</strong></div>
@@ -12936,6 +13007,7 @@
       }
 
       function buildThreeVersionComparisonHtml(boq) {
+        boq = displayBoq(boq);
         const client = state.clients.find(c => c.id === state.activeBoqClientId);
         const displayClientName = boq.clientName || (client && client.name) || 'Valued Client';
         const displayAddress = boq.siteAddress || (client && client.address) || 'Pune, Maharashtra';
@@ -13014,6 +13086,12 @@
                   <td class="right">${formatINR(sums.A.execFee)}</td>
                   <td class="right">${formatINR(sums.B.execFee)}</td>
                   <td class="right">${formatINR(sums.C.execFee)}</td>
+                </tr>
+              ` : ''}
+              ${(sums.A.discountShown || sums.B.discountShown || sums.C.discountShown) ? `
+                <tr>
+                  <td><strong style="color:#0F7457;">Discount</strong></td>
+                  ${['A', 'B', 'C'].map(k => `<td class="right" style="color:#0F7457;">${sums[k].discountShown ? '− ' + formatINR(sums[k].discount) : '—'}</td>`).join('')}
                 </tr>
               ` : ''}
               <tr>
@@ -20471,6 +20549,15 @@
           syncAllThreeOptionsFrom(boq, boq.activeVersion);
           commitState();
           updateBoqTotalsDisplay(boq);
+          return;
+        }
+        if (e.target.id === 'boq-discount-show') {
+          const boq = ensureBoqForClient(state.activeBoqClientId);
+          const activeVer = getActiveVersionObj(boq);
+          activeVer.discountShow = e.target.checked;
+          syncAllThreeOptionsFrom(boq, boq.activeVersion);
+          commitState(); updateBoqTotalsDisplay(boq);
+          showToast(e.target.checked ? 'Discount shown on the PDF' : 'Discount hidden — the PDF shows net rates');
           return;
         }
         if (e.target.id === 'boq-gst-basis') {
