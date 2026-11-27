@@ -2741,6 +2741,17 @@
       html[data-nav="hidden"][data-style="refined"] .main-wrapper { margin-left: 10px !important; }
     }
     html[data-theme="dark"] .nav-toggle:hover { background: rgba(255,255,255,.06); }
+
+    /* BOQ sections above rooms */
+    .boq-grp { border:1px solid var(--border-subtle); border-left:5px solid var(--accent-terracotta); border-radius:14px; padding:10px 14px; background: var(--bg-card); margin: 6px 0 2px; }
+    .boq-grp.cur { box-shadow: 0 0 0 2px rgba(164, 74, 34, .18); }
+    .boq-grp-top { display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+    .boq-grp-bar { display:none; }
+    .boq-grp-name { font-family: var(--font-serif, Georgia, serif); font-weight:700; font-size:19px; width:260px; max-width:70%; background:transparent; }
+    .boq-grp-sub { font-size:14px; color: var(--accent-terracotta); }
+    .boq-grp-acts { display:flex; gap:6px; flex-wrap:wrap; margin-top:8px; }
+    .boq-grp-empty { font-size:12.5px; color: var(--text-muted); margin-top:8px; }
+    .room-grp-pick { font-size:11.5px; padding:2px 6px; min-height:28px; max-width:160px; }
     /* Morning summary */
     .mm-sec { margin-top:14px; }
     .mm-sec h4 { font-size:10.5px; letter-spacing:.14em; text-transform:uppercase; color: var(--text-muted); font-weight:600; margin:0 0 4px; }
@@ -3701,6 +3712,7 @@
                     <input type="text" id="ver-meta-title" data-ver-meta="title" class="input" placeholder="Option A: Essential Laminate" />
                     <div style="display:flex; gap:6px; margin-top:8px; flex-wrap:wrap;">
                       <button class="btn btn-outline btn-sm" id="btn-add-room">+ Add Room</button>
+                      <button class="btn btn-outline btn-sm" id="btn-add-section" title="A heading above rooms, e.g. Ground Floor / First Floor">+ Section</button>
                       <button class="btn btn-primary btn-sm" id="btn-add-custom-item">+ Blank Row</button>
                     </div>
                   </div>
@@ -8163,6 +8175,7 @@
         const srcVer = boq.versions[srcKey];
         if (!srcVer) return;
         const srcMult = TIER_MULTIPLIERS[srcKey] || 1.0;
+        grpNormalize(srcVer);
 
         ['A', 'B', 'C'].forEach(targetKey => {
           if (targetKey === srcKey) return;
@@ -8179,12 +8192,14 @@
           targetVer.discountShow = srcVer.discountShow !== false;
           targetVer.discountOn = srcVer.discountOn === 'work' ? 'work' : 'total';
           targetVer.discountLabel = srcVer.discountLabel || '';
+          targetVer.groups = (srcVer.groups || []).slice(); targetVer.curGroup = srcVer.curGroup || '';
           const targetMult = TIER_MULTIPLIERS[targetKey] || 1.0;
 
           targetVer.rooms = (srcVer.rooms || []).map((roomSrc, rIdx) => {
             const existingRoom = (targetVer.rooms || [])[rIdx];
             return {
               name: roomSrc.name,
+              group: roomSrc.group || '',
               items: (roomSrc.items || []).map((itemSrc, iIdx) => {
                 const catMatch = itemSrc.code ? catSeg(state.catalog.find(c => c.code === itemSrc.code), boqSeg(boq)) : null;
                 let computedRate;
@@ -8775,8 +8790,9 @@
         // Render Room-Wise Tables
         const roomsTarget = document.getElementById('boq-rooms-target');
         if (roomsTarget) {
+          if (grpNormalize(activeVer)) { syncAllThreeOptionsFrom(boq, boq.activeVersion); commitState(); }
           if (!activeVer.rooms || activeVer.rooms.length === 0) {
-            roomsTarget.innerHTML = `
+            roomsTarget.innerHTML = (activeVer.groups || []).map(n => grpHeadHtml(activeVer, n, perms.canSeeMoney)).join('') + `
               <div class="card" style="text-align:center; padding:36px 20px; background:#FFFDF9; border:1px dashed var(--border-strong);">
                 <div style="font-size:15px; font-weight:700; color:var(--text-main); margin-bottom:6px;">No rooms or items in this estimate yet</div>
                 <div style="font-size:13px; color:var(--text-muted); margin-bottom:14px;">Click <strong>"+ Add Room"</strong> above to start adding rooms and line items from scratch.</div>
@@ -8784,7 +8800,7 @@
               </div>
             `;
           } else {
-            roomsTarget.innerHTML = (activeVer.rooms || []).map((room, rIdx) => {
+            roomsTarget.innerHTML = grpWrap(activeVer, (activeVer.rooms || []).map((room, rIdx) => {
               const roomSub = room.items.reduce((s, it) => s + ((Number(it.qty) || 0) * (Number(it.rate) || 0)), 0);
               const roomMatSub = room.items.reduce((s, it) => s + computeItemMatLab(it).matTotal, 0);
               const roomLabSub = room.items.reduce((s, it) => s + computeItemMatLab(it).labTotal, 0);
@@ -8799,6 +8815,7 @@
                     <span style="font-size:15px;"></span>
                     <input type="text" class="input-inline" style="font-size:15px; font-weight:700; width:210px; max-width:100%; flex:1 1 140px;" value="${escapeHtml(room.name)}" data-rename-room="${rIdx}" />
                     <span class="badge badge-stone">${room.items.length} items</span>
+                    ${(activeVer.groups || []).length ? `<select class="input-inline room-grp-pick" data-room-grp="${rIdx}" title="Section"><option value="">No section</option>${activeVer.groups.map(n => `<option value="${escapeHtml(n)}" ${room.group === n ? 'selected' : ''}>${escapeHtml(n)}</option>`).join('')}</select>` : ''}
                   </div>
                   <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
                     ${perms.canSeeMoney && state.boqSeparateRates ? `
@@ -8927,7 +8944,7 @@
                 </div>
               </div>
             `;
-            }).join('');
+            }), perms.canSeeMoney);
           }
         }
 
@@ -11014,6 +11031,111 @@
 
 
 
+
+
+      // ===== BOQ sections above rooms (Ground Floor / First Floor / Services …) =====
+      // v.groups = ordered section names; room.group = its section ('' = none). Rooms are kept together in that order.
+      function grpNormalize(v) {
+        if (!v || !Array.isArray(v.rooms)) return false;
+        const before = v.rooms.map(r => r.name + '§' + (r.group || '')).join(',') + '|' + JSON.stringify(v.groups || []);
+        v.groups = Array.isArray(v.groups) ? [...new Set(v.groups.map(x => String(x || '').trim()).filter(Boolean))] : [];
+        if (v.curGroup && !v.groups.includes(v.curGroup)) v.curGroup = '';
+        v.rooms.forEach(r => {
+          if (r.group === undefined) r.group = v.curGroup || '';
+          if (r.group && !v.groups.includes(r.group)) v.groups.push(r.group);
+        });
+        if (v.groups.length) {
+          const rank = x => x ? v.groups.indexOf(x) : -1;
+          const pos = new Map(v.rooms.map((r, i) => [r, i]));
+          v.rooms.sort((a, b) => rank(a.group) - rank(b.group) || pos.get(a) - pos.get(b));
+        }
+        return before !== v.rooms.map(r => r.name + '§' + (r.group || '')).join(',') + '|' + JSON.stringify(v.groups);
+      }
+      const roomAmt = r => (r.items || []).reduce((s2, it) => s2 + (Number(it.qty) || 0) * (Number(it.rate) || 0), 0);
+      const grpTotal = (v, name) => (v.rooms || []).filter(r => (r.group || '') === name).reduce((s2, r) => s2 + roomAmt(r), 0);
+      function grpHeadHtml(v, name, money) {
+        const k = v.groups.indexOf(name); const rooms = (v.rooms || []).filter(r => r.group === name);
+        return `<div class="boq-grp${v.curGroup === name ? ' cur' : ''}">
+          <div class="boq-grp-top">
+            <span class="boq-grp-bar"></span>
+            <input type="text" class="input-inline boq-grp-name" value="${escapeHtml(name)}" data-grp-rename="${k}" title="Section name — click to rename" />
+            <span class="badge badge-stone">${rooms.length} room${rooms.length === 1 ? '' : 's'}</span>
+            <span style="flex:1;"></span>
+            ${money ? `<strong class="tabular boq-grp-sub">Section Total: ${formatINR(grpTotal(v, name))}</strong>` : ''}
+          </div>
+          <div class="boq-grp-acts">
+            <button type="button" class="btn ${v.curGroup === name ? 'btn-primary' : 'btn-outline'} btn-sm" data-grp-here="${k}" title="New rooms go into this section">${v.curGroup === name ? '✓ New rooms go here' : '+ Room here'}</button>
+            <button type="button" class="btn btn-outline btn-sm" style="padding:3px 8px;" data-grp-move="${k}:-1" ${k === 0 ? 'disabled' : ''} title="Move section up">↑</button>
+            <button type="button" class="btn btn-outline btn-sm" style="padding:3px 8px;" data-grp-move="${k}:1" ${k === v.groups.length - 1 ? 'disabled' : ''} title="Move section down">↓</button>
+            <button type="button" class="btn btn-danger-soft btn-sm" style="padding:3px 8px;" data-grp-del="${k}" title="Remove this heading (rooms stay)">✕</button>
+          </div>
+          ${rooms.length ? '' : '<div class="boq-grp-empty">No rooms yet — tap <b>+ Room here</b>, then <b>+ Add Room</b>.</div>'}
+        </div>`;
+      }
+      // rooms html list → same list with section headings in between (incl. empty sections in their place)
+      function grpWrap(v, cards, money) {
+        if (!(v.groups || []).length) return cards.join('');
+        let out = ''; let prev = null; const shown = new Set();
+        const rk = x => x ? v.groups.indexOf(x) : -1;
+        const emptyBetween = (a, b) => v.groups.filter(n => rk(n) > a && rk(n) < b && !shown.has(n) && !(v.rooms || []).some(r => r.group === n));
+        v.rooms.forEach((r, i) => {
+          const g = r.group || '';
+          if (g !== prev) {
+            emptyBetween(prev === null ? -1 : rk(prev), rk(g)).forEach(n => { out += grpHeadHtml(v, n, money); shown.add(n); });
+            if (g) { out += grpHeadHtml(v, g, money); shown.add(g); }
+            prev = g;
+          }
+          out += cards[i];
+        });
+        v.groups.filter(n => !shown.has(n)).forEach(n => { out += grpHeadHtml(v, n, money); });
+        return out;
+      }
+      function grpCtx() { const boq = ensureBoqForClient(state.activeBoqClientId); return { boq, v: getActiveVersionObj(boq) }; }
+      function grpDone(boq) { syncAllThreeOptionsFrom(boq, boq.activeVersion); commitState(); renderBoqBuilder(); }
+      document.addEventListener('click', async e => {
+        const t = e.target;
+        if (t.closest('#btn-add-section')) {
+          const { boq, v } = grpCtx(); if (!v) return; grpNormalize(v);
+          const sugg = ['Ground Floor', 'First Floor', 'Second Floor', 'Terrace', 'Common Areas', 'Services'];
+          let name = sugg.find(x => !v.groups.includes(x)); let n = v.groups.length + 1; while (!name || v.groups.includes(name)) name = `Section ${n++}`;
+          // first section: put the rooms you already have into it
+          if (!v.groups.length && (v.rooms || []).length) v.rooms.forEach(r => { r.group = name; });
+          v.groups.push(name); v.curGroup = name;
+          grpDone(boq);
+          setTimeout(() => { const inp = document.querySelector(`[data-grp-rename="${v.groups.length - 1}"]`); if (inp) { inp.scrollIntoView({ block: 'center', behavior: 'smooth' }); inp.focus(); inp.select(); } }, 60);
+          showToast(`Section “${name}” added — type a new name. New rooms go into it.`);
+          return;
+        }
+        const here = t.closest('[data-grp-here]');
+        if (here) { const { v } = grpCtx(); v.curGroup = v.groups[Number(here.dataset.grpHere)] || ''; commitState(); renderBoqBuilder(); showToast(`New rooms go into “${v.curGroup}” — tap + Add Room`); return; }
+        const mv = t.closest('[data-grp-move]');
+        if (mv) {
+          const [k, dir] = mv.dataset.grpMove.split(':').map(Number); const { boq, v } = grpCtx(); const j = k + dir;
+          if (j < 0 || j >= v.groups.length) return;
+          [v.groups[k], v.groups[j]] = [v.groups[j], v.groups[k]]; grpNormalize(v); grpDone(boq); return;
+        }
+        const del = t.closest('[data-grp-del]');
+        if (del) {
+          const k = Number(del.dataset.grpDel); const { boq, v } = grpCtx(); const name = v.groups[k]; const n = v.rooms.filter(r => r.group === name).length;
+          if (n && !(await appConfirm(`Remove the section heading “${name}”?\n\nIts ${n} room${n > 1 ? 's stay' : ' stays'} in the estimate, just without this heading.`, { ok: 'Remove heading' }))) return;
+          v.rooms.forEach(r => { if (r.group === name) r.group = ''; }); v.groups.splice(k, 1); if (v.curGroup === name) v.curGroup = '';
+          grpNormalize(v); grpDone(boq); showToast('Section heading removed'); return;
+        }
+      });
+      document.addEventListener('change', e => {
+        const t = e.target;
+        if (t.matches && t.matches('[data-grp-rename]')) {
+          const k = Number(t.dataset.grpRename); const { boq, v } = grpCtx(); const old = v.groups[k]; const nv = t.value.trim();
+          if (!nv) { t.value = old; return; }
+          if (nv !== old && v.groups.includes(nv)) { showToast('That section already exists'); t.value = old; return; }
+          v.groups[k] = nv; v.rooms.forEach(r => { if (r.group === old) r.group = nv; }); if (v.curGroup === old) v.curGroup = nv;
+          grpDone(boq); return;
+        }
+        if (t.matches && t.matches('[data-room-grp]')) {
+          const { boq, v } = grpCtx(); const r = v.rooms[Number(t.dataset.roomGrp)]; if (!r) return;
+          r.group = t.value; grpNormalize(v); grpDone(boq); showToast(`“${r.name}” moved${t.value ? ` to ${t.value}` : ' out of sections'}`); return;
+        }
+      });
 
       // ===== BOQ units (incl. trips) =====
       const BOQ_UNITS = ['sq ft', 'rft', 'nos', 'trips', 'lump sum'];
@@ -13504,8 +13626,16 @@
                 const cAmt = MARGIN_MM + 163;
                 const tableRight = PAGE_W_MM - MARGIN_MM;
 
-                activeVer.rooms.forEach(room => {
+                const pdfGrps = (activeVer.groups || []).length;
+                activeVer.rooms.forEach((room, roomI) => {
                   const roomSub = room.items.reduce((s, it) => s + ((Number(it.qty) || 0) * (Number(it.rate) || 0)), 0);
+                  if (pdfGrps && room.group && (roomI === 0 || (activeVer.rooms[roomI - 1].group || '') !== room.group)) {
+                    ensureSpace(36);
+                    drawRoundRect(MARGIN_MM, curY, CONTENT_W_MM, 9, 1.5, '#A44A22', '#A44A22');
+                    drawText(String(room.group).toUpperCase(), MARGIN_MM + 4, curY + 2.6, { font: 'bold', sizePt: 10, color: '#FFFFFF' });
+                    drawText(`Section Total: ${formatINR(grpTotal(activeVer, room.group))}`, tableRight - 4, curY + 2.8, { font: 'bold', sizePt: 8.8, color: '#FFFFFF', align: 'right' });
+                    curY += 13;
+                  }
                   ensureSpace(22);
 
                   drawText(room.name, MARGIN_MM, curY, { font: 'bold', sizePt: 9.8, color: '#1C1917' });
@@ -14170,9 +14300,13 @@
             </div>
           </div>
 
-          ${activeVer.rooms.map(r => {
+          ${activeVer.rooms.map((r, roomI) => {
             const roomSub = r.items.reduce((s, it) => s + ((Number(it.qty) || 0) * (Number(it.rate) || 0)), 0);
-            return `
+            return `${(activeVer.groups || []).length && r.group && (roomI === 0 || (activeVer.rooms[roomI - 1].group || '') !== r.group) ? `
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-top:22px; padding:8px 12px; border-radius:6px; background:#A44A22; color:#FFF;">
+              <strong style="font-size:14px; letter-spacing:.04em; text-transform:uppercase;">${escapeHtml(r.group)}</strong>
+              <strong style="font-size:12.5px;">Section Total: ${formatINR(grpTotal(activeVer, r.group))}</strong>
+            </div>` : ''}
             <div style="display:flex; justify-content:space-between; align-items:center; margin-top:16px; margin-bottom:6px;">
               <h4 style="font-size:14px; color:#1C1917; margin:0;">${escapeHtml(r.name)}</h4>
               <span style="font-size:12px; font-weight:700; color:#57534E;">Room Sub-Total: ${formatINR(roomSub)}</span>
@@ -21110,6 +21244,13 @@
           const boq = ensureBoqForClient(state.activeBoqClientId);
           const activeVer = getActiveVersionObj(boq);
           const targetIdx = rIdx + dir;
+          if (targetIdx >= 0 && targetIdx < activeVer.rooms.length && (activeVer.groups || []).length && (activeVer.rooms[rIdx].group || '') !== (activeVer.rooms[targetIdx].group || '')) {
+            const g = activeVer.rooms[targetIdx].group || '';
+            activeVer.rooms[rIdx].group = g; grpNormalize(activeVer);
+            syncAllThreeOptionsFrom(boq, boq.activeVersion); commitState(); renderBoqBuilder();
+            showToast(g ? `Moved into ${g}` : 'Moved out of the section');
+            return;
+          }
           if (targetIdx >= 0 && targetIdx < activeVer.rooms.length) {
             const [rm] = activeVer.rooms.splice(rIdx, 1);
             activeVer.rooms.splice(targetIdx, 0, rm);
@@ -22123,8 +22264,10 @@
         if (!Number.isNaN(fromIdx) && !Number.isNaN(toIdx) && fromIdx !== toIdx) {
           const boq = ensureBoqForClient(state.activeBoqClientId);
           const activeVer = getActiveVersionObj(boq);
+          const targetGrp = (activeVer.rooms[toIdx] || {}).group;
           const [movedRoom] = activeVer.rooms.splice(fromIdx, 1);
           activeVer.rooms.splice(toIdx, 0, movedRoom);
+          if ((activeVer.groups || []).length) movedRoom.group = targetGrp || '';
           syncAllThreeOptionsFrom(boq, boq.activeVersion);
           commitState();
           renderBoqBuilder();
