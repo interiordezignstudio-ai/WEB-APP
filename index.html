@@ -20700,11 +20700,11 @@
             rate
           };
           activeVer.rooms[rIdx].items.push(newItemPayload);
-          ensureItemInUniversalCatalog(newItemPayload);
+          // typed here = only for this estimate (not saved to the Item Catalog)
           syncAllThreeOptionsFrom(boq, boq.activeVersion);
           commitState();
           renderBoqBuilder();
-          showToast('Item saved to Universal Catalog & synced across Options A, B & C!');
+          showToast('Item added to this estimate (Options A, B & C) — not saved to the Item Catalog');
           return;
         }
 
