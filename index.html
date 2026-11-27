@@ -2752,7 +2752,6 @@
     .boq-grp-acts { display:flex; gap:6px; flex-wrap:wrap; margin-top:8px; }
     .boq-grp-empty { font-size:12.5px; color: var(--text-muted); margin-top:8px; }
     .room-grp-pick { font-size:11.5px; padding:2px 6px; min-height:28px; max-width:160px; }
-    html.kbd-nav :focus { outline: 2px solid var(--accent-terracotta) !important; outline-offset: 2px; }
     /* Morning summary */
     .mm-sec { margin-top:14px; }
     .mm-sec h4 { font-size:10.5px; letter-spacing:.14em; text-transform:uppercase; color: var(--text-muted); font-weight:600; margin:0 0 4px; }
@@ -11137,34 +11136,6 @@
           r.group = t.value; grpNormalize(v); grpDone(boq); showToast(`“${r.name}” moved${t.value ? ` to ${t.value}` : ' out of sections'}`); return;
         }
       });
-
-
-      // ===== Tab / Shift+Tab on iPad & iPhone keyboards (Safari often ignores Tab) =====
-      (function () {
-        const apple = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-        if (!apple) return; // Windows / Mac browsers already do this
-        const SEL = 'input:not([type=hidden]):not([disabled]), select:not([disabled]), textarea:not([disabled]), button:not([disabled]), a[href], [tabindex]:not([tabindex="-1"]), [contenteditable="true"]';
-        const visible = el => { if (el.closest('[hidden], [inert]')) return false; const r = el.getClientRects(); if (!r.length) return false; const cs = getComputedStyle(el); return cs.visibility !== 'hidden' && cs.display !== 'none'; };
-        document.addEventListener('keydown', e => {
-          if (e.key !== 'Tab' || e.defaultPrevented || e.altKey || e.ctrlKey || e.metaKey) return;
-          // inside an open pop-up, stay inside it
-          const modals = [...document.querySelectorAll('.modal-backdrop.open')];
-          const scope = modals.length ? modals[modals.length - 1] : document.body;
-          const list = [...scope.querySelectorAll(SEL)].filter(el => el.tabIndex >= 0 && visible(el));
-          if (!list.length) return;
-          e.preventDefault();
-          const cur = document.activeElement; let i = list.indexOf(cur);
-          if (i < 0 && cur && cur !== document.body) { // focus is on something not in the list: start from its position
-            i = list.findIndex(el => cur.compareDocumentPosition(el) & Node.DOCUMENT_POSITION_FOLLOWING); i = i < 0 ? list.length : i; if (!e.shiftKey) i -= 1;
-          }
-          const next = list[(i + (e.shiftKey ? -1 : 1) + list.length) % list.length];
-          document.documentElement.classList.add('kbd-nav');
-          try { next.focus({ preventScroll: true }); } catch (err) { next.focus(); }
-          try { next.scrollIntoView({ block: 'nearest', inline: 'nearest' }); } catch (err) { /* ignore */ }
-          if (next.select && /^(text|search|tel|email|url|number|password)$/i.test(next.type || '') ) { try { next.select(); } catch (err) { /* number inputs */ } }
-        });
-        document.addEventListener('pointerdown', () => document.documentElement.classList.remove('kbd-nav'));
-      })();
 
       // ===== BOQ units (incl. trips) =====
       const BOQ_UNITS = ['sq ft', 'rft', 'nos', 'trips', 'lump sum'];
