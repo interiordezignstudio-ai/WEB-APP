@@ -2752,6 +2752,14 @@
     .boq-grp-acts { display:flex; gap:6px; flex-wrap:wrap; margin-top:8px; }
     .boq-grp-empty { font-size:12.5px; color: var(--text-muted); margin-top:8px; }
     .room-grp-pick { font-size:11.5px; padding:2px 6px; min-height:28px; max-width:160px; }
+    /* Edit Catalog Item — Option A/B/C boxes in dark mode */
+    html[data-theme="dark"] #modal-catalog-item [data-cat-tier-pane="A"] { background: rgba(255,255,255,.035) !important; border-color: rgba(255,255,255,.14) !important; }
+    html[data-theme="dark"] #modal-catalog-item [data-cat-tier-pane="B"] { background: rgba(232,180,151,.06) !important; border-color: #6B4A36 !important; }
+    html[data-theme="dark"] #modal-catalog-item [data-cat-tier-pane="C"] { background: rgba(110,231,183,.05) !important; border-color: #2F6B55 !important; }
+    html[data-theme="dark"] #modal-catalog-item [data-cat-tier-pane] .form-label { color: var(--text-muted) !important; }
+    html[data-theme="dark"] #modal-catalog-item [data-cat-tier-pane="A"] span[style*="color"] { color: var(--text-muted) !important; }
+    html[data-theme="dark"] #modal-catalog-item [data-cat-tier-pane="B"] span[style*="color"]:not([class]) { color: #E6BE8F !important; }
+    html[data-theme="dark"] #modal-catalog-item [data-cat-tier-pane="C"] span[style*="color"]:not([class]) { color: #8FD9B6 !important; }
     /* Morning summary */
     .mm-sec { margin-top:14px; }
     .mm-sec h4 { font-size:10.5px; letter-spacing:.14em; text-transform:uppercase; color: var(--text-muted); font-weight:600; margin:0 0 4px; }
