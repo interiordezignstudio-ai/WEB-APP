@@ -2741,6 +2741,16 @@
       html[data-nav="hidden"][data-style="refined"] .main-wrapper { margin-left: 10px !important; }
     }
     html[data-theme="dark"] .nav-toggle:hover { background: rgba(255,255,255,.06); }
+
+    /* BOQ sections */
+    .boq-sec-row td { background: var(--bg-sunken, #F4F2EE) !important; padding: 8px 10px !important; }
+    .boq-sec { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+    .boq-sec-bar { width:4px; height:22px; border-radius:4px; background: var(--accent-terracotta); }
+    .boq-sec-name { font-weight:700; font-size:13.5px; letter-spacing:.02em; text-transform:uppercase; width:220px; max-width:60%; background:transparent; }
+    .boq-sec-sub { font-size:13px; color: var(--accent-terracotta); }
+    .boq-sec-empty { font-size:12px; color: var(--text-muted); margin:6px 0 2px 12px; }
+    .boq-sec-pick { font-size:11.5px; padding:2px 6px; min-height:26px; max-width:170px; }
+    html[data-theme="dark"] .boq-sec-row td { background: rgba(255,255,255,.04) !important; }
     /* Morning summary */
     .mm-sec { margin-top:14px; }
     .mm-sec h4 { font-size:10.5px; letter-spacing:.14em; text-transform:uppercase; color: var(--text-muted); font-weight:600; margin:0 0 4px; }
@@ -8163,6 +8173,7 @@
         const srcVer = boq.versions[srcKey];
         if (!srcVer) return;
         const srcMult = TIER_MULTIPLIERS[srcKey] || 1.0;
+        (srcVer.rooms || []).forEach(secNormalize);
 
         ['A', 'B', 'C'].forEach(targetKey => {
           if (targetKey === srcKey) return;
@@ -8185,6 +8196,7 @@
             const existingRoom = (targetVer.rooms || [])[rIdx];
             return {
               name: roomSrc.name,
+              ...((roomSrc.sections || []).length ? { sections: roomSrc.sections.slice(), curSection: roomSrc.curSection || '' } : {}),
               items: (roomSrc.items || []).map((itemSrc, iIdx) => {
                 const catMatch = itemSrc.code ? catSeg(state.catalog.find(c => c.code === itemSrc.code), boqSeg(boq)) : null;
                 let computedRate;
@@ -8228,7 +8240,8 @@
                   materialRate: itemSrc.labourOnly ? 0 : computedMatRate,
                   labourRate: computedLabRate,
                   rate: itemSrc.labourOnly ? (catMatch && computedLabRate > 0 ? computedLabRate : computedRate) : computedRate,
-                  ...(itemSrc.labourOnly ? { labourOnly: true } : {})
+                  ...(itemSrc.labourOnly ? { labourOnly: true } : {}),
+                  section: itemSrc.section || ''
                 };
               })
             };
@@ -8784,7 +8797,9 @@
               </div>
             `;
           } else {
+            if ((activeVer.rooms || []).map(secNormalize).some(Boolean)) { syncAllThreeOptionsFrom(boq, boq.activeVersion); commitState(); }
             roomsTarget.innerHTML = (activeVer.rooms || []).map((room, rIdx) => {
+              const secCols = perms.canSeeMoney ? (state.boqSeparateRates ? 11 : 9) : 7;
               const roomSub = room.items.reduce((s, it) => s + ((Number(it.qty) || 0) * (Number(it.rate) || 0)), 0);
               const roomMatSub = room.items.reduce((s, it) => s + computeItemMatLab(it).matTotal, 0);
               const roomLabSub = room.items.reduce((s, it) => s + computeItemMatLab(it).labTotal, 0);
@@ -8807,6 +8822,7 @@
                     <strong id="room-total-${rIdx}" class="tabular" style="font-size:14px; color:var(--accent-terracotta);">
                       ${perms.canSeeMoney ? `Room Total: ${formatINR(roomSub)}` : ''}
                     </strong>
+                    <button type="button" class="btn btn-outline btn-sm" data-sec-add="${rIdx}" title="Add a heading inside this room, e.g. Civil Work / Carpentry / Electrical">+ Section</button>
                     <button type="button" class="btn btn-outline btn-sm" data-room-pick-catalog="${rIdx}">+ Catalog Item</button>
                     <button type="button" class="btn btn-danger-soft btn-sm" data-delete-room="${rIdx}" title="Delete Room">✕</button>
                   </div>
@@ -8845,10 +8861,16 @@
                             </div>
                           </td>
                         </tr>
+                        ${(room.sections || []).map(n => secHeadRow(rIdx, room, n, secCols, perms.canSeeMoney)).join('')}
                       ` : room.items.map((it, iIdx) => {
                         const lineAmt = (Number(it.qty) || 0) * (Number(it.rate) || 0);
                         const split = computeItemMatLab(it);
-                        return `
+                        const prevSec = iIdx ? (room.items[iIdx - 1].section || '') : '';
+                        const head = (it.section || '') && (iIdx === 0 || prevSec !== it.section) ? secHeadRow(rIdx, room, it.section, secCols, perms.canSeeMoney) : '';
+                        // empty sections that sit between this item's section and the previous one
+                        const rk = x => x ? room.sections.indexOf(x) : -1;
+                        const gap = (room.sections || []).filter(n => rk(n) > rk(prevSec) && rk(n) < rk(it.section || '') && !room.items.some(x => x.section === n)).map(n => secHeadRow(rIdx, room, n, secCols, perms.canSeeMoney)).join('');
+                        return `${iIdx === 0 || prevSec !== (it.section || '') ? gap : ''}${head}
                           <tr>
                             <td class="st-ord" style="vertical-align:top; white-space:nowrap;">
                               <div style="display:flex; align-items:center; gap:3px;">
@@ -8861,7 +8883,7 @@
                                 <input type="text" class="input-inline" style="width:100%; font-weight:700; font-size:12.5px;" placeholder="Scope Item Title (e.g., Queen Size Bed)" value="${escapeHtml(it.desc)}" data-boq-desc="${rIdx}:${iIdx}" />
                               </div>
                               <textarea class="input-inline" rows="2" style="width:100%; font-size:11.5px; color:var(--text-muted); line-height:1.35; resize:vertical;" placeholder="Specifications: Ply grade, laminate/PU finish, hardware brand, headboard..." data-boq-specs="${rIdx}:${iIdx}">${escapeHtml(it.specs || '')}</textarea>
-                              <div style="margin-top:4px;"><button type="button" class="lo-chip${it.labourOnly ? ' on' : ''}" data-boq-labour="${rIdx}:${iIdx}" title="${it.labourOnly ? 'Labour only — the client supplies the material. Tap to charge material too.' : 'Charge labour only (client supplies material)'}">🔨 ${it.labourOnly ? 'Labour only' : 'Labour only?'}</button></div>
+                              <div style="margin-top:4px; display:flex; gap:6px; flex-wrap:wrap; align-items:center;">${(room.sections || []).length ? `<select class="input-inline boq-sec-pick" data-boq-sec="${rIdx}:${iIdx}" title="Move to another section"><option value="">No section</option>${room.sections.map(n => `<option value="${escapeHtml(n)}" ${it.section === n ? 'selected' : ''}>${escapeHtml(n)}</option>`).join('')}</select>` : ''}<button type="button" class="lo-chip${it.labourOnly ? ' on' : ''}" data-boq-labour="${rIdx}:${iIdx}" title="${it.labourOnly ? 'Labour only — the client supplies the material. Tap to charge material too.' : 'Charge labour only (client supplies material)'}">🔨 ${it.labourOnly ? 'Labour only' : 'Labour only?'}</button></div>
                             </td>
                             <td data-label="L (ft)" style="vertical-align:top;"><input type="number" step="0.1" class="input-inline tabular" style="width:62px;" value="${it.len || 0}" data-boq-field="len" data-room="${rIdx}" data-item="${iIdx}" /></td>
                             <td data-label="H/W (ft)" style="vertical-align:top;"><input type="number" step="0.1" class="input-inline tabular" style="width:62px;" value="${it.ht || 0}" data-boq-field="ht" data-room="${rIdx}" data-item="${iIdx}" /></td>
@@ -8889,13 +8911,14 @@
                             </td>
                           </tr>
                         `;
-                      }).join('')}
+                      }).join('') + (room.items.length ? (room.sections || []).filter(n => { const last = room.items[room.items.length - 1].section || ''; return room.sections.indexOf(n) > (last ? room.sections.indexOf(last) : -1) && !room.items.some(x => x.section === n); }).map(n => secHeadRow(rIdx, room, n, secCols, perms.canSeeMoney)).join('') : '')}
                       <!-- Interactive Inline Add Row -->
                       <tr class="st-addrow" style="background:#FFFDF9;">
                         <td class="st-hide"></td>
                         <td class="st-full">
                           <input type="text" class="input-inline" style="width:100%; font-weight:600; margin-bottom:4px;" placeholder="+ Scope Item Title (e.g., Queen Size Bed)..." id="inline-desc-${rIdx}" />
                           <input type="text" class="input-inline" style="width:100%; font-size:11.5px;" placeholder="Specifications (e.g., 18mm BWP Ply, Hettich lift, suede headboard)..." id="inline-specs-${rIdx}" />
+                          ${(room.sections || []).length ? `<label style="display:flex; gap:6px; align-items:center; font-size:11.5px; color:var(--text-muted); margin-top:4px;">Add into <select class="input-inline boq-sec-pick" id="inline-sec-${rIdx}" data-sec-cur="${rIdx}"><option value="">No section</option>${room.sections.map(n => `<option value="${escapeHtml(n)}" ${room.curSection === n ? 'selected' : ''}>${escapeHtml(n)}</option>`).join('')}</select> <span>(also used by + Catalog Item)</span></label>` : ''}
                         </td>
                         <td data-label="L (ft)" style="vertical-align:top;"><input type="number" step="0.1" class="input-inline tabular" style="width:62px;" value="1" id="inline-len-${rIdx}" /></td>
                         <td data-label="H/W (ft)" style="vertical-align:top;"><input type="number" step="0.1" class="input-inline tabular" style="width:62px;" value="1" id="inline-ht-${rIdx}" /></td>
@@ -11014,6 +11037,109 @@
 
 
 
+
+
+      // ===== BOQ sections: headings inside a room (Civil / Carpentry / Electrical …) =====
+      // room.sections = ordered names; item.section = its heading ('' = none). Items are kept grouped in that order.
+      function secNormalize(room) {
+        if (!room || !Array.isArray(room.items)) return false;
+        const before = room.items.map(it => it.id || '').join(',') + '|' + JSON.stringify(room.sections || []);
+        room.sections = Array.isArray(room.sections) ? [...new Set(room.sections.map(x => String(x || '').trim()).filter(Boolean))] : [];
+        if (room.curSection && !room.sections.includes(room.curSection)) room.curSection = '';
+        room.items.forEach(it => {
+          if (it.section === undefined) it.section = room.curSection || '';
+          if (it.section && !room.sections.includes(it.section)) room.sections.push(it.section);
+        });
+        if (room.sections.length) {
+          const rank = x => x ? room.sections.indexOf(x) : -1;
+          const pos = new Map(room.items.map((it, i) => [it, i]));
+          room.items.sort((a, b) => rank(a.section) - rank(b.section) || pos.get(a) - pos.get(b));
+        }
+        return before !== room.items.map(it => it.id || '').join(',') + '|' + JSON.stringify(room.sections);
+      }
+      // [{ name, items:[{it, i}] }] — unsectioned items first, then every section (also empty ones)
+      function secGroups(room) {
+        const g = [{ name: '', items: [] }].concat((room.sections || []).map(n => ({ name: n, items: [] })));
+        (room.items || []).forEach((it, i) => { const t = g.find(x => x.name === (it.section || '')) || g[0]; t.items.push({ it, i }); });
+        return g.filter(x => x.name || x.items.length);
+      }
+      const secSub = grp => grp.items.reduce((sum, x) => sum + (Number(x.it.qty) || 0) * (Number(x.it.rate) || 0), 0);
+      function secHeadRow(rIdx, room, name, cols, money) {
+        const k = room.sections.indexOf(name); const grp = secGroups(room).find(x => x.name === name) || { items: [] };
+        return `<tr class="boq-sec-row"><td colspan="${cols}">
+          <div class="boq-sec">
+            <span class="boq-sec-bar"></span>
+            <input type="text" class="input-inline boq-sec-name" value="${escapeHtml(name)}" data-sec-rename="${rIdx}:${k}" title="Section name — click to rename" />
+            <span class="badge badge-stone">${grp.items.length} item${grp.items.length === 1 ? '' : 's'}</span>
+            <span style="flex:1;"></span>
+            ${money ? `<strong class="tabular boq-sec-sub">${formatINR(secSub(grp))}</strong>` : ''}
+            <button type="button" class="btn btn-outline btn-sm" data-sec-here="${rIdx}:${k}" title="New items go into this section">+ Item here</button>
+            <button type="button" class="btn btn-outline btn-sm" style="padding:3px 7px;" data-sec-move="${rIdx}:${k}:-1" ${k === 0 ? 'disabled' : ''} title="Move section up">↑</button>
+            <button type="button" class="btn btn-outline btn-sm" style="padding:3px 7px;" data-sec-move="${rIdx}:${k}:1" ${k === room.sections.length - 1 ? 'disabled' : ''} title="Move section down">↓</button>
+            <button type="button" class="btn btn-danger-soft btn-sm" style="padding:3px 7px;" data-sec-del="${rIdx}:${k}" title="Remove this heading (items stay in the room)">✕</button>
+          </div>${grp.items.length ? '' : `<div class="boq-sec-empty">No items yet — tap <b>+ Item here</b>, then add from the catalog or the row below.</div>`}</td></tr>`;
+      }
+      function secAfterChange(boq, rerender) {
+        syncAllThreeOptionsFrom(boq, boq.activeVersion); commitState(); if (rerender !== false) renderBoqBuilder();
+      }
+      function secRoomAt(rIdx) { const boq = ensureBoqForClient(state.activeBoqClientId); const v = getActiveVersionObj(boq); return { boq, room: v && v.rooms[rIdx] }; }
+      document.addEventListener('click', async e => {
+        const t = e.target;
+        const add = t.closest('[data-sec-add]');
+        if (add) {
+          const { boq, room } = secRoomAt(Number(add.dataset.secAdd)); if (!room) return;
+          secNormalize(room);
+          const sugg = ['Civil Work', 'Carpentry', 'False Ceiling', 'Electrical', 'Painting', 'Plumbing', 'Furniture', 'Loose Furniture', 'Soft Furnishing', 'Transport'];
+          let name = sugg.find(x => !room.sections.includes(x)) || `Section ${room.sections.length + 1}`;
+          let n = 2; while (room.sections.includes(name)) name = `Section ${room.sections.length + n++}`;
+          room.sections.push(name); room.curSection = name;
+          secAfterChange(boq);
+          setTimeout(() => { const inp = document.querySelector(`[data-sec-rename="${add.dataset.secAdd}:${room.sections.length - 1}"]`); if (inp) { inp.focus(); inp.select(); } }, 60);
+          showToast(`Section “${name}” added — type a new name, then add items into it`);
+          return;
+        }
+        const here = t.closest('[data-sec-here]');
+        if (here) {
+          const [r, k] = here.dataset.secHere.split(':').map(Number); const { room } = secRoomAt(r); if (!room) return;
+          room.curSection = room.sections[k] || ''; commitState();
+          const sel = document.getElementById(`inline-sec-${r}`); if (sel) sel.value = room.curSection;
+          const d = document.getElementById(`inline-desc-${r}`); if (d) { d.scrollIntoView({ block: 'center', behavior: 'smooth' }); d.focus(); }
+          showToast(`New items in this room go into “${room.curSection}” — type below or use + Catalog Item`);
+          return;
+        }
+        const mv = t.closest('[data-sec-move]');
+        if (mv) {
+          const [r, k, dir] = mv.dataset.secMove.split(':').map(Number); const { boq, room } = secRoomAt(r); if (!room) return;
+          const j = k + dir; if (j < 0 || j >= room.sections.length) return;
+          [room.sections[k], room.sections[j]] = [room.sections[j], room.sections[k]];
+          secNormalize(room); secAfterChange(boq); return;
+        }
+        const del = t.closest('[data-sec-del]');
+        if (del) {
+          const [r, k] = del.dataset.secDel.split(':').map(Number); const { boq, room } = secRoomAt(r); if (!room) return;
+          const name = room.sections[k]; const n = room.items.filter(it => it.section === name).length;
+          if (n && !(await appConfirm(`Remove the heading “${name}”?\n\nIts ${n} item${n > 1 ? 's stay' : ' stays'} in ${room.name}, just without this heading.`, { ok: 'Remove heading' }))) return;
+          room.items.forEach(it => { if (it.section === name) it.section = ''; });
+          room.sections.splice(k, 1); if (room.curSection === name) room.curSection = '';
+          secNormalize(room); secAfterChange(boq); showToast('Heading removed'); return;
+        }
+      });
+      document.addEventListener('change', e => {
+        const t = e.target;
+        if (t.matches && t.matches('[data-sec-rename]')) {
+          const [r, k] = t.dataset.secRename.split(':').map(Number); const { boq, room } = secRoomAt(r); if (!room) return;
+          const old = room.sections[k]; const nv = t.value.trim();
+          if (!nv) { t.value = old; return; }
+          if (nv !== old && room.sections.includes(nv)) { showToast('That section already exists in this room'); t.value = old; return; }
+          room.sections[k] = nv; room.items.forEach(it => { if (it.section === old) it.section = nv; }); if (room.curSection === old) room.curSection = nv;
+          secAfterChange(boq); return;
+        }
+        if (t.matches && t.matches('[data-sec-cur]')) { const { room } = secRoomAt(Number(t.dataset.secCur)); if (room) { room.curSection = t.value; commitState(); } return; }
+        if (t.matches && t.matches('[data-boq-sec]')) {
+          const [r, i] = t.dataset.boqSec.split(':').map(Number); const { boq, room } = secRoomAt(r); const it = room && room.items[i]; if (!it) return;
+          it.section = t.value; secNormalize(room); secAfterChange(boq); return;
+        }
+      });
 
       // ===== BOQ units (incl. trips) =====
       const BOQ_UNITS = ['sq ft', 'rft', 'nos', 'trips', 'lump sum'];
@@ -13529,7 +13655,17 @@
                   });
                   curY += 7.8;
 
-                  room.items.forEach(it => {
+                  const pdfSecs = (room.sections || []).length;
+                  room.items.forEach((it, pIdx) => {
+                    if (pdfSecs && (it.section || '') && (pIdx === 0 || (room.items[pIdx - 1].section || '') !== it.section)) {
+                      const grpSub = room.items.filter(x => x.section === it.section).reduce((s2, x) => s2 + (Number(x.qty) || 0) * (Number(x.rate) || 0), 0);
+                      ensureSpace(16);
+                      drawRoundRect(MARGIN_MM, curY, CONTENT_W_MM, 7, 0, '#FAF3EC', '#D6D3D1');
+                      ctx.fillStyle = '#A44A22'; ctx.fillRect(px(MARGIN_MM), px(curY), px(1.2), px(7));
+                      drawText(String(it.section).toUpperCase(), cDesc + 2.5, curY + 2.0, { font: 'bold', sizePt: 8.2, color: '#A44A22' });
+                      drawText(`Sub-Total: ${formatINR(grpSub)}`, tableRight - 2.5, curY + 2.0, { font: 'bold', sizePt: 7.8, color: '#57534E', align: 'right' });
+                      curY += 7;
+                    }
                     const descLines = wrapText(it.desc || '', 69, 8.4, 'bold');
                     const specLines = it.specs ? wrapText(`Specifications: ${it.specs}`, 69, 7.6, 'normal') : [];
                     const totalTextH = descLines.length * 4.2 + (specLines.length > 0 ? 1.2 + specLines.length * 3.8 : 0);
@@ -14190,7 +14326,8 @@
                 </tr>
               </thead>
               <tbody>
-                ${r.items.map((it, itIdx) => `
+                ${r.items.map((it, itIdx) => `${(r.sections || []).length && (it.section || '') && (itIdx === 0 || (r.items[itIdx - 1].section || '') !== it.section) ? `
+                  <tr><td colspan="7" style="background:#FAF3EC; border-left:3px solid #A44A22; font-weight:700; color:#A44A22; text-transform:uppercase; font-size:12px;"><span>${escapeHtml(it.section)}</span><span style="float:right; color:#57534E;">Sub-Total: ${formatINR(r.items.filter(x => x.section === it.section).reduce((s2, x) => s2 + (Number(x.qty) || 0) * (Number(x.rate) || 0), 0))}</span></td></tr>` : ''}
                   <tr>
                     <td style="vertical-align:top;">${itIdx + 1}</td>
                     <td style="vertical-align:top;">
@@ -21130,6 +21267,12 @@
           const activeVer = getActiveVersionObj(boq);
           const room = activeVer.rooms[rIdx];
           const targetIdx = iIdx + dir;
+          if (room && targetIdx >= 0 && targetIdx < room.items.length && (room.items[iIdx].section || '') !== (room.items[targetIdx].section || '')) {
+            room.items[iIdx].section = room.items[targetIdx].section || '';
+            secNormalize(room); syncAllThreeOptionsFrom(boq, boq.activeVersion); commitState(); renderBoqBuilder();
+            showToast(`Moved into ${room.items.find(x => x === room.items[targetIdx]) && room.items[targetIdx].section ? '“' + room.items[targetIdx].section + '”' : 'no section'}`);
+            return;
+          }
           if (room && targetIdx >= 0 && targetIdx < room.items.length) {
             const [it] = room.items.splice(iIdx, 1);
             room.items.splice(targetIdx, 0, it);
